@@ -8,7 +8,8 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 export 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 
 /// Tasks as this device knows them; the same stream and error rules as
-/// `ProjectRepository`.
+/// `ProjectRepository`. Queued writes apply to the local row at once and
+/// never throw for network reasons.
 abstract interface class TaskRepository {
   /// Open tasks across all projects, nearest due date first.
   Stream<List<Task>> watchOpenTasks();
@@ -130,9 +131,6 @@ abstract interface class TaskRepository {
   /// A refresh the user started: a sync of its own, after any under way.
   Future<void> refreshOpenTasks();
 
-  /// Writes apply to the local row at once and are queued for the server;
-  /// they never throw for network reasons. [setDone] on a repeating task
-  /// shows it done until the server answers with the next occurrence.
   /// The task as this device knows it, following it across the id change
   /// a queued create gets once the server has assigned the real id. Emits
   /// null once the task is gone.
@@ -142,8 +140,11 @@ abstract interface class TaskRepository {
   /// queues the server create; returns that local id.
   Future<int> createTask(NewTask task);
 
-  /// Applies the fields set in [changes] at once and queues them.
-  Future<void> updateTask(int taskId, TaskChanges changes);
+  /// Applies the fields set in [changes] at once and queues them. False
+  /// when the task is not on this device or is queued for deletion, so
+  /// nothing was changed; an empty [changes] has nothing to queue and is
+  /// true.
+  Future<bool> updateTask(int taskId, TaskChanges changes);
 
   /// Queues [html], an edit in the editor that started from the
   /// description [base], as the task's description; nothing when they are
@@ -173,7 +174,9 @@ abstract interface class TaskRepository {
     required bool checked,
   });
 
-  Future<void> setDone(int taskId, {required bool done});
+  /// A repeating task shows done until the server answers with its next
+  /// occurrence. False, with nothing changed, as for [updateTask].
+  Future<bool> setDone(int taskId, {required bool done});
 
   /// Takes back a done of [previous], which may already have been answered:
   /// a repeating task gets the dates it had before the server moved them on.
@@ -199,7 +202,12 @@ abstract interface class TaskRepository {
   /// its way is waited for. A delete the server has made is restored from
   /// its trash (Vikunja 2.8.0 and later), and the answered task is stored
   /// at once; ops of the task the server refused because the task or its
-  /// project was gone or in the trash go back to the queue.
+  /// project was gone or in the trash go back to the queue. Files of the
+  /// task that had not reached the server when it made the delete are
+  /// queued again when the restore comes while the delete's Undo is
+  /// offered, [deleteUndoWindow] or as long as [holdForUndo] holds them,
+  /// and upload once the task is back; after that, or after a restart,
+  /// they are gone.
   ///
   /// A queued delete whose earlier attempt may have reached the server (a
   /// timeout, a 5xx, a kill in flight) is removed too, and the task is
@@ -218,6 +226,12 @@ abstract interface class TaskRepository {
   /// Throws [TaskDeleteInFlight] when another process is still sending the
   /// delete after `restoreWait`.
   Future<Task> restoreTask(int taskId);
+
+  /// Keeps what [restoreTask] would bring back of the delete of [taskIds]
+  /// past [deleteUndoWindow], for an Undo still offered: a screen reader
+  /// keeps it up until it is closed. The returned function lets go; called
+  /// again it does nothing.
+  void Function() holdForUndo(Iterable<int> taskIds);
 
   /// Asks the server for a copy (labels, assignees, attachments and
   /// reminders included, plus a `copiedfrom` relation), so it needs a

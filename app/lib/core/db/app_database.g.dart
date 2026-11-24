@@ -5297,8 +5297,11 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
   /// 0 for a label op.
   final int taskId;
 
-  /// The `TaskChanges` as JSON, the `NewTask` for a create; empty for a
-  /// delete. A label op's: the queued create, or the `LabelChanges`.
+  /// As JSON: the `NewTask` of a create, the `TaskChanges` of an update,
+  /// `{}` for a delete, the `QueuedUpload` of an upload; a label op's
+  /// `QueuedLabelCreate`, `LabelChanges` or `QueuedLabelDelete`. A create's
+  /// and an upload's carry `posted_at` once their request has left the
+  /// device.
   final String payload;
   final DateTime createdAt;
   final int attempts;
@@ -5309,13 +5312,14 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
   /// The normalized `VikunjaFailure` of the last attempt as JSON.
   final String? lastError;
 
-  /// When a create's request may have reached the server although no
-  /// answer came back: set on the first such attempt, so the next one looks
-  /// for the task before sending it again. An update with a repeating
-  /// task's Done gets it before its first request, with what the server had
-  /// then (see `TaskChanges.doneBase`), so a later attempt checks whether
-  /// the Done landed. Null for every other op and for a create the server
-  /// rejected.
+  /// When a task or label create or an upload may have reached the server
+  /// although no answer came back: set on the first such attempt, so the
+  /// next one, and a Retry, look for what it may have left there before
+  /// sending it again. An update with a repeating task's Done gets it
+  /// before its first request, with what the server had then (see
+  /// `TaskChanges.doneBase`), so a later attempt checks whether the Done
+  /// landed; it takes no more edits from then on. Null for every other op
+  /// and for a create or upload the server refused.
   final DateTime? sentAt;
 
   /// The label of a `createLabel`, `updateLabel` or `deleteLabel`, negative

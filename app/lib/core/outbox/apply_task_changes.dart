@@ -237,6 +237,17 @@ TaskChanges withoutDescription(TaskChanges changes) => _rebuilt(
   positions: changes.positions,
 );
 
+/// [changes] without their cover: the attachment it names is gone from the
+/// task.
+TaskChanges withoutCover(TaskChanges changes) => _rebuilt(
+  changes,
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
+  dropCover: true,
+);
+
 /// A [description] of null keeps the description, its base and its taps;
 /// a [doneBase] of null keeps the one of [changes] unless [dropDone] or
 /// [dropDoneBase].
@@ -250,6 +261,7 @@ TaskChanges _rebuilt(
   DoneBase? doneBase,
   bool dropDone = false,
   bool dropDoneBase = false,
+  bool dropCover = false,
 }) => TaskChanges(
   title: changes.title,
   description: description == null ? changes.description : description.html,
@@ -276,7 +288,7 @@ TaskChanges _rebuilt(
   relations: relations,
   kanban: kanban,
   positions: positions,
-  coverImageAttachmentId: changes.coverImageAttachmentId,
+  coverImageAttachmentId: dropCover ? null : changes.coverImageAttachmentId,
   doneBase: dropDone || dropDoneBase ? null : doneBase ?? changes.doneBase,
 );
 

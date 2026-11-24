@@ -652,8 +652,81 @@ void main() {
       await choose(tester, photo, en.attachmentDelete);
       await tester.tap(find.text(en.attachmentDeleteConfirm));
       await tester.pumpAndSettle();
-      expect(data.attachments.calls.last, 'delete 4 3 cover');
+      expect(data.attachments.calls, [
+        'delete 4 5',
+        'setCover 4 null',
+        'delete 4 3',
+      ]);
       expect(inSheet(find.text('photo.png')), findsNothing);
+      expect(find.text(en.attachmentCoverRemoved), findsNothing);
+    });
+
+    testWidgets('a cover whose delete fails after the cover was cleared no '
+        'longer shows as the cover, and Delete can be tried again', (
+      tester,
+    ) async {
+      data.details.detailsByTask[4] = TaskDetails(
+        attachments: [photo, pdf],
+        coverImageAttachmentId: 3,
+      );
+      await openDetail(tester, data.tasks.find(4)!);
+      expect(inSheet(find.text(en.taskDetailCoverImage)), findsOneWidget);
+      data.details.detailsByTask[4] = TaskDetails(attachments: [photo, pdf]);
+      data.attachments.beforeCall = (call) async {
+        if (call.startsWith('delete')) {
+          throw const NetworkFailure(NetworkProblem.unreachable);
+        }
+      };
+
+      await choose(tester, photo, en.attachmentDelete);
+      await tester.tap(find.text(en.attachmentDeleteConfirm));
+      await tester.pumpAndSettle();
+
+      expect(data.attachments.calls, ['setCover 4 null', 'delete 4 3']);
+      expect(find.text(en.attachmentNeedsConnection), findsOneWidget);
+      expect(inSheet(find.text('photo.png')), findsOneWidget);
+      expect(inSheet(find.text(en.taskDetailCoverImage)), findsNothing);
+      expect(data.details.calls, ['details 4']);
+      expect(await menuOf(tester, photo), [
+        en.attachmentOpen,
+        en.attachmentShare,
+        en.attachmentSaveToDevice,
+        en.attachmentMakeCover,
+        en.attachmentDelete,
+      ]);
+
+      data.attachments.beforeCall = null;
+      data.details.detailsByTask[4] = TaskDetails(attachments: [pdf]);
+      await choose(tester, photo, en.attachmentDelete);
+      await tester.tap(find.text(en.attachmentDeleteConfirm));
+      await tester.pumpAndSettle();
+
+      expect(data.attachments.calls, [
+        'setCover 4 null',
+        'delete 4 3',
+        'delete 4 3',
+      ]);
+      expect(inSheet(find.text('photo.png')), findsNothing);
+      expect(find.text(en.attachmentDeleted), findsOneWidget);
+    });
+
+    testWidgets('a cover whose clearing is refused stays the cover and is not '
+        'deleted', (tester) async {
+      data.details.detailsByTask[4] = TaskDetails(
+        attachments: [photo, pdf],
+        coverImageAttachmentId: 3,
+      );
+      await openDetail(tester, data.tasks.find(4)!);
+      data.attachments.failure = const NotFound(code: 4002);
+
+      await choose(tester, photo, en.attachmentDelete);
+      await tester.tap(find.text(en.attachmentDeleteConfirm));
+      await tester.pumpAndSettle();
+
+      expect(data.attachments.calls, ['setCover 4 null']);
+      expect(find.text(en.syncProblemTaskMissing), findsOneWidget);
+      expect(inSheet(find.text('photo.png')), findsOneWidget);
+      expect(inSheet(find.text(en.taskDetailCoverImage)), findsOneWidget);
     });
 
     testWidgets('a refused change says why and changes nothing', (

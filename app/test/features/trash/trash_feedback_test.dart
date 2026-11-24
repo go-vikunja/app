@@ -43,6 +43,15 @@ void main() {
 
   SnackBar shown(WidgetTester tester) => tester.widget(find.byType(SnackBar));
 
+  void useScreenReader(WidgetTester tester) {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(
+          accessibleNavigation: true,
+          supportsAnnounce: true,
+        );
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+  }
+
   group('showDeletedSnackBar', () {
     testWidgets('replaces a snackbar still up and offers Undo for 10 s', (
       tester,
@@ -121,6 +130,57 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(en.taskDeleted), findsNothing);
       expect(await controller.closed, SnackBarClosedReason.timeout);
+    });
+
+    testWidgets('holds what the Undo restores until the snackbar is closed: '
+        'past 10 s under a screen reader, at its timeout otherwise', (
+      tester,
+    ) async {
+      useScreenReader(tester);
+      final messenger = await pump(tester);
+      final holds = _Holds();
+
+      showDeletedSnackBar(
+        messenger,
+        text: en.taskMovedToTrash,
+        undoLabel: en.undo,
+        persist: true,
+        onUndo: () {},
+        hold: holds.take,
+      );
+      await tester.pumpAndSettle();
+      await tester.pump(deletedSnackBarDuration * 3);
+      await tester.pumpAndSettle();
+
+      expect(holds.open, 1);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(holds.open, 0);
+
+      showDeletedSnackBar(
+        messenger,
+        text: en.taskMovedToTrash,
+        undoLabel: en.undo,
+        persist: false,
+        onUndo: () {},
+        hold: holds.take,
+      );
+      await tester.pumpAndSettle();
+      expect(holds.open, 1);
+      await tester.pump(deletedSnackBarDuration + const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(holds.open, 0);
+      expect(holds.taken, 2);
+
+      showDeletedSnackBar(
+        messenger,
+        text: en.taskDeleted,
+        undoLabel: en.undo,
+        persist: true,
+        hold: holds.take,
+      );
+      await tester.pumpAndSettle();
+      expect(holds.taken, 2);
     });
 
     testWidgets('has no action without onUndo', (tester) async {
@@ -274,6 +334,55 @@ void main() {
       expect(find.text(en.undo), findsOneWidget);
     });
 
+    testWidgets('holds what it restores from before the restore until it is '
+        'over, and under a screen reader until the Undo offered again is '
+        'closed', (tester) async {
+      useScreenReader(tester);
+      final messenger = await pump(tester);
+      final holds = _Holds();
+      final heldAtRestore = <int>[];
+      var restores = 0;
+
+      await runUndo(
+        messenger,
+        en,
+        restore: () async {
+          heldAtRestore.add(holds.open);
+          if (++restores == 1) throw const TaskDeleteInFlight(7);
+          return null;
+        },
+        restored: en.taskRestored,
+        action: TrashAction.restoreTask,
+        hold: holds.take,
+      );
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(minutes: 10));
+      await tester.pumpAndSettle();
+
+      expect(heldAtRestore, [1]);
+      expect(holds.open, 1);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(heldAtRestore, [1, 2]);
+      expect(find.text(en.taskRestored), findsOneWidget);
+      expect(holds.open, 0);
+      expect(holds.taken, 2);
+
+      await runUndo(
+        messenger,
+        en,
+        restore: () async => throw const DomainError(412, code: 3008),
+        restored: en.taskRestored,
+        action: TrashAction.restoreTask,
+        hold: holds.take,
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.text(en.trashRestoreArchived), findsOneWidget);
+      expect(holds.open, 0);
+    });
+
     for (final (error, action, message) in [
       (
         const DomainError(412, code: 3008) as Object,
@@ -391,4 +500,23 @@ void main() {
       expect(find.text(de.trashRestoreTaskForbidden), findsOneWidget);
     });
   });
+}
+
+final class _Holds {
+  /// Holds not let go yet.
+  int open = 0;
+
+  /// Every hold taken.
+  int taken = 0;
+
+  void Function() take() {
+    open++;
+    taken++;
+    var released = false;
+    return () {
+      if (released) return;
+      released = true;
+      open--;
+    };
+  }
 }

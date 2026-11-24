@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -15,7 +17,10 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/recording_sync_engine.dart';
+import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
+import '../../helpers/sync_fakes.dart';
 import '../../helpers/test_database.dart';
 
 /// Answers every request with a trash count.
@@ -65,6 +70,47 @@ final class _ImageAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Holds the first `PATCH .../tasks/1` until [release] completes; answers
+/// each PATCH and `GET .../tasks/1` with task 1 carrying the due date sent
+/// last.
+final class _HeldPatchAdapter implements HttpClientAdapter {
+  final List<String> requests = [];
+  final held = Completer<void>();
+  final release = Completer<void>();
+  Object? _dueDate;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add('${options.method} ${options.uri.path}');
+    if (options.method == 'PATCH') {
+      _dueDate = (options.data as Map<String, Object?>)['due_date'];
+      if (!held.isCompleted) {
+        held.complete();
+        await release.future;
+      }
+    }
+    return ResponseBody.fromString(
+      jsonEncode({
+        'id': 1,
+        'title': 'Water the plants',
+        'project_id': 7,
+        'due_date': _dueDate,
+      }),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 /// Without `/api/v1`, so previews take v2's own route from 2.7.1 on.
 ServerConnection _v2Only(Map<String, Object?> changes) {
   final info = parseServerInfo({
@@ -83,6 +129,8 @@ ServerConnection _v2Only(Map<String, Object?> changes) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('a stored server upgrade reaches the read client; another message of '
       'the day leaves it as it is', () async {
     final auth = AuthFakes();
@@ -181,6 +229,77 @@ void main() {
       const TrashCount(total: 2, byOthers: 1),
     );
     expect(adapter.requests.single.path, '/vikunja/api/v2/tasks/deleted/count');
+  });
+
+  test('a stored server upgrade leaves the outbox sender as it is: a due '
+      'date on its way is stored, and the read-back the closed client '
+      'refused goes again at once over the rebuilt client', () async {
+    final auth = AuthFakes();
+    final alice = await auth.seedAccount(
+      _v2Only({}),
+      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+    );
+    final db = testDatabase();
+    await db.tasksDao.upsertAll([
+      sampleTask(id: 1, title: 'Water the plants', projectId: 7),
+    ], syncRunId: 'run');
+    final adapter = _HeldPatchAdapter();
+    final container = ProviderContainer(
+      overrides: [
+        ...auth.overrides,
+        dioProvider.overrideWithValue(
+          createDio(
+            userAgent: 'test',
+            httpClientAdapter: adapter,
+            logRequests: false,
+          ),
+        ),
+        appDatabaseProvider.overrideWith((ref, _) => db),
+        accountDatabaseFilesProvider.overrideWithValue(
+          FakeAccountDatabaseFiles(),
+        ),
+        // Rebuilt with the read client, as the real engine is.
+        syncEngineProvider.overrideWith((ref, accountId) {
+          ref.watch(readClientProvider(accountId));
+          final engine = RecordingSyncEngine(
+            SyncIdle(lastSyncedAt: DateTime.now().toUtc()),
+          );
+          ref.onDispose(() => unawaited(engine.dispose()));
+          return engine;
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(accountsProvider.future);
+    final due = DateTime.utc(2026, 12, 1, 9);
+    expect(
+      await db.outboxDao.queueUpdate(
+        1,
+        TaskChanges(dueDate: DateChange.set(due)),
+        now: DateTime.now().toUtc(),
+      ),
+      isTrue,
+    );
+
+    final sender = container.read(outboxSenderProvider(alice.id));
+    await adapter.held.future;
+    await container
+        .read(accountRegistryProvider)
+        .updateConnection(alice.id, (_) => _v2Only({'version': 'v2.7.1'}));
+    await pumpEventQueue();
+    adapter.release.complete();
+    for (var i = 0; i < 20 && await db.outboxDao.count() > 0; i++) {
+      await pumpEventQueue();
+    }
+
+    expect(adapter.requests, [
+      'PATCH /vikunja/api/v2/tasks/1',
+      'PATCH /vikunja/api/v2/tasks/1',
+      'GET /vikunja/api/v2/tasks/1',
+    ]);
+    expect(await db.outboxDao.count(), 0);
+    expect((await db.tasksDao.find(1))!.dueDate, due);
+    expect(container.read(outboxSenderProvider(alice.id)), same(sender));
   });
 
   group('the sync status', () {

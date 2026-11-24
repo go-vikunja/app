@@ -15,6 +15,8 @@ import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
+import 'package:vikunja_mobile/core/outbox/posted_at_json.dart';
+import 'package:vikunja_mobile/core/outbox/set_aside_upload_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
@@ -65,8 +67,9 @@ enum DeleteUnqueue {
 /// follows its task's id like any other op, but it never holds up the
 /// queue ([nextInLine] leaves uploads out; the sender takes them from
 /// [queuedUploads] when nothing else is ready) and waits while a delete of
-/// its task is queued: it goes with the delete, or after the delete was
-/// taken back. Its stored copy is the caller's to delete.
+/// its task is queued; once the server has made the delete it leaves the
+/// queue for the Undo ([setAsideUploadsOf]) and comes back after a restore
+/// ([requeueSetAsideUploads]). Its stored copy is the caller's to delete.
 ///
 /// Label ops (`createLabel`, `updateLabel`, `deleteLabel`) share the queue
 /// and its order under task id 0 with their label in `label_id`; they are
@@ -85,6 +88,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// `sync_state` key: the process whose senders claim ops (see
   /// [resetSending]).
   static const sendingProcessKey = 'outbox_sending_process';
+
+  /// `sync_state` key: the uploads [setAsideUploadsOf] set aside.
+  static const setAsideUploadsKey = 'outbox_set_aside_uploads';
 
   /// The names of the kinds that [OutboxOperationKind.createsOnServer].
   static final createKinds = Set<String>.unmodifiable({
@@ -169,7 +175,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Applies [requested] to the row and its labels, assignees, reminders
-  /// and relations and queues it, merged into the task's unsent update op
+  /// and relations, and a cover to the task's stored details (a details
+  /// read that started earlier then stores nothing), and queues it, merged
+  /// into the task's unsent update op
   /// when there is one that was never sent without an answer (see
   /// [_unsentUpdate]), or into its create while that has not left the
   /// device: reminders fold into the create, while labels, assignees,
@@ -246,6 +254,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     );
     await update(tasks).replace(applied);
     await attachedDatabase.tasksDao.applyChildChanges(applied, changes);
+    if (changes.coverImageAttachmentId case final cover?) {
+      await attachedDatabase.taskDetailsDao.storeCover(taskId, cover);
+    }
     return true;
   });
 
@@ -465,27 +476,169 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  /// Every stored copy a queued upload names, whatever its state.
-  Future<Set<String>> uploadFiles() async {
+  /// Every stored copy a queued or set-aside upload names, whatever its
+  /// state, read in one snapshot.
+  Future<Set<String>> uploadFiles() => transaction(() async {
     final ops =
         await (select(outbox)..where(
               (o) => o.kind.equals(OutboxOperationKind.uploadAttachment.name),
             ))
             .get();
-    return {for (final op in ops) decodeQueuedUpload(op.payload).file};
-  }
+    return {
+      for (final op in ops) decodeQueuedUpload(op.payload).file,
+      for (final entry in await _setAside())
+        decodeQueuedUpload(entry.op.payload).file,
+    };
+  });
 
   /// Removes the upload op, whatever its state; returns its stored copy's
   /// name for the caller to delete, null when the op is gone or not an
-  /// upload.
+  /// upload. With no op of [id], a set-aside upload of that id goes
+  /// instead: one set aside while on its way that then reached the server,
+  /// so it never comes back.
   Future<String?> removeUpload(String id) => transaction(() async {
     final op = await find(id);
-    if (op == null || op.kind != OutboxOperationKind.uploadAttachment.name) {
-      return null;
+    if (op == null) {
+      final entries = await _setAside();
+      final entry = entries.where((entry) => entry.op.id == id).firstOrNull;
+      if (entry == null) return null;
+      await _storeSetAside([
+        for (final other in entries)
+          if (other.op.id != id) other,
+      ]);
+      return decodeQueuedUpload(entry.op.payload).file;
     }
+    if (op.kind != OutboxOperationKind.uploadAttachment.name) return null;
     await (delete(outbox)..where((o) => o.id.equals(id))).go();
     return decodeQueuedUpload(op.payload).file;
   });
+
+  /// Takes the task's uploads out of the queue's reach for a delete's
+  /// Undo, in send order, each kept as it was until [until]; returns how
+  /// many. One on its way may have reached the server, so it is kept
+  /// pending and marked so, as [resetSending] marks one. It does not
+  /// remove them: the caller removes the task's ops in the same
+  /// transaction.
+  Future<int> setAsideUploadsOf(
+    int taskId, {
+    required DateTime until,
+    required DateTime now,
+  }) => transaction(() async {
+    final ops =
+        await (select(outbox)
+              ..where(
+                (o) =>
+                    o.taskId.equals(taskId) &
+                    o.kind.equals(OutboxOperationKind.uploadAttachment.name),
+              )
+              ..orderBy([(o) => OrderingTerm.asc(o.sequence)]))
+            .get();
+    if (ops.isEmpty) return 0;
+    await _storeSetAside([
+      ...await _setAside(),
+      for (final op in ops)
+        SetAsideUpload(
+          op: op.state == OutboxState.sending.name
+              ? op.copyWith(
+                  state: OutboxState.pending.name,
+                  sentAt: Value(op.sentAt ?? op.lastAttemptAt ?? now.toUtc()),
+                )
+              : op,
+          until: until,
+        ),
+    ]);
+    return ops.length;
+  });
+
+  /// Keeps the task's set-aside uploads until [until]; nothing is written
+  /// when it has none.
+  Future<void> holdSetAsideUploads(int taskId, {required DateTime until}) =>
+      transaction(() async {
+        final entries = await _setAside();
+        if (!entries.any((entry) => entry.op.taskId == taskId)) return;
+        await _storeSetAside([
+          for (final entry in entries)
+            if (entry.op.taskId == taskId)
+              SetAsideUpload(op: entry.op, until: until)
+            else
+              entry,
+        ]);
+      });
+
+  /// The task's set-aside uploads go back to the queue behind what was
+  /// queued since, each under a new id, as the old one may still be on its
+  /// way, and otherwise as they were; returns how many.
+  Future<int> requeueSetAsideUploads(int taskId) => transaction(() async {
+    final entries = await _setAside();
+    final requeued = [
+      for (final entry in entries)
+        if (entry.op.taskId == taskId) entry,
+    ];
+    if (requeued.isEmpty) return 0;
+    for (final entry in requeued) {
+      await into(outbox).insert(
+        entry.op.copyWith(id: _newId(), sequence: await _nextSequence()),
+      );
+    }
+    await _storeSetAside([
+      for (final entry in entries)
+        if (entry.op.taskId != taskId) entry,
+    ]);
+    return requeued.length;
+  });
+
+  /// Forgets the set-aside uploads whose time is over: every one with
+  /// [all], else those whose `until` is not after [now] or is after
+  /// [latest] (only a clock set back leaves one further ahead than any
+  /// hold). Those of the tasks in [keep] stay whatever their time. Returns
+  /// the earliest `until` left outside [keep], null when none is.
+  Future<DateTime?> dropSetAsideUploads({
+    required DateTime now,
+    required DateTime latest,
+    bool all = false,
+    Set<int> keep = const {},
+  }) => transaction(() async {
+    final entries = await _setAside();
+    final kept = [
+      for (final entry in entries)
+        if (keep.contains(entry.op.taskId) ||
+            (!all && entry.until.isAfter(now) && !entry.until.isAfter(latest)))
+          entry,
+    ];
+    // With [all] the key goes even when nothing in it could be read.
+    if (all || kept.length < entries.length) await _storeSetAside(kept);
+    DateTime? earliest;
+    for (final entry in kept) {
+      if (keep.contains(entry.op.taskId)) continue;
+      if (earliest == null || entry.until.isBefore(earliest)) {
+        earliest = entry.until;
+      }
+    }
+    return earliest;
+  });
+
+  Future<List<SetAsideUpload>> _setAside() async {
+    final row = await (select(
+      syncState,
+    )..where((s) => s.key.equals(setAsideUploadsKey))).getSingleOrNull();
+    return decodeSetAsideUploads(row?.value);
+  }
+
+  Future<void> _storeSetAside(List<SetAsideUpload> entries) async {
+    if (entries.isEmpty) {
+      await (delete(
+        syncState,
+      )..where((s) => s.key.equals(setAsideUploadsKey))).go();
+      return;
+    }
+    await into(syncState).insert(
+      SyncStateRow(
+        key: setAsideUploadsKey,
+        value: encodeSetAsideUploads(entries),
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
 
   /// The task's queued uploads, oldest first, following the task across
   /// the id change of its create.
@@ -558,7 +711,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   /// Marks the op `sending` and returns it as it is now, so an edit merged
   /// in after the sender read the queue is sent too. Null when the op is
-  /// no longer pending: a delete replaced it, or the sender already has it.
+  /// no longer pending: it was taken back, discarded or dropped meanwhile,
+  /// or another sender has it.
   Future<OutboxRow?> claim(String id, {required DateTime at}) => transaction(
     () async {
       final claimed =
@@ -639,13 +793,30 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   });
 
   /// A create or upload whose request may have reached the server: the
-  /// first such attempt's time stays, so the lookup window covers every
-  /// attempt.
+  /// first such attempt's time stays, so the lookup reaches back before
+  /// every attempt; the last request's time ([markPosted]) bounds it.
   Future<void> markUncertain(String id, {required DateTime sentAt}) =>
       transaction(() async {
         final op = await find(id);
         if (op == null || op.sentAt != null) return;
         await _write(id, OutboxCompanion(sentAt: Value(sentAt.toUtc())));
+      });
+
+  /// The request of the task create or upload [id] leaves the device at
+  /// [at]; the last such time bounds the lookup for a lost answer. Other
+  /// ops are left alone.
+  Future<void> markPosted(String id, {required DateTime at}) =>
+      transaction(() async {
+        final op = await find(id);
+        if (op == null ||
+            (op.kind != OutboxOperationKind.createTask.name &&
+                op.kind != OutboxOperationKind.uploadAttachment.name)) {
+          return;
+        }
+        await _write(
+          id,
+          OutboxCompanion(payload: Value(withPostedAt(op.payload, at))),
+        );
       });
 
   /// A failed op whose task has a newer queued op is folded into that op
@@ -965,11 +1136,17 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     return stored != null;
   }
 
-  /// Drops every backoff, for "Send now".
-  Future<int> clearBackoff() =>
-      (update(outbox)..where((o) => o.nextAttemptAt.isNotNull())).write(
-        const OutboxCompanion(nextAttemptAt: Value(null)),
+  /// Drops every backoff, for "Send now"; without [uploads] the uploads
+  /// keep theirs.
+  Future<int> clearBackoff({bool uploads = true}) {
+    final statement = update(outbox)..where((o) => o.nextAttemptAt.isNotNull());
+    if (!uploads) {
+      statement.where(
+        (o) => o.kind.equals(OutboxOperationKind.uploadAttachment.name).not(),
       );
+    }
+    return statement.write(const OutboxCompanion(nextAttemptAt: Value(null)));
+  }
 
   /// Removes the op and recomputes the task's `pending_changes` from the
   /// ops that remain.
@@ -1405,14 +1582,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     required DateTime now,
     int? labelId,
   }) async {
-    final highest = outbox.sequence.max();
-    final query = selectOnly(outbox)..addColumns([highest]);
-    final last = await query.map((row) => row.read(highest)).getSingle();
     final id = _newId();
     await into(outbox).insert(
       OutboxRow(
         id: id,
-        sequence: (last ?? 0) + 1,
+        sequence: await _nextSequence(),
         kind: kind.name,
         taskId: taskId,
         payload: payload,
@@ -1423,6 +1597,13 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       ),
     );
     return id;
+  }
+
+  Future<int> _nextSequence() async {
+    final highest = outbox.sequence.max();
+    final query = selectOnly(outbox)..addColumns([highest]);
+    final last = await query.map((row) => row.read(highest)).getSingle();
+    return (last ?? 0) + 1;
   }
 
   Future<void> _write(String id, Insertable<OutboxRow> values) =>

@@ -135,7 +135,7 @@ void main() {
       final gate = RequestGate()..pattern = 'update';
       write.beforeRequest = gate.call;
 
-      await repository.setDone(2, done: true);
+      expect(await repository.setDone(2, done: true), isTrue);
       await pumpEventQueue();
 
       expect(open.last.map((t) => t.id), [4, 1]);
@@ -325,13 +325,29 @@ void main() {
       expect(await db.tasksDao.findRow(4), isNull);
     });
 
-    test('a write for a task that is gone here does nothing', () async {
-      await repository.setDone(99, done: true);
+    test('a write for a task that is gone here, or queued for deletion, '
+        'changes nothing and says so', () async {
+      expect(await repository.setDone(99, done: true), isFalse);
+      expect(
+        await repository.updateTask(99, const TaskChanges(priority: 3)),
+        isFalse,
+      );
       expect(await repository.deleteTask(99), TaskDeletion.none);
+
+      sender.pause();
+      expect(await repository.deleteTask(4), TaskDeletion.queued);
+      final deleting = await db.tasksDao.findRow(4);
+      expect(await repository.setDone(4, done: true), isFalse);
+      expect(
+        await repository.updateTask(4, const TaskChanges(title: 'Late')),
+        isFalse,
+      );
       await pumpEventQueue();
 
       expect(write.requests, isEmpty);
-      expect(await db.outboxDao.count(), 0);
+      expect(await db.outboxDao.count(), 1);
+      expect(deleting, isNotNull);
+      expect(await db.tasksDao.findRow(4), deleting);
     });
 
     test('a write never throws for the network; the op waits', () async {
@@ -537,7 +553,7 @@ void main() {
         projectId: 8,
       );
 
-      await repository.updateTask(1, changes);
+      expect(await repository.updateTask(1, changes), isTrue);
       final atOnce = (await db.tasksDao.find(1))!;
       await pumpEventQueue();
 
@@ -559,7 +575,7 @@ void main() {
     });
 
     test('an empty change is nothing to queue', () async {
-      await repository.updateTask(1, const TaskChanges());
+      expect(await repository.updateTask(1, const TaskChanges()), isTrue);
       await pumpEventQueue();
 
       expect(write.requests, isEmpty);

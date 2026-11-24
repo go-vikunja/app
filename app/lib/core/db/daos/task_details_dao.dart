@@ -12,11 +12,11 @@ typedef _ReactionEntry = ({String value, User user});
 
 /// The attachments, cover, reactions and comments of a task as the server
 /// last answered them, by the task's server id. A read replaces what is
-/// stored, a write the server took changes it; both leave alone a task
-/// that is not stored here, and the writes one whose details or comments
-/// were never stored, whose stored set they would make look complete. A
-/// read that started before such a write may not have it and stores
-/// nothing ([detailsVersion], [commentsVersion]).
+/// stored; a write the server took, or a cover change queued here, changes
+/// it. Both leave alone a task that is not stored here, and the writes one
+/// whose details or comments were never stored, whose stored set they
+/// would make look complete. A read that started before such a write may
+/// not have it and stores nothing ([detailsVersion], [commentsVersion]).
 @DriftAccessor(
   tables: [
     Tasks,

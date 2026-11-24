@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
@@ -8,8 +9,10 @@ import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 
 final _log = Logger('Attachments');
 
@@ -17,25 +20,32 @@ final _log = Logger('Attachments');
 /// download cache is per account. What the server took also changes the
 /// task's stored details; a failure to change them leaves the write
 /// standing. A delete also drops the attachment's download and its images
-/// in memory and on disk.
+/// in memory and on disk. The cover is queued like a task edit and sent by
+/// [OutboxSender].
 final class LocalAttachmentRepository implements AttachmentRepository {
   new(
     this._db,
     this._read,
     this._write,
     this._downloads, {
+    required this._outbox,
     required this._accountId,
     required this._images,
     required this.uploadsEnabled,
     required this.maxUploadBytes,
-  });
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
+
+  static const _taskGone = 4002;
 
   final AppDatabase _db;
   final VikunjaReadClient _read;
   final VikunjaWriteClient _write;
   final AttachmentDownloads _downloads;
+  final OutboxSender _outbox;
   final String _accountId;
   final AttachmentImages _images;
+  final DateTime Function() _now;
 
   @override
   final bool uploadsEnabled;
@@ -44,18 +54,9 @@ final class LocalAttachmentRepository implements AttachmentRepository {
   final int maxUploadBytes;
 
   @override
-  Future<void> delete(
-    int taskId,
-    int attachmentId, {
-    bool isCover = false,
-  }) async {
+  Future<void> delete(int taskId, int attachmentId) async {
     final id = await serverTaskId(_db.tasksDao, taskId);
-    if (isCover) {
-      await _write.tasks.update(
-        id,
-        const TaskChanges(coverImageAttachmentId: 0),
-      );
-    }
+    await _sendQueuedCover(taskId, id);
     await _write.attachments.delete(id, attachmentId);
     await _keep(() => _db.taskDetailsDao.removeAttachment(id, attachmentId));
     try {
@@ -69,11 +70,8 @@ final class LocalAttachmentRepository implements AttachmentRepository {
   @override
   Future<void> setCover(int taskId, int? attachmentId) async {
     final id = await serverTaskId(_db.tasksDao, taskId);
-    await _write.tasks.update(
-      id,
-      TaskChanges(coverImageAttachmentId: attachmentId ?? 0),
-    );
-    await _keep(() => _db.taskDetailsDao.storeCover(id, attachmentId ?? 0));
+    await _queueCover(id, attachmentId ?? 0);
+    _drainQuietly();
   }
 
   @override
@@ -121,6 +119,35 @@ final class LocalAttachmentRepository implements AttachmentRepository {
     await _keep(() => _db.taskDetailsDao.addAttachment(id, attachment));
     return attachment;
   }
+
+  Future<void> _queueCover(int id, int attachmentId) async {
+    final queued = await _db.outboxDao.queueUpdate(
+      id,
+      TaskChanges(coverImageAttachmentId: attachmentId),
+      now: _now(),
+    );
+    if (!queued) throw const NotFound(code: _taskGone);
+  }
+
+  Future<void> _sendQueuedCover(int taskId, int id) async {
+    // The server would keep naming a deleted cover and refuse every later
+    // edit of the task (decision log: Outbox).
+    if (!await _queuesCover(id)) return;
+    final blockedBy = await _outbox.sendQueueNow();
+    if (await _queuesCover(id)) throw blockedBy ?? TaskNotSyncedYet(taskId);
+  }
+
+  Future<bool> _queuesCover(int id) async =>
+      (await _db.outboxDao.pendingChangesFor(id))?.coverImageAttachmentId !=
+      null;
+
+  void _drainQuietly() => unawaited(
+    _outbox.drain().then<void>(
+      (_) {},
+      onError: (Object error) =>
+          _log.warning('Outbox drain failed: ${error.runtimeType}'),
+    ),
+  );
 
   Future<void> _keep(Future<void> Function() change) async {
     try {

@@ -16,8 +16,10 @@ import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
+import 'package:vikunja_mobile/core/outbox/posted_at_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -49,21 +51,24 @@ enum OutboxSenderState {
 /// such as a proxy's redirect or a web server's 404) are retried with
 /// exponential backoff from [initialBackoff], doubling per attempt up to
 /// [maxBackoff], shortened by up to half at random; a `Retry-After` is
-/// honoured instead. The oldest op blocks the queue while it waits, so
-/// later ops never overtake it. An answer that is neither success nor the
-/// server's last word counts, and the op becomes a `SyncProblem` after
-/// [maxFailedAnswersInARow] of them in a row (an upload after
-/// [maxFailedUploadAnswersInARow]); a network failure, a captive portal's
-/// page, a 429 or a rejected token never does, as nothing else could go
-/// meanwhile either. A session that ended pauses the sender with the op
-/// still queued. Everything else is final, an exception without an answer
-/// and a 2xx whose JSON cannot be read too, except for a create or an
-/// upload, which count, as the server may have stored them: the op
-/// becomes a `SyncProblem` until it is retried or discarded. After a drain
-/// that sent something the sync engine refreshes, so server-computed
-/// fields arrive, unless its caller syncs itself ([sendNow]); and a sync
-/// that reaches the server while an op waits out a network failure or a
-/// captive portal sends at once, because the network is evidently back.
+/// honoured instead. A request that the account's client refused because
+/// it was replaced while the op was on its way (a changed server version
+/// rebuilds the clients) goes again at once over the new one. The oldest
+/// op blocks the queue while it waits, so later ops never overtake it. An
+/// answer that is neither success nor the server's last word counts, and
+/// the op becomes a `SyncProblem` after [maxFailedAnswersInARow] of them in
+/// a row (an upload after [maxFailedUploadAnswersInARow]); a network
+/// failure, a captive portal's page, a 429 or a rejected token never does,
+/// as nothing else could go meanwhile either. A session that ended pauses
+/// the sender with the op still queued. Everything else is final, an
+/// exception without an answer and a 2xx whose JSON cannot be read too,
+/// except for a create or an upload, which count, as the server may have
+/// stored them: the op becomes a `SyncProblem` until it is retried or
+/// discarded. After a drain that sent something the sync engine refreshes,
+/// so server-computed fields arrive, unless its caller syncs itself
+/// ([sendNow]); and a sync that reaches the server while an op waits out a
+/// network failure or a captive portal sends at once, because the network
+/// is evidently back.
 ///
 /// A repeating task's Done is not applied twice when an answer was lost:
 /// the server moves the dates on every Done it gets. Before the first
@@ -88,9 +93,10 @@ enum OutboxSenderState {
 /// a slow upstream, a 2xx whose body cannot be read, an exception, a kill
 /// while the request was in flight) is not simply sent again: the next
 /// attempt first looks for a task with the sent title that this user
-/// created since [lostResponseWindow] before that attempt and adopts it.
-/// One that becomes a sync problem that way keeps that mark, so its Retry
-/// looks first too.
+/// created from [lostResponseWindow] before that attempt to as long after
+/// the create's request last left the device, and adopts it. One that
+/// becomes a sync problem that way keeps that mark, so its Retry looks
+/// first too.
 /// A create whose task was deleted meanwhile goes with the delete and the
 /// row, without a request, when it was never sent or the lookup found
 /// nothing.
@@ -112,15 +118,23 @@ enum OutboxSenderState {
 /// times out [maxUploadTimeoutsInARow] times in a row, or is above the
 /// limit (`maxUploadBytes`) by now, becomes a sync problem. One whose
 /// answer was lost is looked for among the task's attachments (same name,
-/// size and uploader, created since [lostResponseWindow] before the
-/// attempt) before it is sent again. A sender without `uploads`, and a
-/// `headless` one (a background run with a deadline), leaves uploads
-/// alone.
+/// size and uploader, created from [lostResponseWindow] before the attempt
+/// to as long after the file last left the device) before it is sent
+/// again. A sender without `uploads`, and a `headless` one (a background
+/// run with a deadline), leaves uploads alone.
 ///
-/// A task update the server refuses with code 4020, because the task still
-/// points at a cover attachment that was deleted, is sent once more with
-/// the cover cleared: the server refuses every update of that task until
-/// then.
+/// When the server makes a task's delete, the task's uploads not yet on the
+/// server are set aside with their copies for [setAsideFor], or as long as
+/// [holdSetAside] holds them for an Undo still offered, so an Undo that
+/// restores the task from the trash queues them again; afterwards, and at
+/// the next start, they and their copies go. A headless sender sets them
+/// aside but leaves the drop to the app's.
+///
+/// A task update the server refuses with code 4020 that sets a cover the
+/// task no longer has (its attachment was deleted meanwhile) is sent once
+/// more without it; one whose task still points at a deleted cover is sent
+/// once more with the cover cleared, as the server refuses every update of
+/// that task until then.
 ///
 /// A label created on the device goes like a task's create: one whose
 /// attempt may have reached the server without an answer first looks for
@@ -138,10 +152,46 @@ enum OutboxSenderState {
 /// answer: a label that attempt made comes back with the next sync.
 final class OutboxSender {
   new({
-    required this._db,
+    required AppDatabase db,
     required VikunjaWriteClient writeClient,
     required VikunjaReadClient readClient,
-    required this._sync,
+    required SyncEngine sync,
+    DateTime Function()? now,
+    CreateTimer createTimer = Timer.new,
+    Random? random,
+    UploadFiles? uploads,
+    bool headless = false,
+    int? Function()? currentUserId,
+    int? Function()? maxUploadBytes,
+    Future<Duration?> Function()? serverClockOffset,
+    int? processId,
+  }) : this.following(
+         db: db,
+         writeClient: () => writeClient,
+         readClient: () => readClient,
+         sync: () => sync,
+         syncStatus: sync.status,
+         now: now,
+         createTimer: createTimer,
+         random: random,
+         uploads: uploads,
+         headless: headless,
+         currentUserId: currentUserId,
+         maxUploadBytes: maxUploadBytes,
+         serverClockOffset: serverClockOffset,
+         processId: processId,
+       );
+
+  /// Over clients and a sync engine that may be rebuilt while it lives, as
+  /// the account's are for a changed server version: it takes each anew
+  /// for every request, and [syncStatus] reports the syncs of whichever
+  /// engine runs them.
+  new following({
+    required this._db,
+    required this._writeClient,
+    required this._readClient,
+    required SyncEngine Function() sync,
+    required Stream<SyncStatus> syncStatus,
     DateTime Function()? now,
     this._createTimer = Timer.new,
     Random? random,
@@ -151,15 +201,14 @@ final class OutboxSender {
     int? Function()? maxUploadBytes,
     Future<Duration?> Function()? serverClockOffset,
     int? processId,
-  }) : _write = writeClient,
-       _read = readClient,
+  }) : _syncEngine = sync,
        _now = now ?? DateTime.now,
        _random = random ?? Random(),
        _currentUserId = currentUserId ?? _unknownUser,
        _maxUploadBytes = maxUploadBytes ?? _unknownLimit,
        _serverClockOffset = serverClockOffset ?? _unknownOffset,
        _process = processId ?? pid {
-    _syncStatus = _sync.status.listen(_onSyncStatus);
+    _syncStatus = syncStatus.listen(_onSyncStatus);
   }
 
   static int? _unknownUser() => null;
@@ -182,9 +231,10 @@ final class OutboxSender {
   /// after the first.
   static const maxFailedUploadAnswersInARow = 4;
 
-  /// How far before an unanswered create's attempt the lookup reaches: the
-  /// server's `created` is its clock, the attempt time this device's, with
-  /// and without the server's clock offset the session learned (see
+  /// How far around an unanswered attempt the lookup reaches, before the
+  /// first and after the request last left the device: the server's
+  /// `created` is its clock, the attempt time this device's, with and
+  /// without the server's clock offset the session learned (see
   /// [_lookupWindow]), and the hour covers what that offset misses, as the
   /// sync engine tolerates the same hour of skew. The exact title and
   /// project keep the match narrow.
@@ -199,6 +249,13 @@ final class OutboxSender {
   /// the head of the queue, which usually takes seconds.
   static const inFlightRecheck = Duration(seconds: 30);
 
+  /// Counted from the server's answer, which comes after the Undo was
+  /// offered, plus a margin for a tap at its last moment; an Undo offered
+  /// longer holds them ([holdSetAside]), and a restore holds them itself
+  /// while it is on its way.
+  static final Duration setAsideFor =
+      deleteUndoWindow + const Duration(seconds: 5);
+
   /// The task names a cover attachment that is not one of its own: one that
   /// was deleted.
   static const _foreignCoverCode = 4020;
@@ -209,9 +266,9 @@ final class OutboxSender {
   static const _labelMissingCode = 8002;
 
   final AppDatabase _db;
-  final VikunjaWriteClient _write;
-  final VikunjaReadClient _read;
-  final SyncEngine _sync;
+  final VikunjaWriteClient Function() _writeClient;
+  final VikunjaReadClient Function() _readClient;
+  final SyncEngine Function() _syncEngine;
   final DateTime Function() _now;
   final CreateTimer _createTimer;
   final Random _random;
@@ -225,6 +282,9 @@ final class OutboxSender {
   final _uploadingChanges = StreamController<Set<String>>.broadcast(sync: true);
   final _uploaded = StreamController<TaskAttachment>.broadcast();
   var _swept = false;
+  Timer? _setAsideDrop;
+  // How many holds each task id has, as [holdSetAside] got it.
+  final _undoHolds = <int, int>{};
   // Synchronous, so a state has reached its subscribers when a drain's
   // future resolves.
   final _changes = StreamController<OutboxSenderState>.broadcast(sync: true);
@@ -241,6 +301,11 @@ final class OutboxSender {
   var _paused = false;
   var _disposed = false;
   var _refreshAfterSending = true;
+
+  VikunjaWriteClient get _write => _writeClient();
+  VikunjaReadClient get _read => _readClient();
+  SyncEngine get _sync => _syncEngine();
+  _Clients get _clients => (write: _write, read: _read);
 
   OutboxSenderState get state => _state;
 
@@ -308,6 +373,18 @@ final class OutboxSender {
     await _db.outboxDao.clearBackoff();
     await drain();
     return blockedBy;
+  }
+
+  /// [sendNow] for the queue alone: the uploads keep their backoffs and go
+  /// on beside it unawaited, and the failure returned is the queue's, never
+  /// an upload's.
+  Future<VikunjaFailure?> sendQueueNow() async {
+    if (_disposed) return null;
+    await _db.outboxDao.clearBackoff(uploads: false);
+    await _queueLane.request(_run);
+    return !_paused && _queueLane.state == OutboxSenderState.waiting
+        ? _queueLane.blockedBy
+        : null;
   }
 
   /// Stops sending until [resume]; the op being sent still completes.
@@ -494,11 +571,56 @@ final class OutboxSender {
   }
 
   /// Deletes the stored copies no queued upload names any more: those of
-  /// a cancelled create or a deleted task. Never throws.
-  Future<void> sweepUploads() async {
+  /// a cancelled create or a deleted task. Copies of set-aside uploads stay
+  /// until their time is over, or while [holdSetAside] holds them. Never
+  /// throws.
+  Future<void> sweepUploads() => _sweep();
+
+  /// Keeps the uploads set aside for the delete of [taskIds], and their
+  /// copies, while an Undo of that delete is offered, past [setAsideFor]:
+  /// a screen reader keeps the Undo up until it is closed (decision log:
+  /// Tasks). It may come before the delete is answered; a temporary id
+  /// follows its create to the server's id. The returned function lets go,
+  /// after which they go once their time is over.
+  void Function() holdSetAside(Iterable<int> taskIds) {
+    final ids = taskIds.toSet();
+    for (final id in ids) {
+      _undoHolds.update(id, (holds) => holds + 1, ifAbsent: () => 1);
+    }
+    var released = false;
+    return () {
+      if (released) return;
+      released = true;
+      for (final id in ids) {
+        final left = _undoHolds[id]! - 1;
+        if (left == 0) {
+          _undoHolds.remove(id);
+        } else {
+          _undoHolds[id] = left;
+        }
+      }
+      unawaited(sweepUploads());
+    };
+  }
+
+  Future<void> _sweep({bool starting = false}) async {
     final uploads = _uploads;
     if (uploads == null || _headless || _disposed) return;
     try {
+      final now = _now();
+      // The next start drops every one, whatever its time (decision log:
+      // Tasks); a hold is for an Undo this run offers.
+      _armSetAsideDrop(
+        await _db.outboxDao.dropSetAsideUploads(
+          now: now,
+          latest: now.add(staleSendingAfter),
+          all: starting,
+          keep: {
+            for (final id in [..._undoHolds.keys])
+              await _db.tasksDao.resolveId(id),
+          },
+        ),
+      );
       final deleted = await uploads.sweep(_db.outboxDao.uploadFiles);
       if (deleted > 0) _log.fine('Deleted $deleted orphaned upload copies');
     } on Object catch (error) {
@@ -506,10 +628,22 @@ final class OutboxSender {
     }
   }
 
+  void _armSetAsideDrop(DateTime? due) {
+    _setAsideDrop?.cancel();
+    _setAsideDrop = null;
+    if (due == null || _disposed) return;
+    final wait = due.difference(_now());
+    _setAsideDrop = _createTimer(wait.isNegative ? Duration.zero : wait, () {
+      _setAsideDrop = null;
+      unawaited(sweepUploads());
+    });
+  }
+
   Future<void> dispose() async {
     _disposed = true;
     _queueLane.cancelTimer();
     _uploadLane.cancelTimer();
+    _setAsideDrop?.cancel();
     for (final cancel in _uploading.values) {
       cancel.cancel();
     }
@@ -556,7 +690,7 @@ final class OutboxSender {
   Future<void> _run() async {
     if (!_swept) {
       _swept = true;
-      await sweepUploads();
+      await _sweep(starting: true);
     }
     try {
       while (_queueLane.requested && !_disposed && !_paused) {
@@ -718,6 +852,7 @@ final class OutboxSender {
         return false;
       }
     }
+    final clients = _clients;
     final Task? task;
     var looking = false;
     try {
@@ -732,7 +867,12 @@ final class OutboxSender {
               await _dropDeletedCreate(op, lookedUp: true)) {
             return false;
           }
-          task = found ?? await _write.tasks.create(newTask);
+          if (found != null) {
+            task = found;
+          } else {
+            await _db.outboxDao.markPosted(op.id, at: _now());
+            task = await _write.tasks.create(newTask);
+          }
         case OutboxOperationKind.updateTask:
           final (sent, answer) = await _updateOnce(op, changes!);
           changes = sent;
@@ -753,7 +893,7 @@ final class OutboxSender {
         return true;
       }
       if (looking && await _refusedLookup(op, failure)) return false;
-      await _handleSendFailure(op, kind, failure);
+      await _handleSendFailure(op, kind, failure, clients);
       return false;
     } on Object catch (error) {
       // A bug, or an answer the client could not decode after the server
@@ -762,6 +902,7 @@ final class OutboxSender {
         op,
         kind,
         UnexpectedResponse(null, message: '${error.runtimeType}'),
+        clients,
       );
       return false;
     }
@@ -791,6 +932,7 @@ final class OutboxSender {
     final Label? answer;
     var takenByTitle = false;
     var looking = false;
+    final clients = _clients;
     try {
       switch (kind) {
         case OutboxOperationKind.createLabel:
@@ -840,13 +982,14 @@ final class OutboxSender {
         return true;
       }
       if (looking && await _refusedLookup(op, failure)) return false;
-      await _handleSendFailure(op, kind, failure);
+      await _handleSendFailure(op, kind, failure, clients);
       return false;
     } on Object catch (error) {
       await _handleSendFailure(
         op,
         kind,
         UnexpectedResponse(null, message: '${error.runtimeType}'),
+        clients,
       );
       return false;
     }
@@ -885,7 +1028,7 @@ final class OutboxSender {
     QueuedLabelCreate queued,
   ) async {
     final sentAt = op.sentAt;
-    final postedAt = labelCreatePostedAt(op.payload);
+    final postedAt = postedAtOf(op.payload);
     if (sentAt == null || postedAt == null) {
       return (found: null, seen: const <int>{});
     }
@@ -1045,10 +1188,13 @@ final class OutboxSender {
           !sameSecond(task.endDate, base.endDate)) &&
       !sameSecond(task.doneAt, base.doneAt);
 
-  /// The update of [op], sent once more with the cover cleared when the
-  /// task still points at a deleted cover attachment (code 4020): every
-  /// update of such a task fails until the cover is cleared. A change that
-  /// sets the cover itself is refused as it is.
+  /// The update of [op]. One refused with code 4020 that sets a cover the
+  /// task no longer has (its attachment was deleted meanwhile) is sent once
+  /// more without it, and when that leaves nothing the task is read
+  /// instead; one whose task still points at a deleted cover is sent once
+  /// more with the cover cleared, as the server refuses every update of
+  /// that task until then. So it goes at most three times: with the cover
+  /// it sets, without it, and with it cleared.
   Future<Task> _update(OutboxRow op, TaskChanges changes) async {
     Future<Task> send(TaskChanges changes) => _write.tasks.update(
       op.taskId,
@@ -1057,20 +1203,28 @@ final class OutboxSender {
           ? null
           : (current) => _descriptionToSend(op, changes, current),
     );
-    try {
-      return await send(changes);
-    } on VikunjaFailure catch (failure) {
-      if (failure.code != _foreignCoverCode ||
-          changes.coverImageAttachmentId != null) {
-        rethrow;
+    var sending = changes;
+    while (true) {
+      try {
+        return await send(sending);
+      } on VikunjaFailure catch (failure) {
+        final cover = sending.coverImageAttachmentId;
+        if (failure.code != _foreignCoverCode || cover == 0) rethrow;
+        if (cover == null) {
+          _log.info(
+            'Task ${op.taskId} points at a deleted cover; clearing it with '
+            'the update',
+          );
+          sending = sending.merge(const TaskChanges(coverImageAttachmentId: 0));
+        } else {
+          _log.info(
+            'The cover set for task ${op.taskId} is no longer its attachment; '
+            'the update goes without it',
+          );
+          sending = withoutCover(sending);
+          if (sending.isEmpty) return await _read.tasks.read(op.taskId);
+        }
       }
-      _log.info(
-        'Task ${op.taskId} points at a deleted cover; clearing it with the '
-        'update',
-      );
-      return await send(
-        changes.merge(const TaskChanges(coverImageAttachmentId: 0)),
-      );
     }
   }
 
@@ -1090,6 +1244,7 @@ final class OutboxSender {
       return;
     }
     final cancel = CancelToken();
+    final clients = _clients;
     _uploading[op.id] = cancel;
     _uploadingChanged();
     final TaskAttachment attachment;
@@ -1103,6 +1258,7 @@ final class OutboxSender {
       looking = true;
       final found = await _recoverUpload(op, upload, length);
       looking = false;
+      if (found == null) await _db.outboxDao.markPosted(op.id, at: _now());
       attachment =
           found ??
           await _write.attachments.upload(
@@ -1119,6 +1275,7 @@ final class OutboxSender {
       if (_mayHaveReachedServer(failure) && !_disposed) {
         await _markUncertain(op);
       }
+      if (await _retryOverRebuiltClients(op, failure, clients)) return;
       // The lookup's read has a route of its own.
       if (failure case NotFound(routeAbsent: true)
           when !looking && !_disposed) {
@@ -1198,9 +1355,12 @@ final class OutboxSender {
 
   /// The attachment an earlier, unanswered attempt of this upload left on
   /// the server, if there is one: the newest attachment of the task with
-  /// the sent name and size, uploaded by this user since
-  /// [lostResponseWindow] before that attempt. Null when the upload was
-  /// never sent or nothing is found, so it must go (again).
+  /// the sent name and size, uploaded by this user from
+  /// [lostResponseWindow] before the first such attempt to as long after
+  /// the file last left the device. Null when the upload was never sent or
+  /// nothing is found, so it must go (again). A file of that name and size
+  /// uploaded on the web after the requests is never taken: an attempt
+  /// that only looked, offline, moves nothing.
   Future<TaskAttachment?> _recoverUpload(
     OutboxRow op,
     QueuedUpload upload,
@@ -1210,14 +1370,15 @@ final class OutboxSender {
     if (sentAt == null) return null;
     final details = await _read.tasks.readDetails(op.taskId);
     final userId = _currentUserId();
-    final since = (await _lookupWindow(sentAt, sentAt)).from;
+    final (:from, :until) = await _lostAnswerWindow(op, sentAt);
     TaskAttachment? found;
     for (final candidate in details.attachments) {
       final created = candidate.created;
       if (candidate.name != upload.fileName ||
           candidate.size != length ||
           (userId != null && candidate.createdBy?.id != userId) ||
-          (created != null && created.isBefore(since))) {
+          (created != null &&
+              (created.isBefore(from) || created.isAfter(until)))) {
         continue;
       }
       if (found == null || candidate.id > found.id) found = candidate;
@@ -1335,19 +1496,21 @@ final class OutboxSender {
   /// The task an earlier, unanswered attempt of this create left on the
   /// server, if there is one: the newest task of the project with the sent
   /// title, created by this user (for a guest the share's pseudo user)
-  /// since [lostResponseWindow] before that attempt, read page by page
-  /// back to that time, that no other create of this device has adopted
+  /// from [lostResponseWindow] before the first such attempt to as long
+  /// after the create's request last left the device, read page by page
+  /// back to that start, that no other create of this device has adopted
   /// already; of two created in the same second (the server's order among
   /// them is undefined) the one with the higher id. Null when the create
   /// was never sent or nothing is found, so it must go (again). Another
   /// member's task of the same title is never taken: the ops queued behind
-  /// the create would change it.
+  /// the create would change it. Nor is one made on the web after the
+  /// requests: an attempt that only looked, offline, moves nothing.
   Future<Task?> _recoverCreate(OutboxRow op, NewTask newTask) async {
     final sentAt = op.sentAt;
     if (sentAt == null) return null;
-    final since = (await _lookupWindow(sentAt, sentAt)).from;
+    final (:from, :until) = await _lostAnswerWindow(op, sentAt);
     final query = TaskQuery(
-      filter: TaskFilters.createdSince(since),
+      filter: TaskFilters.createdSince(from),
       sort: TaskFilters.byCreatedDescending,
     );
     final title = withoutNul(newTask.title);
@@ -1366,7 +1529,8 @@ final class OutboxSender {
         if (found != null && candidate.created != found.created) break search;
         if (candidate.title != title ||
             (userId != null && candidate.createdBy?.id != userId) ||
-            adopted.contains(candidate.id)) {
+            adopted.contains(candidate.id) ||
+            (candidate.created?.isAfter(until) ?? false)) {
           continue;
         }
         if (found == null || candidate.id > found.id) found = candidate;
@@ -1384,6 +1548,18 @@ final class OutboxSender {
       'Create of task ${op.taskId} did not reach the server; sent again',
     );
     return null;
+  }
+
+  Future<({DateTime from, DateTime until})> _lostAnswerWindow(
+    OutboxRow op,
+    DateTime sentAt,
+  ) {
+    // A create or upload an earlier version sent has no such time and looks
+    // up to now, as that version did, rather than make a duplicate; a clock
+    // set back between two attempts must not end the window before it
+    // starts.
+    final posted = postedAtOf(op.payload) ?? _now();
+    return _lookupWindow(sentAt, posted.isBefore(sentAt) ? sentAt : posted);
   }
 
   /// The server times from [lostResponseWindow] before [first] to as long
@@ -1444,10 +1620,17 @@ final class OutboxSender {
 
   /// Every op of the task goes with the row: an update that failed while
   /// the delete was queued would otherwise stay as a problem without a
-  /// task.
+  /// task. The task's uploads not yet on the server are set aside for the
+  /// Undo first (decision log: Tasks).
   Future<void> _applyDelete(OutboxRow op) async {
     if (_disposed) return;
     await _db.transaction(() async {
+      final now = _now();
+      await _db.outboxDao.setAsideUploadsOf(
+        op.taskId,
+        until: now.add(setAsideFor),
+        now: now,
+      );
       await _db.outboxDao.removeAllOf(op.taskId);
       await _db.tasksDao.deleteRow(op.taskId);
     });
@@ -1460,11 +1643,37 @@ final class OutboxSender {
     OutboxRow op,
     OutboxOperationKind kind,
     VikunjaFailure failure,
+    _Clients clients,
   ) async {
     if (kind.createsOnServer && _mayHaveReachedServer(failure) && !_disposed) {
       await _markUncertain(op);
     }
+    if (await _retryOverRebuiltClients(op, failure, clients)) return;
     await _handleFailure(op, failure);
+  }
+
+  /// A changed server version rebuilds the account's clients and closes the
+  /// replaced ones, so a later request of a replaced client fails as
+  /// offline without leaving the device. The op goes back as it was and
+  /// goes again at once over the new ones, nothing counted; a create or an
+  /// upload keeps the mark set just before, so its next attempt looks
+  /// first. False, with nothing done, for any other failure.
+  Future<bool> _retryOverRebuiltClients(
+    OutboxRow op,
+    VikunjaFailure failure,
+    _Clients clients,
+  ) async {
+    if (failure is! NetworkFailure ||
+        _disposed ||
+        (identical(clients.write, _write) && identical(clients.read, _read))) {
+      return false;
+    }
+    _log.info(
+      '${op.kind} for task ${op.taskId} went over replaced clients; sent '
+      'again over the new ones',
+    );
+    await _db.outboxDao.unclaim(op.id);
+    return true;
   }
 
   /// A lookup the server refuses for good is no refusal of the create or
@@ -1689,6 +1898,8 @@ final class OutboxSender {
     _changes.add(state);
   }
 }
+
+typedef _Clients = ({VikunjaWriteClient write, VikunjaReadClient read});
 
 enum _Retry {
   /// Not the server's word on the op (the network, a rate limit, the

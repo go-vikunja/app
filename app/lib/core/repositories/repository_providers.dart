@@ -35,6 +35,7 @@ import 'package:vikunja_mobile/core/repositories/user_repository.dart';
 import 'package:vikunja_mobile/core/sync/guest_read_client.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 
@@ -356,14 +357,50 @@ SyncEngine syncEngine(Ref ref, String accountId) {
 /// One account's outbox sender; disposed with its database on sign-out.
 /// It drains when built (app start), when the app comes back to the front
 /// and after every local write; a session that needs a new sign-in pauses
-/// it, and the sign-in resumes it.
+/// it, and the sign-in resumes it. It is not rebuilt with the account's
+/// clients and sync engine, as for a changed server version, but takes the
+/// current ones for every request: one rebuilt with them would leave the
+/// answer to the change on its way unstored (decision log: Outbox).
 @Riverpod(keepAlive: true)
 OutboxSender outboxSender(Ref ref, String accountId) {
-  final sender = OutboxSender(
-    db: ref.watch(appDatabaseProvider(accountId)),
-    writeClient: ref.watch(writeClientProvider(accountId)),
-    readClient: ref.watch(readClientProvider(accountId)),
-    sync: ref.watch(syncEngineProvider(accountId)),
+  // Watched, and first: it throws once the account is gone, before any
+  // subscription below, and a sign-in again rebuilds the sender over the
+  // new database.
+  final db = ref.watch(appDatabaseProvider(accountId));
+  // Listened, not watched: a changed server version rebuilds them, and the
+  // sender takes them anew for each request instead of being rebuilt with
+  // them (decision log: Outbox); their error once the account is gone
+  // comes with the database's, which disposes the sender.
+  final write = ref.listen(
+    writeClientProvider(accountId),
+    (_, _) {},
+    onError: (_, _) {},
+  );
+  final read = ref.listen(
+    readClientProvider(accountId),
+    (_, _) {},
+    onError: (_, _) {},
+  );
+  final syncStatus = StreamController<SyncStatus>(sync: true);
+  StreamSubscription<SyncStatus>? ofEngine;
+  final engine = ref.listen(
+    syncEngineProvider(accountId),
+    (_, next) {
+      unawaited(ofEngine?.cancel());
+      // What an engine replays when listened to is no sync that got
+      // through: it would clear the backoff of an op waiting on a network
+      // failure.
+      ofEngine = next.status.skip(1).listen(syncStatus.add);
+    },
+    onError: (_, _) {},
+    fireImmediately: true,
+  );
+  final sender = OutboxSender.following(
+    db: db,
+    writeClient: write.read,
+    readClient: read.read,
+    sync: engine.read,
+    syncStatus: syncStatus.stream,
     now: ref.watch(clockProvider),
     uploads: ref.watch(accountUploadFilesProvider(accountId)),
     headless: ref.watch(runsHeadlessProvider),
@@ -395,7 +432,9 @@ OutboxSender outboxSender(Ref ref, String accountId) {
   );
   ref.onDispose(() {
     lifecycle.dispose();
+    unawaited(ofEngine?.cancel());
     unawaited(sender.dispose());
+    unawaited(syncStatus.close());
   });
   if (ref.read(needsReauth) ?? true) {
     sender.pause();

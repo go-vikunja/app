@@ -150,8 +150,8 @@ void main() {
       expect(data.attachments.calls, ['download 4 5 cached', 'download 4 6']);
     });
 
-    testWidgets('with the app offline, Delete and the cover are off and say '
-        'why; open, share and save stay', (tester) async {
+    testWidgets('with the app offline, Delete is off and says why; the cover, '
+        'open, share and save stay', (tester) async {
       final stored = data.details.storedDetailsByTask[4]!;
       data.details.storedDetailsByTask[4] = (
         value: stored.value.copyWith(coverImageAttachmentId: pass.id),
@@ -173,20 +173,18 @@ void main() {
               matching: find.byWidgetPredicate((w) => w is PopupMenuItem),
             ),
           );
-      for (final action in [en.attachmentRemoveCover, en.attachmentDelete]) {
-        expect(item(action).enabled, isFalse, reason: action);
-        expect(
-          tester.getSemantics(find.text(action)),
-          matchesSemantics(
-            label: action,
-            hint: en.attachmentNeedsConnection,
-            isButton: true,
-            hasEnabledState: true,
-          ),
-          reason: action,
-        );
-      }
+      expect(item(en.attachmentDelete).enabled, isFalse);
+      expect(
+        tester.getSemantics(find.text(en.attachmentDelete)),
+        matchesSemantics(
+          label: en.attachmentDelete,
+          hint: en.attachmentNeedsConnection,
+          isButton: true,
+          hasEnabledState: true,
+        ),
+      );
       for (final action in [
+        en.attachmentRemoveCover,
         en.attachmentOpen,
         en.attachmentShare,
         en.attachmentSaveToDevice,
@@ -205,6 +203,33 @@ void main() {
       expect(find.text(en.attachmentDeleteTitle), findsNothing);
       expect(data.attachments.calls, isEmpty);
       semantics.dispose();
+    });
+
+    testWidgets('offline an image becomes the cover and shows so at once', (
+      tester,
+    ) async {
+      final photo = sampleAttachment(id: 7, taskId: 4);
+      data.details.storedDetailsByTask[4] = (
+        value: TaskDetails(attachments: [pass, photo]),
+        readAt: loadedAt,
+      );
+      // The cover is queued: no request leaves the device for it.
+      data.attachments.failure = null;
+      await openDetail(tester);
+      data.engine.emit(SyncFailed(failure: _offline, lastSyncedAt: now));
+      await tester.pumpAndSettle();
+      expect(inSheet(find.text(en.taskDetailCoverImage)), findsNothing);
+
+      await tester.tap(
+        inSheet(find.byTooltip(en.attachmentOptions(photo.name))),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.attachmentMakeCover).last);
+      await tester.pumpAndSettle();
+
+      expect(data.attachments.calls, ['setCover 4 7']);
+      expect(inSheet(find.text(en.taskDetailCoverImage)), findsOneWidget);
+      expect(find.text(en.attachmentCoverSet), findsOneWidget);
     });
 
     testWidgets('with the app offline, a note at the top says so, and Try '

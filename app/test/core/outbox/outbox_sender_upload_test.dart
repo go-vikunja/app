@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/outbox/set_aside_upload_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 
@@ -104,6 +105,20 @@ void main() {
     };
     return reached.future;
   }
+
+  /// Waits for [done]: a sweep a timer starts is not awaited, and its file
+  /// I/O can outlast any fixed number of event-loop turns.
+  Future<void> until(Future<bool> Function() done) async {
+    final waited = Stopwatch()..start();
+    while (!await done()) {
+      if (waited.elapsed > const Duration(seconds: 5)) fail('Timed out');
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+  }
+
+  Future<List<SetAsideUpload>> setAside() async => decodeSetAsideUploads(
+    (await db.syncStateDao.readAll())[OutboxDao.setAsideUploadsKey],
+  );
 
   /// Fires the next timer and waits until the drain it starts is done or
   /// waits again: an upload does real file I/O, which no fixed number of
@@ -533,6 +548,69 @@ void main() {
       expect(await storedCopies(), isEmpty);
     });
 
+    TaskAttachment uploadedOnTheWeb(int size) => TaskAttachment(
+      id: 999,
+      taskId: 1,
+      name: 'photo.png',
+      size: size,
+      created: now.subtract(const Duration(hours: 1)),
+      createdBy: me,
+    );
+
+    test('a same-named file of that size uploaded on the web hours after a '
+        'lost upload is not taken: the one the lost request stored is '
+        'adopted', () async {
+      await queueUpload(1, bytes: const [1, 2, 3, 4]);
+      write.afterRequest = (request) async =>
+          throw const NetworkFailure(NetworkProblem.timeout);
+      final outbox = sender();
+      await outbox.drain();
+      write.afterRequest = null;
+      final stored = write.serverAttachments[1]!.single;
+      now = now.add(const Duration(hours: 5));
+      read.taskDetails[1] = TaskDetails(
+        attachments: [stored, uploadedOnTheWeb(stored.size)],
+      );
+      final uploaded = <TaskAttachment>[];
+      final subscription = outbox.uploadedAttachments.listen(uploaded.add);
+      addTearDown(subscription.cancel);
+
+      await outbox.sendNow();
+      await pumpEventQueue();
+
+      expect(write.requests.where((r) => r.startsWith('upload')), hasLength(1));
+      expect(uploaded, [stored]);
+      expect(await db.outboxDao.count(), 0);
+      expect(await storedCopies(), isEmpty);
+    });
+
+    test('a lost upload the server never got is sent again when only a '
+        'same-named file uploaded on the web hours later is there', () async {
+      await queueUpload(1, bytes: const [1, 2, 3, 4]);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      final outbox = sender();
+      await outbox.drain();
+      expect((await db.outboxDao.all()).single.sentAt, now);
+      write.beforeRequest = null;
+      now = now.add(const Duration(hours: 5));
+      read.taskDetails[1] = TaskDetails(attachments: [uploadedOnTheWeb(4)]);
+      final uploaded = <TaskAttachment>[];
+      final subscription = outbox.uploadedAttachments.listen(uploaded.add);
+      addTearDown(subscription.cancel);
+
+      await outbox.sendNow();
+      await pumpEventQueue();
+
+      expect(write.requests, ['upload 1 photo.png', 'upload 1 photo.png']);
+      expect(uploaded.single.id, isNot(999));
+      expect(await db.outboxDao.count(), 0);
+      expect(await storedCopies(), isEmpty);
+    });
+
     for (final (what, answer) in [
       (
         'a 2xx whose body cannot be read',
@@ -862,23 +940,173 @@ void main() {
       },
     );
 
-    test(
-      'a delete of the task sent drops its uploads and their copies',
-      () async {
-        await queueUpload(1);
-        write.beforeRequest = (request) async {
-          if (request.startsWith('upload')) throw const Forbidden();
-        };
-        final outbox = sender();
-        await outbox.drain();
-        await db.outboxDao.queueDelete(1, now: now);
+    test('a delete of the task sent sets its uploads aside with their copies '
+        'for the Undo; once that is over, the copies go', () async {
+      await queueUpload(1);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) throw const Forbidden();
+      };
+      final outbox = sender();
+      await outbox.drain();
+      await db.outboxDao.queueDelete(1, now: now);
 
-        await outbox.drain();
+      await outbox.drain();
 
-        expect(await db.outboxDao.count(), 0);
-        expect(await storedCopies(), isEmpty);
-      },
-    );
+      expect(await db.outboxDao.count(), 0);
+      expect(await storedCopies(), hasLength(1));
+      expect(timers.pendingWait, OutboxSender.setAsideFor);
+
+      now = now.add(OutboxSender.setAsideFor);
+      timers.fireNext();
+
+      await until(() async => (await storedCopies()).isEmpty);
+      expect(await db.outboxDao.uploadFiles(), isEmpty);
+      expect(timers.active, isEmpty);
+    });
+  });
+
+  group('uploads set aside for an Undo', () {
+    test('an upload on its way when the delete is applied is set aside as '
+        'maybe sent; if it lands after all, its copy goes and nothing goes '
+        'back', () async {
+      final id = await queueUpload(1);
+      final reached = Completer<void>();
+      final held = Completer<void>();
+      write.afterRequest = (request) async {
+        if (!request.startsWith('upload')) return;
+        reached.complete();
+        await held.future;
+      };
+      final outbox = sender();
+      final uploading = outbox.drain();
+      await reached.future;
+      await db.outboxDao.queueDelete(1, now: now);
+
+      final deleting = outbox.drain();
+      await until(() async => await db.outboxDao.count() == 0);
+
+      expect(write.requests, ['upload 1 photo.png', 'delete 1']);
+      final entry = (await setAside()).single;
+      expect(entry.op.id, id);
+      expect(entry.op.state, OutboxState.pending.name);
+      expect(entry.op.sentAt, now);
+      expect(entry.op.lastAttemptAt, now);
+      expect(await storedCopies(), hasLength(1));
+
+      held.complete();
+      await uploading;
+      await deleting;
+
+      expect(await storedCopies(), isEmpty);
+      expect(await setAside(), isEmpty);
+      expect(await db.outboxDao.requeueSetAsideUploads(1), 0);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('an upload on its way that the server refuses once the task is in '
+        'the trash stays set aside and goes again, looked up first, after a '
+        'restore', () async {
+      final id = await queueUpload(1);
+      final held = Completer<void>();
+      final onItsWay = holdUploads(held.future);
+      final outbox = sender();
+      final uploading = outbox.drain();
+      await onItsWay;
+      await db.outboxDao.queueDelete(1, now: now);
+      final deleting = outbox.drain();
+      await until(() async => await db.outboxDao.count() == 0);
+
+      held.complete();
+      await uploading;
+      await deleting;
+
+      expect(write.requests, ['upload 1 photo.png', 'delete 1']);
+      expect(write.serverAttachments[1], isNull);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      final entry = (await setAside()).single;
+      expect(entry.op.id, id);
+      expect(entry.op.state, OutboxState.pending.name);
+      expect(entry.op.sentAt, now);
+      expect(await storedCopies(), hasLength(1));
+
+      write.serverTasks[1] = tasks[0];
+      await db.tasksDao.upsertAll([tasks[0]]);
+      expect(await db.outboxDao.requeueSetAsideUploads(1), 1);
+      read.taskDetails[1] = const TaskDetails();
+      List<String>? readBeforeUpload;
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) readBeforeUpload = [...read.requests];
+      };
+      await outbox.drain();
+
+      expect(readBeforeUpload, ['task details 1']);
+      expect(write.requests.last, 'upload 1 photo.png');
+      expect(write.serverAttachments[1], hasLength(1));
+      expect(await db.outboxDao.count(), 0);
+      expect(await storedCopies(), isEmpty);
+    });
+
+    test('the next start drops every set-aside upload and its copy, even '
+        'inside the Undo window; a later sweep keeps them and arms the drop, '
+        'and dispose cancels it', () async {
+      await queueUpload(1);
+      await db.outboxDao.queueDelete(1, now: now);
+      final outbox = sender();
+      await outbox.drain();
+      expect(write.requests, ['delete 1']);
+      expect(await storedCopies(), hasLength(1));
+      expect(timers.pendingWait, OutboxSender.setAsideFor);
+
+      now = now.add(const Duration(seconds: 5));
+      await outbox.sweepUploads();
+
+      expect(await storedCopies(), hasLength(1));
+      expect(
+        timers.pendingWait,
+        OutboxSender.setAsideFor - const Duration(seconds: 5),
+      );
+
+      await outbox.dispose();
+
+      expect(timers.active, isEmpty);
+
+      await sender().drain();
+
+      expect(await storedCopies(), isEmpty);
+      expect(await setAside(), isEmpty);
+      expect(await db.outboxDao.uploadFiles(), isEmpty);
+      expect(timers.active, isEmpty);
+    });
+
+    test('a headless sender sets the uploads of a deleted task aside and '
+        'leaves them and their copies to the app, also past their '
+        'time', () async {
+      final app = sender();
+      await app.drain();
+      await queueUpload(1);
+      await db.outboxDao.queueDelete(1, now: now);
+      final background = sender(headless: true);
+
+      await background.drain();
+
+      expect(write.requests, ['delete 1']);
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(await db.outboxDao.uploadFiles(), hasLength(1));
+      expect(await storedCopies(), hasLength(1));
+      expect(timers.active, isEmpty);
+
+      now = now.add(OutboxSender.setAsideFor + const Duration(seconds: 1));
+      await background.sweepUploads();
+
+      expect(await db.outboxDao.uploadFiles(), hasLength(1));
+      expect(await storedCopies(), hasLength(1));
+
+      await app.sweepUploads();
+
+      expect(await db.outboxDao.uploadFiles(), isEmpty);
+      expect(await storedCopies(), isEmpty);
+    });
   });
 
   test('discarding a problem of a task the server no longer has takes its '
@@ -926,8 +1154,8 @@ void main() {
   });
 
   group('a queued delete', () {
-    test('holds the uploads of its task back; their copies go once the '
-        'delete is applied', () async {
+    test('holds the uploads of its task back; once the delete is applied, '
+        'they are set aside and their copies go after the Undo', () async {
       await queueUpload(1);
       await queueUpload(2, name: 'other.png', bytes: const [4, 5]);
       await db.outboxDao.queueDelete(1, now: now);
@@ -949,7 +1177,13 @@ void main() {
 
       expect(write.requests, ['delete 1', 'upload 2 other.png', 'delete 1']);
       expect(await db.outboxDao.count(), 0);
-      expect(await storedCopies(), isEmpty);
+      expect(await storedCopies(), hasLength(1));
+      expect(timers.pendingWait, OutboxSender.setAsideFor);
+
+      now = now.add(OutboxSender.setAsideFor);
+      timers.fireNext();
+
+      await until(() async => (await storedCopies()).isEmpty);
     });
 
     test('taken back, the uploads go on', () async {
@@ -1040,7 +1274,48 @@ void main() {
       },
     );
 
-    test('a 4020 for a cover the change sets itself is a problem', () async {
+    test('a cover deleted on the server before its change went is left out, '
+        'and the rest of the change goes', () async {
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(title: 'Renamed', coverImageAttachmentId: 99),
+        now: now,
+      );
+
+      await sender().drain();
+
+      expect(write.requests, ['update 1', 'update 1']);
+      expect(write.updates.single.$2, const TaskChanges(title: 'Renamed'));
+      expect(write.covers[1], isNull);
+      expect((await db.tasksDao.find(1))!.title, 'Renamed');
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a cover deleted meanwhile on a task that still names a deleted one: '
+        'left out, then the old one cleared', () async {
+      write.covers[1] = 98;
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(title: 'Renamed', coverImageAttachmentId: 99),
+        now: now,
+      );
+
+      await sender().drain();
+
+      expect(write.requests, ['update 1', 'update 1', 'update 1']);
+      expect(
+        write.updates.single.$2,
+        const TaskChanges(title: 'Renamed', coverImageAttachmentId: 0),
+      );
+      expect(write.covers[1], 0);
+      expect(write.serverTasks[1]!.title, 'Renamed');
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a cover alone whose attachment is gone is not written: the task is '
+        'read instead', () async {
       await db.outboxDao.queueUpdate(
         1,
         const TaskChanges(coverImageAttachmentId: 99),
@@ -1050,8 +1325,10 @@ void main() {
       await sender().drain();
 
       expect(write.requests, ['update 1']);
-      final problem = (await db.outboxDao.loadProblems()).single;
-      expect(problem.failure.code, 4020);
+      expect(write.updates, isEmpty);
+      expect(read.requests, contains('task 1'));
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(await db.outboxDao.count(), 0);
     });
 
     test('a second 4020 is a problem', () async {

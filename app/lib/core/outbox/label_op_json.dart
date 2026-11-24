@@ -67,14 +67,6 @@ QueuedLabelCreate decodeLabelCreate(String json) => switch (jsonDecode(json)) {
   _ => throw FormatException('not a queued label create', json),
 };
 
-/// [payload], a queued create, with [at] as the time its request last left
-/// the device. [encodeLabelCreate] writes none: a create is encoded afresh
-/// only when no attempt can have reached the server, or after a refusal.
-String withLabelCreatePostedAt(String payload, DateTime at) => jsonEncode({
-  ...jsonDecode(payload) as Map<String, Object?>,
-  _postedAtKey: at.toUtc().toIso8601String(),
-});
-
 /// [payload], a queued create, with [ids] added to its known labels.
 String withLabelCreateKnown(String payload, Set<int> ids) {
   final map = jsonDecode(payload) as Map<String, Object?>;
@@ -87,15 +79,6 @@ String withLabelCreateKnown(String payload, Set<int> ids) {
     if (known.isNotEmpty) 'known': [...known]..sort(),
   });
 }
-
-/// When the request of the queued create [payload] last left the device;
-/// null when it never did.
-DateTime? labelCreatePostedAt(String payload) => switch (jsonDecode(payload)) {
-  {_postedAtKey: final String at} => DateTime.tryParse(at)?.toUtc(),
-  _ => null,
-};
-
-const _postedAtKey = 'posted_at';
 
 /// [labelTitle], the title the label has with [changes], names a failed
 /// edit when the label is gone here.

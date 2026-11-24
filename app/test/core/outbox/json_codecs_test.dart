@@ -5,8 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
+import 'package:vikunja_mobile/core/outbox/posted_at_json.dart';
+import 'package:vikunja_mobile/core/outbox/set_aside_upload_json.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 
@@ -408,6 +412,84 @@ void main() {
     });
   });
 
+  group('SetAsideUpload', () {
+    test('round-trips the op and its time, instants in UTC; an unreadable '
+        'entry is skipped', () {
+      final created = DateTime(2026, 10, 10, 9, 15);
+      final last = DateTime.utc(2026, 10, 10, 12, 0, 5, 250);
+      final failed = OutboxRow(
+        id: 'a1',
+        sequence: 0,
+        kind: OutboxOperationKind.uploadAttachment.name,
+        taskId: 4,
+        payload: withPostedAt(
+          encodeQueuedUpload(
+            const QueuedUpload(file: 'abc', fileName: 'a.png', size: 3),
+          ),
+          last,
+        ),
+        createdAt: created,
+        attempts: 2,
+        nextAttemptAt: DateTime.utc(2026, 10, 10, 12, 1),
+        lastAttemptAt: last,
+        state: 'failed',
+        lastError: encodeFailure(const Forbidden()),
+        sentAt: DateTime.utc(2026, 10, 10, 11),
+      );
+      final waiting = OutboxRow(
+        id: 'b2',
+        sequence: 0,
+        kind: OutboxOperationKind.uploadAttachment.name,
+        taskId: 4,
+        payload: encodeQueuedUpload(
+          const QueuedUpload(file: 'def', fileName: 'b.txt', size: 1),
+        ),
+        createdAt: DateTime.utc(2026, 10, 10, 9, 16),
+        attempts: 0,
+        state: 'pending',
+      );
+      final until = DateTime(2026, 10, 10, 12, 0, 20);
+
+      final json = encodeSetAsideUploads([
+        SetAsideUpload(op: failed, until: until),
+        SetAsideUpload(op: waiting, until: until),
+      ]);
+
+      final stored = jsonDecode(json) as List<Object?>;
+      expect(stored.last, {
+        'id': 'b2',
+        'task': 4,
+        'payload': waiting.payload,
+        'created': DateTime.utc(2026, 10, 10, 9, 16).millisecondsSinceEpoch,
+        'attempts': 0,
+        'state': 'pending',
+        'until': until.millisecondsSinceEpoch,
+      });
+      final back = decodeSetAsideUploads(json);
+      expect(
+        [for (final entry in back) entry.op],
+        [failed.copyWith(createdAt: created.toUtc()), waiting],
+      );
+      expect(back.first.op.createdAt.isUtc, isTrue);
+      expect(back.first.until, until.toUtc());
+      expect(back.first.until.isUtc, isTrue);
+      expect(postedAtOf(back.first.op.payload), last);
+
+      final withBroken = jsonEncode([
+        {'id': 'c3', 'task': 4},
+        {...stored.last! as Map<String, Object?>, 'sent': 'yesterday'},
+        stored.first,
+      ]);
+      expect(
+        [for (final entry in decodeSetAsideUploads(withBroken)) entry.op.id],
+        ['a1'],
+      );
+      expect(decodeSetAsideUploads(null), isEmpty);
+      expect(decodeSetAsideUploads('not json'), isEmpty);
+      expect(decodeSetAsideUploads('{"id":"a1"}'), isEmpty);
+    });
+  });
+
   group('NewTask', () {
     test('round-trips every field under the wire names', () {
       final task = NewTask(
@@ -483,6 +565,42 @@ void main() {
 
     test('anything but an object is unreadable', () {
       expect(() => decodeNewTask('[]'), throwsFormatException);
+    });
+  });
+
+  group('posted at', () {
+    test('a create or upload reads as before beside the time its request '
+        'last left the device, in UTC; a payload without one has none; a '
+        'later time replaces it', () {
+      const task = NewTask(projectId: 7, title: 'Buy milk', isFavorite: true);
+      const upload = QueuedUpload(
+        file: 'abc',
+        fileName: 'photo.png',
+        size: 3,
+        mimeType: 'image/png',
+      );
+      final first = DateTime.utc(2026, 10, 10, 12);
+      final second = DateTime(2026, 10, 10, 15, 30);
+
+      final create = withPostedAt(encodeNewTask(task), first);
+      final queued = withPostedAt(encodeQueuedUpload(upload), second);
+
+      expect(postedAtOf(encodeNewTask(task)), isNull);
+      expect(postedAtOf(encodeQueuedUpload(upload)), isNull);
+      expect(decodeNewTask(create), task);
+      expect(postedAtOf(create), first);
+      expect(postedAtOf(create)!.isUtc, isTrue);
+      expect(postedAtOf(queued), second.toUtc());
+      expect(postedAtOf(queued)!.isUtc, isTrue);
+      final back = decodeQueuedUpload(queued);
+      expect(back.file, upload.file);
+      expect(back.fileName, upload.fileName);
+      expect(back.size, upload.size);
+      expect(back.mimeType, upload.mimeType);
+
+      final again = withPostedAt(create, second);
+      expect(postedAtOf(again), second.toUtc());
+      expect(decodeNewTask(again), task);
     });
   });
 

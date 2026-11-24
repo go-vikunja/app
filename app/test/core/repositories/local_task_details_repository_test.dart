@@ -729,6 +729,67 @@ void main() {
       expect((await db.tasksDao.find(1))!.commentCount, 0);
     });
 
+    test("a cover change queued here stands over the server's in what is read "
+        'and kept, until it is sent', () async {
+      final attachments = [sampleAttachment(id: 3), sampleAttachment(id: 5)];
+      read.taskDetails[1] = TaskDetails(
+        attachments: attachments,
+        coverImageAttachmentId: 3,
+      );
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(coverImageAttachmentId: 5),
+        now: now,
+      );
+
+      final details = await repository.details(1);
+
+      expect(details.coverImageAttachmentId, 5);
+      expect(details.attachments, attachments);
+      expect(
+        (await repository.storedDetails(1))!.value.coverImageAttachmentId,
+        5,
+      );
+
+      await db.outboxDao.remove((await db.outboxDao.all()).single.id);
+      final changedOnTheWeb = TaskDetails(attachments: attachments);
+      read.taskDetails[1] = changedOnTheWeb;
+
+      expect(await repository.details(1), same(changedOnTheWeb));
+      expect(
+        (await repository.storedDetails(1))!.value.coverImageAttachmentId,
+        0,
+      );
+    });
+
+    test('a cover sent while a details read was under way stands over that '
+        "read's older answer", () async {
+      read.taskDetails[1] = TaskDetails(
+        attachments: [sampleAttachment(id: 3), sampleAttachment(id: 5)],
+        coverImageAttachmentId: 3,
+      );
+      await repository.details(1);
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(coverImageAttachmentId: 5),
+        now: now,
+      );
+      final held = Completer<void>();
+      read.beforeRequest = (_) => held.future;
+      final reading = repository.details(1);
+      await pumpEventQueue();
+      read.beforeRequest = null;
+
+      await db.outboxDao.remove((await db.outboxDao.all()).single.id);
+      held.complete();
+
+      expect((await reading).coverImageAttachmentId, 5);
+      expect(
+        (await repository.storedDetails(1))!.value.coverImageAttachmentId,
+        5,
+      );
+    });
+
     test('a read that starts after a write keeps what it read', () async {
       read.taskComments[1] = [sampleComment(id: 3)];
       await repository.comments(1);

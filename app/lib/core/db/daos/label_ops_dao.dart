@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/db/tables/users.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
+import 'package:vikunja_mobile/core/outbox/posted_at_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 
@@ -217,7 +218,7 @@ final class LabelOpsDao extends DatabaseAccessor<AppDatabase>
 
   /// The request of the create [operationId] leaves the device at [at]; the
   /// last such time bounds the lookup for a lost answer (see
-  /// [labelCreatePostedAt]).
+  /// [postedAtOf]).
   Future<void> markCreatePosted(
     String operationId, {
     required DateTime at,
@@ -231,7 +232,7 @@ final class LabelOpsDao extends DatabaseAccessor<AppDatabase>
         ? op.payload
         : withLabelCreateKnown(op.payload, alsoKnown);
     await (update(outbox)..where((o) => o.id.equals(operationId))).write(
-      OutboxCompanion(payload: Value(withLabelCreatePostedAt(payload, at))),
+      OutboxCompanion(payload: Value(withPostedAt(payload, at))),
     );
   });
 

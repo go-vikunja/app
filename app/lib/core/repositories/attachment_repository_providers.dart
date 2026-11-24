@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 part 'attachment_repository_providers.g.dart';
 
@@ -28,10 +29,12 @@ AttachmentRepository accountAttachmentRepository(Ref ref, String accountId) {
     ref.watch(readClientProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
     ref.watch(attachmentDownloadsProvider),
+    outbox: ref.watch(outboxSenderProvider(accountId)),
     accountId: accountId,
     images: ref.watch(accountAttachmentImagesProvider(accountId)),
     uploadsEnabled: limits.enabled,
     maxUploadBytes: limits.maxBytes,
+    now: ref.watch(clockProvider),
   );
 }
 

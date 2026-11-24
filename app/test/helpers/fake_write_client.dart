@@ -46,6 +46,12 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// The cover attachment id per task id (0 or absent: none).
   final Map<int, int> covers = {};
 
+  /// Like a server without the v2 API, an update reads the whole task and
+  /// its cover before [beforeRequest] and writes all of it back with the
+  /// changes on top, so one held between its read and its write puts back
+  /// what another update changed meanwhile.
+  bool replacesWholeTask = false;
+
   /// The id the next upload gets, and who the server names as uploader.
   int nextAttachmentId = 300;
   User? uploader;
@@ -320,10 +326,17 @@ final class FakeTasksWritePort implements TasksWritePort {
     TaskChanges requested, {
     String Function(String current)? rebaseDescription,
   }) async {
+    final read = _client.replacesWholeTask
+        ? (task: _client.serverTasks[id], cover: _client.covers[id] ?? 0)
+        : null;
     await _client._request('update $id');
-    final current = _client.serverTasks[id];
+    final current = read != null ? read.task : _client.serverTasks[id];
     if (current == null) throw const NotFound(code: 4002);
-    final cover = requested.coverImageAttachmentId ?? _client.covers[id] ?? 0;
+    final cover =
+        requested.coverImageAttachmentId ??
+        read?.cover ??
+        _client.covers[id] ??
+        0;
     if (cover != 0 &&
         !(_client.serverAttachments[id] ?? const []).any(
           (attachment) => attachment.id == cover,
@@ -332,6 +345,8 @@ final class FakeTasksWritePort implements TasksWritePort {
     }
     if (requested.coverImageAttachmentId case final chosen?) {
       _client.covers[id] = chosen;
+    } else if (read != null) {
+      _client.covers[id] = read.cover;
     }
     final changes = rebaseDescription == null || requested.description == null
         ? requested

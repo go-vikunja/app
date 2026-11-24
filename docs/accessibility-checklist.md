@@ -125,7 +125,7 @@ On a phone in German, with TalkBack, offline after the task was opened once onli
 The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
 
 - [ ] **The task sheet offline:** under the title "Offline – gespeicherte Daten werden angezeigt" with "Noch einmal versuchen", read as one region; above the attachments "Attachments and reactions as of …" and with the comments "Comments as of …", the comments' note announced when they load. "Noch einmal versuchen" starts a sync.
-- [ ] **Actions that need a connection:** in an attachment's menu "Delete attachment" (and the cover) and in a comment's menu Edit and Delete read as unavailable with "This needs a connection to the server.", greyed, never red; Open, Share and Save stay available.
+- [ ] **Actions that need a connection:** in an attachment's menu "Delete attachment" and in a comment's menu Edit and Delete read as unavailable with "This needs a connection to the server.", greyed, never red; Open, Share and Save stay available.
 - [ ] **Images:** an image in the description and an avatar seen online show offline after the app was closed.
 - [ ] **A label created offline:** in the label picker "Create label "x"" works offline; on the Labels page the label reads "Noch nicht synchronisiert" until it is sent; a refused one is a sync problem named "The label could not be created." with its title.
 

@@ -34,6 +34,9 @@ void main() {
   late AuthFakes auth;
   late FakeAccountDatabaseFiles files;
   late List<AppDatabase> opened;
+  late List<FakeWriteClient> writes;
+  late List<FakeSyncClient> reads;
+  late List<RecordingSyncEngine> engines;
   late RecordingSyncEngine engine;
   late FakeWriteClient write;
   late FakeSyncClient read;
@@ -43,9 +46,24 @@ void main() {
     auth = AuthFakes();
     files = FakeAccountDatabaseFiles();
     opened = [];
-    engine = RecordingSyncEngine(SyncIdle(lastSyncedAt: now));
-    write = FakeWriteClient(clock: () => now);
-    read = FakeSyncClient()..allTasks = [task];
+    writes = [];
+    reads = [];
+    engines = [];
+    // The clients and the engine are built anew for each stored server
+    // version, as the real ports key rebuilds them.
+    String serverVersionOf(Ref ref, String accountId) {
+      final version = ref.watch(
+        accountsProvider.select((accounts) {
+          final info = accounts.value?.find(accountId)?.connection.info;
+          return info == null ? null : info.version?.raw ?? info.rawVersion;
+        }),
+      );
+      if (version == null) {
+        throw StateError('Account $accountId is not registered');
+      }
+      return version;
+    }
+
     container = ProviderContainer(
       overrides: [
         ...auth.overrides,
@@ -60,9 +78,29 @@ void main() {
             },
           ),
         ),
-        syncEngineProvider.overrideWith((ref, accountId) => engine),
-        writeClientProvider.overrideWith((ref, accountId) => write),
-        readClientProvider.overrideWith((ref, accountId) => read),
+        syncEngineProvider.overrideWith((ref, accountId) {
+          serverVersionOf(ref, accountId);
+          ref.watch(appDatabaseProvider(accountId));
+          final built = RecordingSyncEngine(SyncIdle(lastSyncedAt: now));
+          ref.onDispose(() => unawaited(built.dispose()));
+          engines.add(built);
+          return engine = built;
+        }),
+        writeClientProvider.overrideWith((ref, accountId) {
+          serverVersionOf(ref, accountId);
+          final built = FakeWriteClient(clock: () => now);
+          if (writes.lastOrNull case final previous?) {
+            built.serverTasks.addAll(previous.serverTasks);
+          }
+          writes.add(built);
+          return write = built;
+        }),
+        readClientProvider.overrideWith((ref, accountId) {
+          serverVersionOf(ref, accountId);
+          final built = FakeSyncClient()..allTasks = [task];
+          reads.add(built);
+          return read = built;
+        }),
         trashPortProvider.overrideWith((ref, accountId) => FakeTrashPort()),
         clockProvider.overrideWithValue(() => now),
       ],
@@ -249,5 +287,159 @@ void main() {
 
     expect(write.requests, isEmpty);
     expect(await opened.single.outboxDao.count(), 1);
+  });
+
+  group('a stored server upgrade', () {
+    Future<void> upgrade(String accountId) async {
+      await container
+          .read(accountRegistryProvider)
+          .updateConnection(accountId, (_) => fullServer280());
+      await pumpEventQueue();
+    }
+
+    test("while a change is on its way keeps the account's sender: it "
+        'stores the answer, and the next change goes at once through the '
+        'rebuilt clients and engine', () async {
+      final (accountId, repository) = await signedIn();
+      final other = sampleTask(id: 2, title: 'Call the plumber', projectId: 7);
+      await opened.single.tasksDao.upsertAll([other], syncRunId: 'run');
+      write.serverTasks[other.id] = other;
+      final sender = container.read(outboxSenderProvider(accountId));
+      final gate = Completer<void>();
+      writes.single.beforeRequest = (_) => gate.future;
+      await repository.setDone(task.id, done: true);
+      await pumpEventQueue();
+      expect(writes.single.requests, ['update 1']);
+
+      await upgrade(accountId);
+
+      expect(writes, hasLength(2));
+      expect(engines.first.disposed, isTrue);
+      expect(container.read(outboxSenderProvider(accountId)), same(sender));
+      await container
+          .read(taskRepositoryProvider)!
+          .setFavorite(other.id, favorite: true);
+      await pumpEventQueue();
+      expect(writes.last.requests, isEmpty);
+
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(writes.first.updates, [(1, const TaskChanges(done: true))]);
+      expect(writes.last.updates, [(2, const TaskChanges(isFavorite: true))]);
+      final db = opened.single;
+      expect((await db.tasksDao.find(task.id))!.done, isTrue);
+      expect((await db.tasksDao.find(other.id))!.isFavorite, isTrue);
+      expect(await db.outboxDao.count(), 0);
+      expect(sender.state, OutboxSenderState.idle);
+      expect(engines.first.refreshAfterWriteCalls, 0);
+      expect(engines.last.refreshAfterWriteCalls, 1);
+    });
+
+    test('a new task whose create is on its way during it is stored once '
+        'under its server id: not sent again, not looked up, not shown '
+        'twice', () async {
+      final (accountId, repository) = await signedIn();
+      final gate = Completer<void>();
+      writes.single.beforeRequest = (_) => gate.future;
+      final id = await repository.createTask(
+        const NewTask(projectId: 7, title: 'Buy milk'),
+      );
+      await pumpEventQueue();
+      expect(writes.single.requests, ['create Buy milk']);
+
+      await upgrade(accountId);
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(writes.first.creates, hasLength(1));
+      expect(writes.last.requests, isEmpty);
+      expect([
+        for (final client in reads) ...client.requests,
+      ], everyElement(isNot(startsWith('project 7 tasks'))));
+      final db = opened.single;
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect((await db.tasksDao.find(100))!.title, 'Buy milk');
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('after it, a sync that gets through on the rebuilt engine sends a '
+        'change waiting out a network failure at once; what the rebuilt '
+        'engine replays does not', () async {
+      final (accountId, repository) = await signedIn();
+      final sender = container.read(outboxSenderProvider(accountId));
+      writes.single.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      await repository.setDone(task.id, done: true);
+      await pumpEventQueue();
+      expect(sender.state, OutboxSenderState.waiting);
+      expect(sender.blockedBy, isA<NetworkFailure>());
+
+      await upgrade(accountId);
+
+      expect(engines, hasLength(2));
+      expect(engines.first.disposed, isTrue);
+      expect(writes.last.requests, isEmpty);
+
+      engines.last.emit(SyncIdle(lastSyncedAt: now));
+      await pumpEventQueue();
+
+      expect(writes.last.updates, [(1, const TaskChanges(done: true))]);
+      expect(await opened.single.outboxDao.count(), 0);
+    });
+  });
+
+  test('signed out and in again, the account gets a new sender over its new '
+      'database, and it sends', () async {
+    final (accountId, _) = await signedIn();
+    final first = container.read(outboxSenderProvider(accountId));
+
+    await container.read(signOutProvider).call(accountId);
+    await pumpEventQueue();
+    await auth.seedAccount(fullServer270(), tokens: issueTokens(issuedAt: now));
+    container.invalidate(accountsProvider);
+    await container.read(accountsProvider.future);
+    await pumpEventQueue();
+
+    expect(opened, hasLength(2));
+    await opened.last.tasksDao.upsertAll([task], syncRunId: 'run');
+    writes.last.serverTasks[task.id] = task;
+    expect(container.read(outboxSenderProvider(accountId)), isNot(same(first)));
+
+    await container.read(taskRepositoryProvider)!.setDone(task.id, done: true);
+    await pumpEventQueue();
+
+    expect(writes.last.updates, [(1, const TaskChanges(done: true))]);
+    expect(await opened.last.outboxDao.count(), 0);
+    expect(engines.last.refreshAfterWriteCalls, 1);
+    expect(files.deleted, [accountId]);
+    final requests = [for (final client in writes) ...client.requests];
+    await first.drain();
+    expect([for (final client in writes) ...client.requests], requests);
+  });
+
+  test('removing the account disposes its sender with its database: the '
+      'change queued behind the one on its way is not sent', () async {
+    final (accountId, repository) = await signedIn();
+    final sender = container.read(outboxSenderProvider(accountId));
+    final gate = Completer<void>();
+    writes.single.beforeRequest = (_) => gate.future;
+    await repository.setDone(task.id, done: true);
+    await pumpEventQueue();
+    await repository.updateTask(task.id, const TaskChanges(priority: 3));
+    expect(await opened.single.outboxDao.count(), 2);
+
+    await container.read(accountRegistryProvider).remove(accountId);
+    await pumpEventQueue();
+    gate.complete();
+    await pumpEventQueue();
+
+    expect(writes.single.requests, ['update 1']);
+    expect(
+      () => container.read(outboxSenderProvider(accountId)),
+      throwsA(anything),
+    );
+    await expectLater(sender.sendNow(), completion(isNull));
   });
 }

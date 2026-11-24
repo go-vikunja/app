@@ -5,6 +5,7 @@ import 'package:drift/drift.dart'
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_api/vikunja_api.dart' show VikunjaWriteClient;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
@@ -55,19 +56,34 @@ void main() {
     int? userId,
     int? processId,
     Future<Duration?> Function()? serverClockOffset,
+    VikunjaWriteClient Function()? writeClient,
   }) {
-    final sender = OutboxSender(
-      db: db,
-      writeClient: write,
-      readClient: read,
-      sync: sync,
-      now: clock ?? () => now,
-      createTimer: timers.create,
-      random: ZeroRandom(),
-      currentUserId: () => userId,
-      serverClockOffset: serverClockOffset,
-      processId: processId,
-    );
+    final sender = writeClient == null
+        ? OutboxSender(
+            db: db,
+            writeClient: write,
+            readClient: read,
+            sync: sync,
+            now: clock ?? () => now,
+            createTimer: timers.create,
+            random: ZeroRandom(),
+            currentUserId: () => userId,
+            serverClockOffset: serverClockOffset,
+            processId: processId,
+          )
+        : OutboxSender.following(
+            db: db,
+            writeClient: writeClient,
+            readClient: () => read,
+            sync: () => sync,
+            syncStatus: sync.status,
+            now: clock ?? () => now,
+            createTimer: timers.create,
+            random: ZeroRandom(),
+            currentUserId: () => userId,
+            serverClockOffset: serverClockOffset,
+            processId: processId,
+          );
     addTearDown(sender.dispose);
     return sender;
   }
@@ -709,6 +725,30 @@ void main() {
       expect(sync.refreshAfterWriteCalls, 1);
       expect(states.last, OutboxSenderState.idle);
       expect(timers.active, isEmpty);
+    });
+
+    test('a change whose clients are rebuilt while it is on its way goes '
+        'again at once over the new ones when the replaced client refuses '
+        'its request as offline, nothing counted', () async {
+      final rebuilt = FakeWriteClient(clock: () => now);
+      rebuilt.serverTasks.addAll(write.serverTasks);
+      VikunjaWriteClient current = write;
+      write.beforeRequest = (_) {
+        current = rebuilt;
+        fail(const NetworkFailure(NetworkProblem.unreachable));
+      };
+      await queue(1, done);
+      await queue(2, favorite);
+      final outbox = sender(writeClient: () => current);
+
+      await outbox.drain();
+
+      expect(write.requests, ['update 1']);
+      expect(rebuilt.updates, [(1, done), (2, favorite)]);
+      expect(await db.outboxDao.count(), 0);
+      expect(timers.active, isEmpty);
+      expect(outbox.state, OutboxSenderState.idle);
+      expect(sync.refreshAfterWriteCalls, 1);
     });
 
     test('the backoff tops out at 15 minutes', () async {
@@ -1876,6 +1916,32 @@ void main() {
       expect(outbox.state, OutboxSenderState.idle);
     });
 
+    test('a create whose answer is lost while the clients are rebuilt is '
+        'looked for at once and adopted, not sent again over the new '
+        'client', () async {
+      final rebuilt = FakeWriteClient(clock: () => now);
+      VikunjaWriteClient current = write;
+      write.afterRequest = (_) {
+        current = rebuilt;
+        mirrorServer();
+        fail(const NetworkFailure(NetworkProblem.timeout));
+      };
+      final id = await create();
+      final outbox = sender(writeClient: () => current);
+
+      await outbox.drain();
+
+      expect(write.requests, ['create Buy milk']);
+      expect(rebuilt.requests, isEmpty);
+      expect(
+        read.requests.single,
+        startsWith("project 7 tasks created >= '2026-10-10T11:00:00Z'"),
+      );
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+      expect(timers.active, isEmpty);
+    });
+
     test('a lost create whose title had a U+0000 is adopted under the title '
         'the server stored, not sent again', () async {
       final id = await create(
@@ -2374,6 +2440,7 @@ void main() {
       final id = await create();
       final op = (await ops()).single;
       await db.outboxDao.markSending(op.id, at: now);
+      await db.outboxDao.markPosted(op.id, at: now);
       now = now.add(OutboxSender.staleSendingAfter);
       // The request had reached the server before the kill.
       write.serverTasks[100] = taskFromNewTask(draft, id: 100, now: now);
@@ -2685,6 +2752,232 @@ void main() {
         expect(write.requests, ['create Buy milk']);
         expect(await db.tasksDao.resolveId(id), 100);
         expect(await db.outboxDao.count(), 0);
+      });
+    });
+
+    group('a task of that title made on the web after the request last left '
+        'is never adopted', () {
+      const me = User(id: 5, username: 'me', name: 'Me');
+
+      setUp(() => write.creator = me);
+
+      Task mine(int id, DateTime created) => sampleTask(
+        id: id,
+        title: 'Buy milk',
+        projectId: 7,
+        created: created,
+        createdBy: me,
+      );
+
+      void madeOnTheWeb(DateTime created) {
+        write.serverTasks[150] = mine(150, created);
+        mirrorServer();
+      }
+
+      test('the task the lost request made is adopted, and a Done queued '
+          'behind the create reaches it, not a task of that title made on the '
+          'web three hours later', () async {
+        final id = await create();
+        write.afterRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+        final outbox = sender(userId: me.id);
+        await outbox.drain();
+        await queue(id, done);
+        now = now.add(const Duration(hours: 3));
+        madeOnTheWeb(now);
+
+        write.afterRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk', 'update 100']);
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(write.serverTasks[100]!.done, isTrue);
+        expect(write.serverTasks[150]!.done, isFalse);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('a create whose request never got through goes again instead of '
+          'taking a task of that title made on the web hours later', () async {
+        final id = await create();
+        write.beforeRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+        final outbox = sender(userId: me.id);
+        final firstAttempt = now;
+        await outbox.drain();
+        expect((await ops()).single.sentAt, firstAttempt);
+        now = now.add(const Duration(hours: 3));
+        madeOnTheWeb(now);
+        final web = write.serverTasks[150];
+
+        write.beforeRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk', 'create Buy milk']);
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(write.serverTasks[150], same(web));
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('a lost create that never reached the server, with a delete queued '
+          'behind it, goes with the delete when only a task of that title '
+          'made on the web hours later is there: that task stays', () async {
+        final id = await create();
+        write.beforeRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+        final outbox = sender(userId: me.id);
+        await outbox.drain();
+        await queueDelete(id);
+        now = now.add(const Duration(hours: 3));
+        madeOnTheWeb(now);
+
+        write.beforeRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk']);
+        expect(await db.tasksDao.findRow(id), isNull);
+        expect(write.serverTasks.keys, contains(150));
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('lookups that could not reach the server for hours do not widen '
+          'the window: a task of that title made on the web meanwhile is not '
+          'taken', () async {
+        final id = await create();
+        write.afterRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+        final outbox = sender(userId: me.id);
+        final firstAttempt = now;
+        await outbox.drain();
+        write.afterRequest = null;
+        read.beforeRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.unreachable));
+        for (var i = 0; i < 12; i++) {
+          now = now.add(const Duration(minutes: 15));
+          await outbox.sendNow();
+        }
+        expect(write.requests, ['create Buy milk']);
+        expect(read.requests, hasLength(12));
+        madeOnTheWeb(firstAttempt.add(const Duration(hours: 3)));
+
+        read.beforeRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk']);
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('a create given up after failing answers and retried a day later '
+          'adopts nothing made on the web since: it goes again', () async {
+        final id = await create();
+        write.beforeRequest = (request) => request.startsWith('create')
+            ? fail(const ServerFailure(502))
+            : Future.value();
+        final outbox = sender(userId: me.id);
+        await outbox.drain();
+        for (var i = 1; i < OutboxSender.maxFailedAnswersInARow; i++) {
+          now = now.add(timers.pendingWait);
+          timers.fireNext();
+          await pumpEventQueue();
+        }
+        await queue(id, done);
+        final problem = (await db.outboxDao.loadProblems()).single;
+        expect(problem.kind, OutboxOperationKind.createTask);
+        now = now.add(const Duration(days: 1));
+        madeOnTheWeb(now.subtract(const Duration(hours: 1)));
+
+        write.beforeRequest = null;
+        await outbox.retry(problem.operationId);
+
+        expect(write.requests.skip(OutboxSender.maxFailedAnswersInARow), [
+          'create Buy milk',
+          'update 100',
+        ]);
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(write.serverTasks[100]!.done, isTrue);
+        expect(write.serverTasks[150]!.done, isFalse);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('the lookup reaches from an hour before the first unanswered '
+          'attempt to an hour after the create was last sent; a later '
+          'attempt that did not send it moves nothing', () async {
+        final first = now.subtract(const Duration(hours: 6));
+        final last = now.subtract(const Duration(hours: 4));
+        final lookedOnly = now.subtract(const Duration(hours: 2));
+        final until = last.add(OutboxSender.lostResponseWindow);
+        final id = await create();
+        final op = (await ops()).single;
+        await db.outboxDao.claim(op.id, at: first);
+        await db.outboxDao.markPosted(op.id, at: first);
+        await db.outboxDao.markUncertain(op.id, sentAt: first);
+        await db.outboxDao.unclaim(op.id);
+        await db.outboxDao.claim(op.id, at: last);
+        await db.outboxDao.markPosted(op.id, at: last);
+        await db.outboxDao.unclaim(op.id);
+        await db.outboxDao.claim(op.id, at: lookedOnly);
+        await db.outboxDao.unclaim(op.id);
+        // The one passed over has the higher id.
+        write.serverTasks[60] = mine(60, until);
+        write.serverTasks[61] = mine(61, until.add(const Duration(seconds: 1)));
+        mirrorServer();
+
+        await sender(userId: me.id).drain();
+
+        expect(write.requests, isEmpty);
+        expect(await db.tasksDao.resolveId(id), 60);
+        expect(
+          read.requests.single,
+          startsWith("project 7 tasks created >= '2026-10-10T05:00:00Z'"),
+        );
+      });
+
+      test('a create an older version marked without the time its request '
+          'left still adopts the task its lost request made', () async {
+        final id = await create();
+        await db.outboxDao.markUncertain(
+          (await ops()).single.id,
+          sentAt: now.subtract(const Duration(hours: 3)),
+        );
+        write.serverTasks[100] = taskFromNewTask(
+          draft,
+          id: 100,
+          now: now.subtract(const Duration(minutes: 5)),
+        ).copyWith(createdBy: me);
+        write.nextId = 101;
+        mirrorServer();
+
+        await sender(userId: me.id).drain();
+
+        expect(write.requests, isEmpty);
+        expect(await db.tasksDao.resolveId(id), 100);
+      });
+
+      test('a phone clock set back hours between two posts still adopts the '
+          'task the first one made', () async {
+        final posted = now;
+        final setBack = posted.subtract(const Duration(hours: 3));
+        final id = await create();
+        final op = (await ops()).single;
+        await db.outboxDao.claim(op.id, at: posted);
+        await db.outboxDao.markPosted(op.id, at: posted);
+        await db.outboxDao.markUncertain(op.id, sentAt: posted);
+        await db.outboxDao.unclaim(op.id);
+        await db.outboxDao.claim(op.id, at: setBack);
+        await db.outboxDao.markPosted(op.id, at: setBack);
+        await db.outboxDao.unclaim(op.id);
+        write.serverTasks[100] = mine(
+          100,
+          posted.add(const Duration(minutes: 1)),
+        );
+        write.nextId = 101;
+        mirrorServer();
+        now = setBack.add(const Duration(minutes: 5));
+
+        await sender(userId: me.id).drain();
+
+        expect(write.requests, isEmpty);
+        expect(await db.tasksDao.resolveId(id), 100);
       });
     });
 

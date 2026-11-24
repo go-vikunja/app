@@ -738,9 +738,8 @@ void main() {
       expect(find.text(en.undo), findsNothing);
     });
 
-    testWidgets('under a screen reader the snackbar waits for the user', (
-      tester,
-    ) async {
+    testWidgets('under a screen reader the snackbar waits for the user, and '
+        'what its Undo restores is held as long', (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(
             accessibleNavigation: true,
@@ -749,6 +748,9 @@ void main() {
       addTearDown(
         tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
       );
+      final heldAtRestore = <Set<int>>[];
+      data.tasks.beforeRestore = (_) async =>
+          heldAtRestore.addAll(data.tasks.heldForUndo);
       await deleteFromSheet(tester, 'Bare task');
       await confirm(tester);
 
@@ -757,9 +759,15 @@ void main() {
 
       expect(snackBar(tester).persist, isTrue);
       expect(find.text(en.taskMovedToTrash), findsOneWidget);
+      expect(data.tasks.heldForUndo, [
+        {2},
+      ]);
       await tester.tap(find.text(en.undo));
       await tester.pumpAndSettle();
       expect(data.tasks.writes, ['delete 2', 'restore 2']);
+      expect(heldAtRestore, everyElement({2}));
+      expect(heldAtRestore, isNotEmpty);
+      expect(data.tasks.heldForUndo, isEmpty);
     });
 
     testWidgets('a write guest is not pointed to the bin page and gets Undo', (

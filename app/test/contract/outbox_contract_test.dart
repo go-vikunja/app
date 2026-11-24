@@ -563,6 +563,7 @@ void main() {
           final attemptsBefore = writes.attempts;
           final localId = await repository.createTask(draft);
           final op = (await db.outboxDao.all()).single;
+          await db.outboxDao.markPosted(op.id, at: DateTime.now());
           await db.outboxDao.markUncertain(op.id, sentAt: DateTime.now());
 
           await sender.resume();

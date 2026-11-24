@@ -10,7 +10,7 @@ import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 
 /// The server's attachments as the repository reaches them, without a
 /// network. Every call is recorded in [calls] (`delete 3 7`,
-/// `delete 3 7 cover`, `setCover 3 7`, `setCover 3 null`, `download 3 7`,
+/// `setCover 3 7`, `setCover 3 null`, `download 3 7`,
 /// `download 3 7 cached`, `uploadNow 3 photo.png`); [beforeCall] can hold
 /// or fail one, except a cached download, and
 /// [failure] fails every call while set (a `VikunjaFailure`,
@@ -43,19 +43,13 @@ final class FakeAttachmentRepository implements AttachmentRepository {
   final List<TaskAttachment> uploaded = [];
   final List<CancelToken?> cancelTokens = [];
 
-  /// The cover per task id as the server holds it after [setCover] and
-  /// [delete] (0: none).
+  /// The cover per task id after [setCover] (0: none); a delete leaves it,
+  /// as the server keeps the id of a deleted cover.
   final Map<int, int> covers = {};
 
   @override
-  Future<void> delete(
-    int taskId,
-    int attachmentId, {
-    bool isCover = false,
-  }) async {
-    await _call('delete $taskId $attachmentId${isCover ? ' cover' : ''}');
-    if (isCover || covers[taskId] == attachmentId) covers[taskId] = 0;
-  }
+  Future<void> delete(int taskId, int attachmentId) =>
+      _call('delete $taskId $attachmentId');
 
   @override
   Future<void> setCover(int taskId, int? attachmentId) async {

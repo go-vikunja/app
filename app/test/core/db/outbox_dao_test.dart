@@ -4,6 +4,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
+import 'package:vikunja_mobile/core/outbox/posted_at_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
@@ -219,6 +220,23 @@ void main() {
     test('an unknown task takes no change', () async {
       expect(await queue(99, done), isFalse);
       expect(await db.outboxDao.count(), 0);
+    });
+
+    test("a cover change shows at once in the task's stored details", () async {
+      await db.taskDetailsDao.storeDetails(
+        1,
+        const TaskDetails(
+          attachments: [TaskAttachment(id: 3, taskId: 1, name: 'a.png')],
+        ),
+        at: now,
+      );
+      final version = db.taskDetailsDao.detailsVersion(1);
+
+      await queue(1, const TaskChanges(coverImageAttachmentId: 3));
+
+      final stored = (await db.taskDetailsDao.storedDetails(1))!.value;
+      expect(stored.coverImageAttachmentId, 3);
+      expect(db.taskDetailsDao.detailsVersion(1), isNot(version));
     });
   });
 
@@ -1423,6 +1441,25 @@ void main() {
       await db.outboxDao.markFailed(op.id, const NotFound(code: 3001));
       expect(await db.outboxDao.count(), 0);
       expect(await db.tasksDao.findRow(id), isNull);
+    });
+
+    test("the time a create's request last left the device stays with its "
+        'payload through an uncertain mark, a given-up mark and Retry; the '
+        'last one counts', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markPosted(op.id, at: now);
+      await db.outboxDao.markUncertain(op.id, sentAt: now);
+      await db.outboxDao.markPosted(op.id, at: later);
+
+      await db.outboxDao.markGivenUp(op.id, const ServerFailure(502));
+      await db.outboxDao.retry(op.id);
+
+      final retried = await createOp(id);
+      expect(retried.state, OutboxState.pending.name);
+      expect(postedAtOf(retried.payload), later);
+      expect(retried.sentAt, now);
+      expect(decodeNewTask(retried.payload), draft);
     });
 
     test(

@@ -23,6 +23,43 @@ void main() {
     }
   });
 
+  test('a cover the task no longer has leaves the change, and nothing else '
+      'does', () {
+    final changes = TaskChanges(
+      title: 'Ship',
+      description: '<p>a</p>',
+      descriptionBase: '',
+      done: true,
+      dueDate: DateChange.set(DateTime.utc(2026, 11, 24)),
+      labels: const IdSetChange(added: {1}),
+      relations: RelationChange(
+        added: {const TaskRelationRef(TaskRelationKind.related, 9)},
+      ),
+      kanban: const {3: BucketPlacement(bucketId: 4, position: 1)},
+      positions: const {5: 2.5},
+      coverImageAttachmentId: 7,
+      doneBase: const DoneBase(),
+    );
+
+    expect(
+      withoutCover(changes),
+      TaskChanges(
+        title: 'Ship',
+        description: '<p>a</p>',
+        descriptionBase: '',
+        done: true,
+        dueDate: DateChange.set(DateTime.utc(2026, 11, 24)),
+        labels: const IdSetChange(added: {1}),
+        relations: RelationChange(
+          added: {const TaskRelationRef(TaskRelationKind.related, 9)},
+        ),
+        kanban: const {3: BucketPlacement(bucketId: 4, position: 1)},
+        positions: const {5: 2.5},
+        doneBase: const DoneBase(),
+      ),
+    );
+  });
+
   group('dates set here are in whole seconds, as the server keeps them', () {
     final fine = DateTime.utc(2026, 11, 23, 14, 23, 45, 678, 912);
     final whole = DateTime.utc(2026, 11, 23, 14, 23, 45);

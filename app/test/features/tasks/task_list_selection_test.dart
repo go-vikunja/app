@@ -122,6 +122,12 @@ void main() {
 
   DateChange dueChange(DateTime local) => DateChange.set(local.toUtc());
 
+  /// As a sync run does with a task deleted on the web.
+  void removeTask(int id) => data.tasks.all = [
+    for (final task in data.tasks.all)
+      if (task.id != id) task,
+  ];
+
   group('swipes', () {
     testWidgets('toward the end marks the task done, with Undo', (
       tester,
@@ -529,10 +535,26 @@ void main() {
 
       expect(data.tasks.writes, ['delete 3', 'delete 5']);
       expect(find.text(en.tasksMovedToTrash(2)), findsOneWidget);
+      expect(data.tasks.heldForUndo, [
+        {3, 5},
+      ]);
+      final heldAtRestore = <int, Set<int>>{};
+      data.tasks.beforeRestore = (id) async {
+        heldAtRestore[id] = {
+          for (final held in data.tasks.heldForUndo) ...held,
+        };
+      };
       await tester.tap(find.text(en.undo));
       await tester.pumpAndSettle();
       expect(data.tasks.writes.skip(2), ['restore 3', 'restore 5']);
       expect(find.text(en.tasksRestored(2)), findsOneWidget);
+      // Each from before the first restore, so a slow one before it cannot
+      // let the last one's files go.
+      expect(heldAtRestore, {
+        3: {3, 5},
+        5: {3, 5},
+      });
+      expect(data.tasks.heldForUndo, isEmpty);
     });
 
     testWidgets('Delete of a task created on this device: Undo takes it '
@@ -651,6 +673,60 @@ void main() {
       await tester.pumpAndSettle();
       expect(data.tasks.writes.skip(2), ['undoDone 3']);
       expect(data.tasks.find(3)!.done, isFalse);
+    });
+
+    testWidgets('Due date counts only the tasks this device still has: one a '
+        'sync removed while the sheet was open is neither counted nor '
+        'undone', (tester) async {
+      await pumpOverview(tester);
+      await select(tester, ['Call mum', 'Write report']);
+
+      await act(tester, en.taskDetailDueDate);
+      removeTask(5);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.shortcutTomorrow));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.tasksDueDateChanged(1)), findsOneWidget);
+      expect(find.text(en.tasksDueDateChanged(2)), findsNothing);
+      expect(find.byType(TaskSelectionActionBar), findsNothing);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(data.tasks.updates.skip(2).map((update) => update.$1), [3]);
+    });
+
+    testWidgets('Done counts only the tasks still here when each is written; '
+        'Undo takes back only those', (tester) async {
+      data.tasks.beforeWrite = () async {
+        if (data.tasks.writes.length == 1) removeTask(5);
+      };
+      await pumpOverview(tester);
+      await select(tester, ['Call mum', 'Write report']);
+
+      await act(tester, en.selectionMarkDone);
+
+      expect(find.text(en.tasksMarkedDone(1)), findsOneWidget);
+      expect(find.text(en.tasksMarkedDone(2)), findsNothing);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes.skip(2), ['undoDone 3']);
+    });
+
+    testWidgets('Move that this device could store for none of the tasks '
+        'shows no confirmation and keeps selecting', (tester) async {
+      await pumpOverview(tester);
+      await select(tester, ['Write report']);
+
+      await act(tester, en.selectionMove);
+      removeTask(5);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Home').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.tasksMovedTo(1, 'Home')), findsNothing);
+      expect(find.text(en.undo), findsNothing);
+      expect(find.byType(TaskSelectionActionBar), findsOneWidget);
+      expect(find.text(en.selectionCount(0)), findsOneWidget);
     });
 
     testWidgets('a delete this device stores only partly keeps saying so: '

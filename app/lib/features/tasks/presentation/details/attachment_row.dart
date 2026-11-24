@@ -24,10 +24,10 @@ enum AttachmentAction { open, share, save, makeCover, removeCover, delete }
 /// an icon of its kind, the name, the size and whether it is the cover. A
 /// tap runs [onOpen] and the menu offers [actions], each told where the
 /// row is on screen (an iPad anchors the share sheet there); [offline]
-/// shows those that change the server disabled, saying why. While
-/// [busyStatus] says what runs (a download, a delete, a cover change) the
-/// row shows it in place of the size and takes no taps; [onCancel], when
-/// given, stops it.
+/// shows Delete disabled, saying why, while the cover is queued and works
+/// offline. While [busyStatus] says what runs (a download, a delete, a
+/// cover change) the row shows it in place of the size and takes no taps;
+/// [onCancel], when given, stops it.
 class AttachmentRow extends StatelessWidget {
   const new({
     required this.attachment,
@@ -41,11 +41,7 @@ class AttachmentRow extends StatelessWidget {
     super.key,
   });
 
-  static const Set<AttachmentAction> _serverWrites = {
-    AttachmentAction.makeCover,
-    AttachmentAction.removeCover,
-    AttachmentAction.delete,
-  };
+  static const Set<AttachmentAction> _onlineOnly = {AttachmentAction.delete};
 
   final TaskAttachment attachment;
   final bool isCover;
@@ -92,7 +88,7 @@ class AttachmentRow extends StatelessWidget {
             onSelected: (action) => onAction(action, _originOf(context)),
             itemBuilder: (context) => [
               for (final action in actions)
-                if (offline && _serverWrites.contains(action))
+                if (offline && _onlineOnly.contains(action))
                   PopupMenuItem(
                     value: action,
                     enabled: false,

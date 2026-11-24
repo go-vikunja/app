@@ -38,9 +38,9 @@ enum _Busy { downloading, deleting, saving }
 /// the server listed in [details], each with its menu. With [writable] and
 /// a server that takes attachments, files, photos and camera shots can be
 /// added through the card's last row, alone while there is none, and
-/// attachments deleted or made the cover, which [offline] shows disabled;
-/// opening, sharing and saving work for everyone. Nothing shows while
-/// there is nothing to list or add.
+/// attachments made the cover, offline too, or deleted, which [offline]
+/// shows disabled; opening, sharing and saving work for everyone. Nothing
+/// shows while there is nothing to list or add.
 class TaskAttachmentsSection extends ConsumerStatefulWidget {
   const new({
     required this.task,
@@ -293,18 +293,23 @@ class _TaskAttachmentsSectionState
     );
     if (!confirmed || !mounted) return;
     await _change(attachment, _Busy.deleting, () async {
-      await _attachments!.delete(
-        widget.task.id,
-        attachment.id,
-        isCover: isCover,
-      );
+      // Read once: it follows the active account, and a read after an await
+      // could send the delete to another account's server.
+      final attachments = _attachments!;
+      if (isCover) {
+        // A step of its own: a delete that fails after it must still show
+        // the cover gone, as the server will have it.
+        await attachments.setCover(widget.task.id, null);
+        widget.controller.setCover(0);
+      }
+      await attachments.delete(widget.task.id, attachment.id);
       widget.controller.removeAttachment(attachment.id);
       _message((l10n) => l10n.attachmentDeleted);
     });
   }
 
-  /// Online, like the board's columns: applied here once the server has
-  /// it, then the details are read again.
+  /// A cover change is applied here once it is queued, a delete once the
+  /// server has it; then the details are read again.
   Future<void> _change(
     TaskAttachment attachment,
     _Busy busy,

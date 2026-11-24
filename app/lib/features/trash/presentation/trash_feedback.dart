@@ -11,22 +11,29 @@ import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.da
 final _log = Logger('TrashFeedback');
 
 /// As long as the web offers its Undo of a delete.
-const deletedSnackBarDuration = Duration(seconds: 10);
+const Duration deletedSnackBarDuration = deleteUndoWindow;
+
+/// Keeps what an Undo restores while the Undo is offered: called as it is
+/// offered, it returns the function that lets go once it is closed.
+typedef UndoHold = void Function() Function();
 
 /// [text] about a delete, replacing a snackbar still up, with an Undo
 /// labelled [undoLabel] when [onUndo] is given. With an Undo, [persist]
 /// keeps it until it is closed; the caller reads it (whether a screen
 /// reader is on) before its page or sheet closes. Without one it goes
 /// after [deletedSnackBarDuration] anyway, as nothing else would close it.
+/// With an Undo, [hold] is held until the snackbar is closed, however
+/// long that is.
 ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showDeletedSnackBar(
   ScaffoldMessengerState messenger, {
   required String text,
   required String undoLabel,
   required bool persist,
   VoidCallback? onUndo,
+  UndoHold? hold,
 }) {
   messenger.hideCurrentSnackBar();
-  return messenger.showSnackBar(
+  final shown = messenger.showSnackBar(
     SnackBar(
       content: Text(text),
       duration: deletedSnackBarDuration,
@@ -36,6 +43,8 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showDeletedSnackBar(
           : SnackBarAction(label: undoLabel, onPressed: onUndo),
     ),
   );
+  if (onUndo != null && hold != null) _releaseOnClose(shown, hold());
+  return shown;
 }
 
 /// The Undo of a delete: runs [restore], then says [restored] in a
@@ -43,16 +52,19 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showDeletedSnackBar(
 /// queues behind one still up, which keeps its own action. A restore that
 /// may work a little later (the delete is still on its way, or the server
 /// is out of reach) offers Undo again, which persists under a screen
-/// reader like the delete's. Never throws, and does nothing once
-/// [messenger] is gone.
+/// reader like the delete's. [hold] is held from before [restore] until
+/// the restore is over, or until the Undo offered again is closed. Never
+/// throws, and does nothing once [messenger] is gone.
 Future<void> runUndo(
   ScaffoldMessengerState messenger,
   AppLocalizations l10n, {
   required Future<Object?> Function() restore,
   required String restored,
   required TrashAction action,
+  UndoHold? hold,
 }) async {
   if (!messenger.mounted) return;
+  final release = hold?.call();
   unawaited(HapticFeedback.selectionClick());
   String text;
   var again = false;
@@ -65,12 +77,13 @@ Future<void> runUndo(
     text = trashFailureText(l10n, error, action);
     again = error is TaskDeleteInFlight || error is NetworkFailure;
   }
+  if (!messenger.mounted || !again) release?.call();
   if (!messenger.mounted) return;
   if (!again) {
     messenger.showSnackBar(SnackBar(content: Text(text)));
     return;
   }
-  messenger.showSnackBar(
+  final offered = messenger.showSnackBar(
     SnackBar(
       content: Text(text),
       duration: deletedSnackBarDuration,
@@ -84,9 +97,16 @@ Future<void> runUndo(
             restore: restore,
             restored: restored,
             action: action,
+            hold: hold,
           ),
         ),
       ),
     ),
   );
+  if (release != null) _releaseOnClose(offered, release);
 }
+
+void _releaseOnClose(
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason> shown,
+  void Function() release,
+) => unawaited(shown.closed.then((_) => release()));

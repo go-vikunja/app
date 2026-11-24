@@ -44,7 +44,14 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     final id = await serverTaskId(_db.tasksDao, taskId);
     final version = _db.taskDetailsDao.detailsVersion(id);
     final commentsVersion = _db.taskDetailsDao.commentsVersion(id);
-    final details = await _read.tasks.readDetails(id);
+    final queuedBefore = await _queuedCover(id);
+    final read = await _read.tasks.readDetails(id);
+    // A cover queued here, or sent while the read was under way, stands
+    // over what the server answered.
+    final queued = await _queuedCover(id) ?? queuedBefore;
+    final details = queued == null
+        ? read
+        : read.copyWith(coverImageAttachmentId: queued);
     // The sync cannot see a task read elsewhere: mark-read bumps nothing.
     // A comment written since the read started already moved the count.
     if (_db.taskDetailsDao.commentsVersion(id) == commentsVersion) {
@@ -78,6 +85,9 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     final id = await _db.tasksDao.resolveId(taskId);
     return id < 0 ? null : await _db.taskDetailsDao.storedComments(id);
   }
+
+  Future<int?> _queuedCover(int id) async =>
+      (await _db.outboxDao.pendingChangesFor(id))?.coverImageAttachmentId;
 
   /// A failure only leaves the stored state as it was; the read stands.
   Future<void> _recordSubscription(int id, Subscription? read) async {

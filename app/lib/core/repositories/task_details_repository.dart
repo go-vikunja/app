@@ -18,7 +18,8 @@ typedef StoredRead<T> = ({T value, DateTime readAt});
 abstract interface class TaskDetailsRepository {
   /// Attachments, reactions, comment count, unread flag, subscription and
   /// permission of the task, from one read; the row takes the count and
-  /// the flag.
+  /// the flag. A cover change still queued here shows over the server's
+  /// until it is sent.
   Future<TaskDetails> details(int taskId);
 
   /// The attachments, cover and reactions of the last [details] stored

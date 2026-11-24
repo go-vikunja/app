@@ -54,7 +54,8 @@ final _log = Logger('AccountData');
 /// picker's copy going; without `uploads` nothing can be queued.
 ///
 /// A delete the server has made is taken back through `trash`; without it
-/// that is refused as on a server without the trash.
+/// that is refused as on a server without the trash. Files set aside when
+/// the server made the delete upload once the task is restored.
 final class LocalTaskRepository
     implements TaskRepository, PendingTaskIdsSource {
   new(
@@ -477,8 +478,8 @@ final class LocalTaskRepository
   }
 
   @override
-  Future<void> updateTask(int taskId, TaskChanges changes) =>
-      changes.isEmpty ? Future.value() : _queue(taskId, changes);
+  Future<bool> updateTask(int taskId, TaskChanges changes) =>
+      changes.isEmpty ? Future.value(true) : _queue(taskId, changes);
 
   @override
   Future<bool> updateDescription(
@@ -540,7 +541,7 @@ final class LocalTaskRepository
   static final Uri _anyApiRoot = Uri.parse('https://task-items.invalid');
 
   @override
-  Future<void> setDone(int taskId, {required bool done}) =>
+  Future<bool> setDone(int taskId, {required bool done}) =>
       _queue(taskId, TaskChanges(done: done));
 
   /// Only the dates the task had are restored; the server never shifts an
@@ -616,6 +617,10 @@ final class LocalTaskRepository
     }
   }
 
+  @override
+  void Function() holdForUndo(Iterable<int> taskIds) =>
+      _outbox.holdSetAside(taskIds);
+
   Future<void> _awaitDeleteOnItsWay(int taskId) async {
     for (
       var waited = Duration.zero;
@@ -632,6 +637,12 @@ final class LocalTaskRepository
     final id = await _db.tasksDao.resolveId(taskId);
     if (id < 0) throw const NotFound(code: _taskGone);
     final trash = _trash ?? (throw const NotFound());
+    // Held over a restore on its way and over the Undo offered again after
+    // it failed.
+    await _db.outboxDao.holdSetAsideUploads(
+      id,
+      until: _now().add(OutboxSender.staleSendingAfter),
+    );
     final task = await trash.restoreTask(id);
     await _storeRestored(task);
     return await _db.tasksDao.find(id) ?? task;
@@ -662,11 +673,17 @@ final class LocalTaskRepository
 
   /// The server's answer is stored at once, keeping the queued changes;
   /// the task's ops it refused while the task was gone go back to the
-  /// queue, and a quiet run brings what else the restore changed.
+  /// queue, and a quiet run brings what else the restore changed. The
+  /// task's files set aside when its delete was made go back to the queue
+  /// too.
   Future<void> _storeRestored(Task task) async {
-    await _db.tasksDao.upsertAll([task]);
+    final requeued = await _db.transaction(() async {
+      await _db.tasksDao.upsertAll([task]);
+      return await _db.outboxDao.requeueSetAsideUploads(task.id);
+    });
     _log.fine('Restored task ${task.id} from the trash');
-    if (await _db.outboxDao.retryRefusedAsGone(task.id) > 0) _drainQuietly();
+    final retried = await _db.outboxDao.retryRefusedAsGone(task.id);
+    if (requeued + retried > 0) _drainQuietly();
     unawaited(
       refreshQuietly(
         _sync.refreshAfterWrite,
@@ -818,14 +835,15 @@ final class LocalTaskRepository
   @override
   void dispose() {}
 
-  /// A task unknown here, or queued for deletion, takes no change.
-  Future<void> _queue(int taskId, TaskChanges changes) async {
+  /// A task unknown here, or queued for deletion, takes no change: false.
+  Future<bool> _queue(int taskId, TaskChanges changes) async {
     final queued = await _db.outboxDao.queueUpdate(
       taskId,
       changes,
       now: _now(),
     );
     if (queued) _drainQuietly();
+    return queued;
   }
 
   VikunjaReadClient _readClient(String purpose) =>

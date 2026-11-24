@@ -16,8 +16,9 @@ import 'helpers.dart';
 
 // Per API version, uploads through the port and reads them back, downloads
 // to disk (whole and resumed with a range), deletes, sets and clears the
-// cover and runs into the cover a delete leaves behind, and writes into an
-// archived project. One user for the whole file.
+// cover and runs into the cover a delete leaves behind or a cover naming a
+// deleted attachment, and writes into an archived project. One user for the
+// whole file.
 const _pace = Duration(milliseconds: 500);
 const int _mebibyte = 1024 * 1024;
 
@@ -344,6 +345,41 @@ void main() {
 
               expect(edited.title, 'Edited after the delete');
               expect((await details(taskId)).coverImageAttachmentId, 0);
+            });
+
+            test('a cover naming an attachment deleted meanwhile is refused '
+                'with 4020', () async {
+              final taskId = await newTask('Cover deleted meanwhile');
+              final gone = await upload(
+                attachments,
+                taskId,
+                'pixel.png',
+                _pixel,
+              );
+              await paced(() => attachments.delete(taskId, gone.id));
+
+              await expectLater(
+                paced(
+                  () => tasks.update(
+                    taskId,
+                    TaskChanges(
+                      title: 'Not renamed',
+                      coverImageAttachmentId: gone.id,
+                    ),
+                  ),
+                ),
+                throwsA(
+                  isA<DomainError>()
+                      .having((f) => f.statusCode, 'status', 400)
+                      .having((f) => f.code, 'code', 4020),
+                ),
+              );
+
+              expect((await details(taskId)).coverImageAttachmentId, 0);
+              expect(
+                (await patiently(() => reads.tasks.read(taskId))).title,
+                'Cover deleted meanwhile',
+              );
             });
 
             test('an archived project refuses upload and delete with 3008 '

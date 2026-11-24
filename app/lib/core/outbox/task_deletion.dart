@@ -1,3 +1,6 @@
+/// How long a delete's Undo is offered, as on the web.
+const deleteUndoWindow = Duration(seconds: 10);
+
 /// What a task delete did here.
 enum TaskDeletion {
   /// The task is not here, or its delete is queued already: nothing

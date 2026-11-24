@@ -57,12 +57,13 @@ Future<bool> markTasksDone(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final (:written, :failed) = await _writeEach(messenger, l10n, changed, (
-    task,
-  ) async {
-    await repository.setDone(task.id, done: done);
-    return true;
-  }, action: 'Marking tasks done');
+  final (:written, :failed) = await _writeEach(
+    messenger,
+    l10n,
+    changed,
+    (task) => repository.setDone(task.id, done: done),
+    action: 'Marking tasks done',
+  );
   if (written.isEmpty) return false;
   _showUndo(
     messenger,
@@ -184,15 +185,16 @@ Future<bool> rescheduleTasks(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final (:written, :failed) = await _writeEach(messenger, l10n, changes, (
-    change,
-  ) async {
-    await repository.updateTask(
+  final (:written, :failed) = await _writeEach(
+    messenger,
+    l10n,
+    changes,
+    (change) => repository.updateTask(
       change.task.id,
       TaskChanges(dueDate: dateChange(change.due)),
-    );
-    return true;
-  }, action: 'Changing the due date of several tasks');
+    ),
+    action: 'Changing the due date of several tasks',
+  );
   if (written.isEmpty) return false;
   _showUndo(
     messenger,
@@ -250,12 +252,14 @@ Future<bool> setTasksPriority(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final (:written, :failed) = await _writeEach(messenger, l10n, changed, (
-    task,
-  ) async {
-    await repository.updateTask(task.id, TaskChanges(priority: picked.value));
-    return true;
-  }, action: 'Changing the priority of several tasks');
+  final (:written, :failed) = await _writeEach(
+    messenger,
+    l10n,
+    changed,
+    (task) =>
+        repository.updateTask(task.id, TaskChanges(priority: picked.value)),
+    action: 'Changing the priority of several tasks',
+  );
   if (written.isEmpty) return false;
   _showUndo(
     messenger,
@@ -303,12 +307,13 @@ Future<bool> moveTasks(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final (:written, :failed) = await _writeEach(messenger, l10n, changed, (
-    task,
-  ) async {
-    await repository.updateTask(task.id, TaskChanges(projectId: picked.id));
-    return true;
-  }, action: 'Moving several tasks');
+  final (:written, :failed) = await _writeEach(
+    messenger,
+    l10n,
+    changed,
+    (task) => repository.updateTask(task.id, TaskChanges(projectId: picked.id)),
+    action: 'Moving several tasks',
+  );
   if (written.isEmpty) return false;
   _showUndo(
     messenger,
@@ -409,6 +414,9 @@ Future<bool> deleteTasks(
       );
     return true;
   }
+  // Over every task from before the first restore: they go one after
+  // another, and the last one's files would be dropped before its turn.
+  void Function() hold() => repository.holdForUndo(restorable);
   showDeletedSnackBar(
     messenger,
     text: failed
@@ -419,6 +427,7 @@ Future<bool> deleteTasks(
         : l10n.tasksDeleted(deleted.length),
     undoLabel: l10n.undo,
     persist: persist,
+    hold: hold,
     onUndo: undo
         ? () => unawaited(
             runUndo(
@@ -427,6 +436,7 @@ Future<bool> deleteTasks(
               restore: () => _restoreAll(repository, restorable),
               restored: l10n.tasksRestored(restorable.length),
               action: TrashAction.restoreTask,
+              hold: hold,
             ),
           )
         : null,
@@ -447,9 +457,12 @@ Future<TaskOnServer> _onServer(TaskRepository repository, int taskId) async {
 
 /// Writes [items] one by one, each a local change of its own, and stops at
 /// the first one this device cannot store. [write] says whether it changed
-/// something; the record's `written` holds those that did, which stay
-/// changed. Only when none did does it say that the change failed: else the
-/// caller says which part was changed, with Undo for that part.
+/// something: false for a task this device no longer holds, such as one a
+/// sync removed while a sheet was open, which is then neither counted nor
+/// undone (decision log: Outbox). The record's `written` holds those that
+/// did, which stay changed. Only when none did does it say that the change
+/// failed: else the caller says which part was changed, with Undo for that
+/// part.
 Future<({List<T> written, bool failed})> _writeEach<T>(
   ScaffoldMessengerState? messenger,
   AppLocalizations l10n,

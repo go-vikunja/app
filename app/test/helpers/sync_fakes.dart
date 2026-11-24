@@ -1436,9 +1436,11 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// Relations apply to both tasks when the other one is in [all], as the
   /// server keeps the inverse edge; a temporary id that was remapped is
   /// followed; kanban placements and list positions are queued like
-  /// [placeTask]'s and [positionTask]'s.
+  /// [placeTask]'s and [positionTask]'s. False, like the real repository,
+  /// when the task is not in [all] once written ([beforeWrite] has run);
+  /// [writes] and [updates] record the call all the same.
   @override
-  Future<void> updateTask(int taskId, TaskChanges changes) async {
+  Future<bool> updateTask(int taskId, TaskChanges changes) async {
     updates.add((taskId, changes));
     final labels = {
       for (final task in _all)
@@ -1478,6 +1480,7 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
         relations.mapTaskIds((other) => remaps[other] ?? other),
       );
     }
+    return find(taskId) != null;
   }
 
   /// What `updateDescription` was given, in order, as `(taskId, html,
@@ -1533,14 +1536,19 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   }
 
   /// A temporary id that was remapped meanwhile is followed, also one
-  /// remapped by [beforeWrite].
+  /// remapped by [beforeWrite]. False, like the real repository, when the
+  /// task is not in [all] once written ([beforeWrite] has run); [writes]
+  /// records the call all the same.
   @override
-  Future<void> setDone(int taskId, {required bool done}) => _write(
-    'setDone $taskId $done',
-    (task) => task.id == (remaps[taskId] ?? taskId)
-        ? copyTask(task, done: done, doneAt: done ? _doneAt : null)
-        : task,
-  );
+  Future<bool> setDone(int taskId, {required bool done}) async {
+    await _write(
+      'setDone $taskId $done',
+      (task) => task.id == (remaps[taskId] ?? taskId)
+          ? copyTask(task, done: done, doneAt: done ? _doneAt : null)
+          : task,
+    );
+    return find(taskId) != null;
+  }
 
   /// The previous dates come back, like the real repository restores them,
   /// and a repeating task's reminders with them; a remapped temporary id
@@ -1632,6 +1640,16 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
       task,
     ];
     return task;
+  }
+
+  /// The ids of each [holdForUndo] not let go yet, oldest first.
+  final List<Set<int>> heldForUndo = [];
+
+  @override
+  void Function() holdForUndo(Iterable<int> taskIds) {
+    final held = taskIds.toSet();
+    heldForUndo.add(held);
+    return () => heldForUndo.removeWhere((other) => identical(other, held));
   }
 
   /// Ids the next duplicates get; a failure set here is thrown instead

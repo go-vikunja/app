@@ -26,8 +26,9 @@ import 'helpers.dart';
 // Per API version, attachments through the repository and the outbox
 // against the real server: files queued offline (for a synced task and for
 // one created offline) arrive once the connection is back and equal the
-// server's attachments byte for byte; a cover deleted on the server no
-// longer blocks an edit made in the app. One user for the whole file.
+// server's attachments byte for byte; the cover goes through the queue; a
+// cover deleted on the server no longer blocks an edit made in the app. One
+// user for the whole file.
 const _pace = Duration(milliseconds: 500);
 
 /// The real write client behind a connection that is down while [offline]
@@ -278,6 +279,7 @@ void main() {
               AttachmentDownloads(
                 () async => Directory(p.join(files.path, apiVersion.name)),
               ),
+              outbox: sender,
               accountId: 'contract',
               images: AttachmentImageCache(
                 (taskId, attachmentId, preview) => reads.attachments.fetch(
@@ -349,6 +351,59 @@ void main() {
               final downloaded = await attachments.download(taskId, onServer);
               expect(downloaded.readAsBytesSync(), bytes);
             }
+          });
+
+          test('a cover set and cleared through the queue reaches the server; '
+              'one whose attachment the server deleted meanwhile is left out '
+              'and the rest of the change goes', () async {
+            final taskId = await seedTask('Cover through the queue');
+            final first = await attachments.uploadNow(
+              taskId,
+              picked('first', const [1, 2]),
+              fileName: 'first.txt',
+            );
+            await Future<void>.delayed(_pace);
+            final second = await attachments.uploadNow(
+              taskId,
+              picked('second', const [3, 4]),
+              fileName: 'second.txt',
+            );
+            await Future<void>.delayed(_pace);
+            await syncIn(taskId);
+
+            Future<void> send() async {
+              await sender.sendNow();
+              await _until(() async => await db.outboxDao.count() == 0);
+              await Future<void>.delayed(_pace);
+            }
+
+            Future<int> coverOnServer() async =>
+                (await patiently(() => reads.tasks.readDetails(taskId)))
+                    .coverImageAttachmentId;
+
+            await attachments.setCover(taskId, first.id);
+            await send();
+            expect(await coverOnServer(), first.id);
+
+            await attachments.setCover(taskId, null);
+            await send();
+            expect(await coverOnServer(), 0);
+
+            writes.offline = true;
+            await attachments.setCover(taskId, second.id);
+            await tasks.updateTask(
+              taskId,
+              const TaskChanges(title: 'Renamed, its cover gone'),
+            );
+            await seeder.delete('/tasks/$taskId/attachments/${second.id}');
+            await Future<void>.delayed(_pace);
+            writes.offline = false;
+            await send();
+
+            expect(await db.outboxDao.loadProblems(), isEmpty);
+            final onServer = await patiently(() => reads.tasks.read(taskId));
+            expect(onServer.title, 'Renamed, its cover gone');
+            expect(await coverOnServer(), 0);
           });
 
           test('a cover deleted on the server does not block an edit from '

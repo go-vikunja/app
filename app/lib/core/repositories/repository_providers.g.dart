@@ -1306,7 +1306,10 @@ final class SyncEngineFamily extends $Family
 /// One account's outbox sender; disposed with its database on sign-out.
 /// It drains when built (app start), when the app comes back to the front
 /// and after every local write; a session that needs a new sign-in pauses
-/// it, and the sign-in resumes it.
+/// it, and the sign-in resumes it. It is not rebuilt with the account's
+/// clients and sync engine, as for a changed server version, but takes the
+/// current ones for every request: one rebuilt with them would leave the
+/// answer to the change on its way unstored (decision log: Outbox).
 
 @ProviderFor(outboxSender)
 final outboxSenderProvider = OutboxSenderFamily._();
@@ -1314,7 +1317,10 @@ final outboxSenderProvider = OutboxSenderFamily._();
 /// One account's outbox sender; disposed with its database on sign-out.
 /// It drains when built (app start), when the app comes back to the front
 /// and after every local write; a session that needs a new sign-in pauses
-/// it, and the sign-in resumes it.
+/// it, and the sign-in resumes it. It is not rebuilt with the account's
+/// clients and sync engine, as for a changed server version, but takes the
+/// current ones for every request: one rebuilt with them would leave the
+/// answer to the change on its way unstored (decision log: Outbox).
 
 final class OutboxSenderProvider
     extends $FunctionalProvider<OutboxSender, OutboxSender, OutboxSender>
@@ -1322,7 +1328,10 @@ final class OutboxSenderProvider
   /// One account's outbox sender; disposed with its database on sign-out.
   /// It drains when built (app start), when the app comes back to the front
   /// and after every local write; a session that needs a new sign-in pauses
-  /// it, and the sign-in resumes it.
+  /// it, and the sign-in resumes it. It is not rebuilt with the account's
+  /// clients and sync engine, as for a changed server version, but takes the
+  /// current ones for every request: one rebuilt with them would leave the
+  /// answer to the change on its way unstored (decision log: Outbox).
   OutboxSenderProvider._({
     required OutboxSenderFamily super.from,
     required String super.argument,
@@ -1374,12 +1383,15 @@ final class OutboxSenderProvider
   }
 }
 
-String _$outboxSenderHash() => r'85f8cc2535a9cfb5683d1baef9d07ec096f1236a';
+String _$outboxSenderHash() => r'146079f6c2441c30c8ed01c57f4fc30fdff0e85d';
 
 /// One account's outbox sender; disposed with its database on sign-out.
 /// It drains when built (app start), when the app comes back to the front
 /// and after every local write; a session that needs a new sign-in pauses
-/// it, and the sign-in resumes it.
+/// it, and the sign-in resumes it. It is not rebuilt with the account's
+/// clients and sync engine, as for a changed server version, but takes the
+/// current ones for every request: one rebuilt with them would leave the
+/// answer to the change on its way unstored (decision log: Outbox).
 
 final class OutboxSenderFamily extends $Family
     with $FunctionalFamilyOverride<OutboxSender, String> {
@@ -1395,7 +1407,10 @@ final class OutboxSenderFamily extends $Family
   /// One account's outbox sender; disposed with its database on sign-out.
   /// It drains when built (app start), when the app comes back to the front
   /// and after every local write; a session that needs a new sign-in pauses
-  /// it, and the sign-in resumes it.
+  /// it, and the sign-in resumes it. It is not rebuilt with the account's
+  /// clients and sync engine, as for a changed server version, but takes the
+  /// current ones for every request: one rebuilt with them would leave the
+  /// answer to the change on its way unstored (decision log: Outbox).
 
   OutboxSenderProvider call(String accountId) =>
       OutboxSenderProvider._(argument: accountId, from: this);

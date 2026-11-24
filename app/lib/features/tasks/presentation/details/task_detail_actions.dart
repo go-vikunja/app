@@ -259,11 +259,13 @@ final class TaskDetailActions extends ChangeNotifier {
       return;
     }
     final undoable = deletion == TaskDeletion.queued;
+    void Function() hold() => repository.holdForUndo([task.id]);
     showDeletedSnackBar(
       messenger,
       text: undoable && task.id > 0 ? l10n.taskMovedToTrash : l10n.taskDeleted,
       undoLabel: l10n.undo,
       persist: persist,
+      hold: hold,
       onUndo: undoable
           ? () => unawaited(
               runUndo(
@@ -272,6 +274,7 @@ final class TaskDetailActions extends ChangeNotifier {
                 restore: () => repository.restoreTask(task.id),
                 restored: l10n.taskRestored,
                 action: TrashAction.restoreTask,
+                hold: hold,
               ),
             )
           : null,
