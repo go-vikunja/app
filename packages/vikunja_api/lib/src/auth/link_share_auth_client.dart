@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:meta/meta.dart';
 import 'package:vikunja_api/src/auth/link_share_claims.dart';
+import 'package:vikunja_api/src/errors/error_body.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -71,7 +72,9 @@ final class LinkShareAuthClient {
   /// ignored. Throws a `DomainError` 412 code 13001 when the share needs a
   /// [password] and none was given, a `Forbidden` code 13002 for a wrong
   /// one, and [LinkShareGone] for an unknown or deleted share (404 code
-  /// 3006) or with link sharing turned off (404 without a code).
+  /// 3006) or with link sharing turned off (404 without a code), both as
+  /// Vikunja's JSON. Another 404, such as a proxy's page, stays a
+  /// `NotFound`.
   Future<LinkShareAuth> authenticate(String hash, {String? password}) async {
     final response = await _post(
       'shares/${Uri.encodeComponent(hash)}/auth',
@@ -104,7 +107,7 @@ final class LinkShareAuthClient {
   /// `POST /user/token` with [token]: a new token for the same share with a
   /// fresh lifetime; [token] stays valid until it expires. An expired
   /// [token] is a `TokenRejected`, a deleted share a [LinkShareGone] (v1
-  /// 404 code 3006, v2 401 without a code).
+  /// 404 code 3006, v2 401 without a code, both as Vikunja's JSON).
   Future<LinkShareToken> renew(String token) async {
     final response = await _post('user/token', bearer: token);
     return _tokenOf(response);
@@ -137,7 +140,7 @@ final class LinkShareAuthClient {
       );
     } on DioException catch (error) {
       if (error.type == DioExceptionType.cancel) rethrow;
-      throw _shareFailure(normalizeError(error));
+      throw _shareFailure(normalizeError(error), error.response?.data);
     }
   }
 
@@ -162,11 +165,15 @@ bool _isSuccess(int? status) => status != null && status >= 200 && status < 300;
 const _shareDoesNotExist = 3006;
 
 // Both endpoints are about one share, so a 404 is that share, and a 401
-// without a code is v2's answer to a token whose share is gone.
-VikunjaFailure _shareFailure(VikunjaFailure failure) => switch (failure) {
-  NotFound(code: null || _shareDoesNotExist) ||
-  UnexpectedResponse(
-    statusCode: 401,
-  ) => LinkShareGone(code: failure.code, message: failure.message),
-  _ => failure,
-};
+// without a code is v2's answer to a token whose share is gone. Only
+// Vikunja's own answer, always a JSON object, counts: a reverse proxy's page
+// while the server restarts or an access gate's 401 says nothing about the
+// share (decision log: Accounts and sign-in).
+VikunjaFailure _shareFailure(VikunjaFailure failure, Object? body) =>
+    switch (failure) {
+      NotFound(code: null || _shareDoesNotExist) ||
+      UnexpectedResponse(statusCode: 401)
+          when ErrorBody.tryParse(body) != null =>
+        LinkShareGone(code: failure.code, message: failure.message),
+      _ => failure,
+    };

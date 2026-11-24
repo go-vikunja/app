@@ -42,10 +42,16 @@ CertificateInfo tlsFixtureCertificate(String name) {
   );
 }
 
-SecurityContext serverContext(String certificate, String key) =>
-    SecurityContext()
-      ..useCertificateChainBytes(tlsFixture(certificate))
-      ..usePrivateKeyBytes(tlsFixture(key));
+/// [issuers] follow [certificate] as the server sends them, leaf first.
+SecurityContext serverContext(
+  String certificate,
+  String key, {
+  List<String> issuers = const [],
+}) => SecurityContext()
+  ..useCertificateChainBytes(
+    utf8.encode([certificate, ...issuers].map(tlsFixtureText).join('\n')),
+  )
+  ..usePrivateKeyBytes(tlsFixture(key));
 
 /// An HTTPS server on loopback that answers 200 with `ok` and records each
 /// request that got through the handshake.
@@ -55,12 +61,13 @@ final class RecordingTlsServer {
   static Future<RecordingTlsServer> start({
     String certificate = 'selfsigned.pem',
     String key = 'selfsigned.key',
+    List<String> issuers = const [],
     InternetAddress? address,
   }) async {
     final server = await HttpServer.bindSecure(
       address ?? InternetAddress.loopbackIPv4,
       0,
-      serverContext(certificate, key),
+      serverContext(certificate, key, issuers: issuers),
     );
     return RecordingTlsServer._(server).._listen();
   }

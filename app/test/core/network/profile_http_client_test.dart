@@ -158,6 +158,51 @@ void main() {
     });
   });
 
+  group('pin, the server sending its CA along', () {
+    late RecordingTlsServer server;
+
+    setUp(
+      () async => server = await RecordingTlsServer.start(
+        certificate: 'server.pem',
+        key: 'server.key',
+        issuers: ['ca.pem'],
+      ),
+    );
+    tearDown(() => server.close());
+
+    test('the pinned leaf is accepted', () async {
+      final origin = localhost(server.port);
+
+      final body = await get(
+        profileHttpClient(pinned(origin, tlsFixtureSha256('server.pem'))),
+        origin,
+      );
+
+      expect(body, 'ok');
+      expect(server.requests, hasLength(1));
+    });
+
+    test('a pin on the CA fails in the handshake: no request byte reaches the '
+        'server, and the mismatch hook sees the leaf', () async {
+      final origin = localhost(server.port);
+      final seen = <CertificateInfo>[];
+
+      await expectLater(
+        get(
+          profileHttpClient(
+            pinned(origin, tlsFixtureSha256('ca.pem')),
+            onPinMismatch: seen.add,
+          ),
+          origin,
+        ),
+        throwsA(isA<HandshakeException>()),
+      );
+
+      expect(server.requests, isEmpty);
+      expect(seen.single.sha256, tlsFixtureSha256('server.pem'));
+    });
+  });
+
   group('CA trust', () {
     test('a leaf from the trusted CA passes, without a callback', () async {
       final server = await RecordingTlsServer.start(

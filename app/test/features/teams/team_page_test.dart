@@ -629,6 +629,37 @@ void main() {
     expect(find.text('Design'), findsWidgets);
   });
 
+  testWidgets('a read again the connection settings stopped keeps the team '
+      'under its failure with the settings, and the changes stay on', (
+    tester,
+  ) async {
+    harness.teams.teams = [design()];
+    await openTeam(tester);
+    harness.teams.failures['read'] = const NetworkFailure(
+      NetworkProblem.clientCertificate,
+    );
+
+    await tester.tap(find.byTooltip(en.refresh).last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(find.text(en.connectionOpenSettings), findsOneWidget);
+    expect(find.text('Kim Lee'), findsOneWidget);
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, en.teamLeave),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester.widget<ListTile>(memberRow(en.teamAddMember)).enabled,
+      isTrue,
+    );
+  });
+
   testWidgets('a read that gets through after a failed sync is online: the '
       'changes and the people search are on', (tester) async {
     harness.teams.teams = [design()];

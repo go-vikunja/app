@@ -10,7 +10,6 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
-import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/trash_repository.dart';
 import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
@@ -20,12 +19,12 @@ import 'package:vikunja_mobile/features/common/presentation/data_failure_card.da
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/read_notice.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/page_reachability.dart';
-import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_rows.dart';
@@ -502,18 +501,14 @@ class _TrashTab extends StatelessWidget {
     final l10n = context.l10n;
     final items = listing.value;
     final failure = listing.failure;
-    final notice = switch (failure) {
-      NetworkFailure(problem: NetworkProblem(concernsConnectionSettings: false))
-          when !failedWithoutToken(failure) =>
-        const OfflineNotice(),
-      final failure? when items != null => _FailureCard(
-        error: failure,
-        stale: true,
-        onRetry: onRetry,
-      ),
-      null when offline => const OfflineNotice(),
-      _ => null,
-    };
+    final notice = readNotice(
+      failure,
+      hasData: items != null,
+      offline: offline,
+      onRetry: onRetry,
+      staleCard: (failure) =>
+          _FailureCard(error: failure, stale: true, onRetry: onRetry),
+    );
 
     return RefreshIndicator.adaptive(
       onRefresh: onRefresh,

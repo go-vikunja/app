@@ -9371,6 +9371,10 @@
   "@actionFailureRenewalDeferred": {
     "description": "Snackbar or inline error after an action, download or search failed because the app's renewal of the sign-in had to wait for another part of the app (a background sync) that was renewing it at the same time, so the request was never sent; this is not a missing connection and the server changed nothing. The app adds failureRenewalDeferredSuggestion after it. Like failureRenewalDeferredExplanation without the server name."
   },
+  "actionFailureConnectionSettings": "This server's connection settings stopped the request. Check them under Connection on the Account tab.",
+  "@actionFailureConnectionSettings": {
+    "description": "Snackbar or inline note after a change or a search failed because the server's stored connection settings stopped the request: a client certificate the server refused or that is missing, unencrypted connections not allowed, or settings not available yet, incomplete or unreadable. Not a missing connection; trying again at once does not help. Connection (connectionTitle) is the Account tab's entry to the settings."
+  },
   "attachmentFileMissing": "The file is missing from the server.",
   "@attachmentFileMissing": {
     "description": "Snackbar after an attachment action (mostly a download) failed: the server still lists the attachment, but its file is gone from the server's storage."

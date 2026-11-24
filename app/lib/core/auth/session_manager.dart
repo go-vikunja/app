@@ -86,8 +86,9 @@ Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 /// With `refreshes` false the manager never calls the server: it hands out
 /// the stored access token while it is valid and otherwise fails the
 /// request as a rejected token, so that a short-lived isolate (a
-/// notification action) leaves the rotation to the app; a token a
-/// sibling isolate stored meanwhile is still adopted.
+/// notification action or the widget worker) leaves the rotation to the app
+/// and its background runs; a token a sibling isolate stored meanwhile is
+/// still adopted.
 ///
 /// A closed `mayStartRefresh` gate fails a refresh before it is sent, as
 /// deferred ([RefreshDeferred.cutoff]): a background run closes it when too
@@ -354,13 +355,15 @@ final class SessionManager implements AccessTokenSource {
       _inFlight ??= _refreshExclusively(snapshot.refreshToken)
           .whenComplete(() => _inFlight = null);
 
-  // Background isolates of this process (sync, notification actions) refresh
-  // the same accounts. RandomAccessFile.lock cannot serialise them: POSIX
-  // record locks belong to the whole process, so a second isolate acquires a
-  // lock the first one still holds (verified on the macOS host VM by
-  // test/core/auth/file_lock_isolates_test.dart; Android and iOS use the same
-  // fcntl locks). Instead, storage is read again before every refresh and
-  // after a lost rotation race, and newer tokens found there are adopted.
+  // The app and its background runs refresh the same accounts from
+  // different isolates of this process; notification actions and the
+  // widget worker never refresh (decision log: Sessions).
+  // RandomAccessFile.lock cannot serialize those refreshes: POSIX record
+  // locks belong to the whole process, so a second isolate acquires a lock
+  // the first one still holds (verified on the macOS host VM by
+  // test/core/auth/file_lock_isolates_test.dart; Android and iOS use the
+  // same fcntl locks). Instead, storage is read again before every refresh
+  // and after a lost rotation race, and newer tokens found there are adopted.
   Future<_Session> _refreshExclusively(String snapshot) async {
     try {
       await _keptWrite;

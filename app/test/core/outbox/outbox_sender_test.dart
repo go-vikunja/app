@@ -878,6 +878,8 @@ void main() {
 
     for (final failure in <VikunjaFailure>[
       const UnexpectedResponse(302),
+      const UnexpectedResponse(401),
+      const UnexpectedResponse(407),
       const NotFound(),
     ]) {
       test('$failure is not a Vikunja answer: retried with backoff', () async {
@@ -900,48 +902,52 @@ void main() {
       await pumpEventQueue();
     }
 
-    test('an answer that keeps being a 5xx becomes a problem after the '
-        'limit, one to two hours on, and the queue goes on', () async {
-      write.beforeRequest = (request) => request == 'update 1'
-          ? fail(const ServerFailure(502))
-          : Future.value();
-      await queue(1, done);
-      await queue(2, favorite);
-      final start = now;
-      final outbox = sender();
-      await outbox.drain();
+    for (final (what, failure) in <(String, VikunjaFailure)>[
+      ('a 5xx', const ServerFailure(502)),
+      ("an access gate's 401", const UnexpectedResponse(401)),
+    ]) {
+      test('an answer that keeps being $what becomes a problem after the '
+          'limit, one to two hours on, and the queue goes on', () async {
+        write.beforeRequest = (request) =>
+            request == 'update 1' ? fail(failure) : Future.value();
+        await queue(1, done);
+        await queue(2, favorite);
+        final start = now;
+        final outbox = sender();
+        await outbox.drain();
 
-      for (
-        var failed = 1;
-        failed < OutboxSender.maxFailedAnswersInARow;
-        failed++
-      ) {
-        expect((await ops()).first.attempts, failed);
-        expect(outbox.state, OutboxSenderState.waiting);
-        await retryWhenDue();
-      }
+        for (
+          var failed = 1;
+          failed < OutboxSender.maxFailedAnswersInARow;
+          failed++
+        ) {
+          expect((await ops()).first.attempts, failed);
+          expect(outbox.state, OutboxSenderState.waiting);
+          await retryWhenDue();
+        }
 
-      expect(write.requests, [
-        ...List.filled(OutboxSender.maxFailedAnswersInARow, 'update 1'),
-        'update 2',
-      ]);
-      // The waits before the 16th attempt, none shortened (ZeroRandom).
-      expect(now.difference(start), const Duration(seconds: 6422));
-      final problem = (await db.outboxDao.loadProblems()).single;
-      expect(problem.taskId, 1);
-      expect(problem.failure, isA<ServerFailure>());
-      expect((await db.tasksDao.find(1))!.done, isTrue);
-      expect(write.serverTasks[2]!.isFavorite, isTrue);
-      expect(await db.outboxDao.count(), 1);
-      expect(outbox.state, OutboxSenderState.idle);
-      expect(timers.active, isEmpty);
+        expect(write.requests, [
+          ...List.filled(OutboxSender.maxFailedAnswersInARow, 'update 1'),
+          'update 2',
+        ]);
+        // The waits before the 16th attempt, none shortened (ZeroRandom).
+        expect(now.difference(start), const Duration(seconds: 6422));
+        final problem = (await db.outboxDao.loadProblems()).single;
+        expect(problem.taskId, 1);
+        expect('${problem.failure}', '$failure');
+        expect((await db.tasksDao.find(1))!.done, isTrue);
+        expect(write.serverTasks[2]!.isFavorite, isTrue);
+        expect(await db.outboxDao.count(), 1);
+        expect(outbox.state, OutboxSenderState.idle);
+        expect(timers.active, isEmpty);
 
-      write.beforeRequest = null;
-      await outbox.retry(problem.operationId);
+        write.beforeRequest = null;
+        await outbox.retry(problem.operationId);
 
-      expect(write.serverTasks[1]!.done, isTrue);
-      expect(await db.outboxDao.count(), 0);
-    });
+        expect(write.serverTasks[1]!.done, isTrue);
+        expect(await db.outboxDao.count(), 0);
+      });
+    }
 
     test('only answers in a row count: a day offline before a 5xx uses up '
         'none of them, and a 429 or a network failure never does', () async {
@@ -1561,6 +1567,7 @@ void main() {
           'title': ['empty'],
         },
       ),
+      const UnexpectedResponse(400),
       const UnexpectedResponse(500),
     ]) {
       test('$failure is final: a problem, and the queue moves on', () async {

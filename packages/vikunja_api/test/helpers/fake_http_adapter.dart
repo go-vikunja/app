@@ -85,6 +85,15 @@ FakeRoute html(String body, {int status = 200}) =>
       },
     );
 
+FakeRoute plainText(String body, {int status = 200}) =>
+    (_) => ResponseBody.fromString(
+      body,
+      status,
+      headers: {
+        Headers.contentTypeHeader: ['text/plain; charset=utf-8'],
+      },
+    );
+
 FakeRoute redirect(String location, {int status = 302}) =>
     (_) => ResponseBody.fromString(
       '',

@@ -9,11 +9,11 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// Turns the answers to a request made with a link share token whose share
 /// is gone into a [LinkShareGone]: v1 400 code 13003 and v2 401 without a
-/// code (a user token never gets the latter taken for it), and a 500 that
-/// [confirmGone] confirms. Requests with any other token are left alone,
-/// so it may sit in every account's client; pass it to
-/// `createAuthenticatedDio` as one of its `interceptors`. [onGone] runs
-/// once per such answer.
+/// code in Vikunja's JSON body (a user token never gets the latter taken for
+/// it), and a 500 that [confirmGone] confirms. Requests with any other token
+/// are left alone, so it may sit in every account's client; pass it to
+/// `createAuthenticatedDio` as one of its `interceptors`. [onGone] runs once
+/// per such answer.
 final class LinkShareGoneInterceptor extends Interceptor {
   new({this.onGone, this.confirmGone});
 
@@ -50,11 +50,12 @@ final class LinkShareGoneInterceptor extends Interceptor {
       response.data = await readErrorBody(body) ?? Uint8List(0);
     }
     final body = ErrorBody.tryParse(response.data);
-    final gone = switch ((status, body?.code)) {
-      (400, LinkShareCodes.tokenInvalid) || (401, null) => LinkShareGone(
-        code: body?.code,
-        message: body?.message ?? '',
-      ),
+    // A proxy's or access gate's own 401 page, or a body that broke off,
+    // says nothing about the share (decision log: Accounts and sign-in).
+    if (body == null) return handler.next(err);
+    final gone = switch ((status, body.code)) {
+      (400, LinkShareCodes.tokenInvalid) ||
+      (401, null) => LinkShareGone(code: body.code, message: body.message),
       _ => null,
     };
     _pass(err, handler, gone);

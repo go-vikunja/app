@@ -92,7 +92,12 @@ final class ApiAccountGateway implements AccountGateway {
         base: _base,
         connection: connection,
         tokens: tokens,
-        interceptors: [if (_logRequests) RequestLogInterceptor()],
+        // Only maps a guest's gone share: the session check ends the guest
+        // itself.
+        interceptors: [
+          LinkShareGoneInterceptor(),
+          if (_logRequests) RequestLogInterceptor(),
+        ],
       );
 
   AccountApi _api(ServerConnection connection, AccessTokenSource tokens) =>

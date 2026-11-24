@@ -8,6 +8,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
+import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
@@ -216,14 +217,18 @@ void main() {
     });
 
     test('a remembered password the server refuses is forgotten and the '
-        'session ends', () async {
+        'session ends, not as gone', () async {
       final guest = await seed(issuedAgo(const Duration(hours: 80)));
       await fakes.linkShareStore.writePassword(guest.id, 'old');
       gateway.serve(issueLinkShareToken(issuedAt: now), password: 'new');
 
       await expectLater(
         sessions().forAccount(guest.id).validAccessToken(),
-        throwsA(isA<SessionEnded>()),
+        throwsA(
+          isA<SessionEnded>()
+              .having((failure) => failure.code, 'code', 13002)
+              .having((f) => f, 'not gone', isNot(isA<LinkShareGone>())),
+        ),
       );
       expect((await fakes.linkShareStore.read(guest.id))?.password, isNull);
       expect(await needsReauth(guest.id), isTrue);
@@ -239,6 +244,27 @@ void main() {
         throwsA(isA<LinkShareGone>()),
       );
       expect(await needsReauth(guest.id), isTrue);
+    });
+
+    test('is authenticated again later when something in front of the server '
+        'answers instead, which fails the request as the server being '
+        'unavailable, not as a route it lacks', () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 80)));
+      gateway.onAuthenticate = (_, _) async => throw const NotFound();
+      final session = sessions().forAccount(guest.id);
+
+      await expectLater(
+        session.validAccessToken(),
+        throwsA(
+          isA<ServerFailure>().having((f) => f.statusCode, 'status', 503),
+        ),
+      );
+      expect(await needsReauth(guest.id), isFalse);
+
+      final fresh = issueLinkShareToken(issuedAt: now);
+      gateway.serve(fresh);
+
+      expect(await session.validAccessToken(), fresh.jwt);
     });
 
     test('waits out a 429 before authenticating again', () async {
@@ -387,6 +413,99 @@ void main() {
       expect(failure.reason, SessionEndReason.linkShareGone);
       expect(flaggedFirst, isTrue);
     });
+
+    test("is told by the account gateway from v2's JSON 401, never from a "
+        "proxy's 401 page", () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 1)));
+      Future<User> currentUserOver(_CountingAdapter adapter) =>
+          ApiAccountGateway(
+            Dio()..httpClientAdapter = adapter,
+            logRequests: false,
+          ).currentUser(fullServer270(), sessions().forAccount(guest.id));
+
+      await expectLater(
+        currentUserOver(
+          _CountingAdapter(
+            status: 401,
+            body: '{"title":"Unauthorized","status":401}',
+            contentType: 'application/problem+json',
+          ),
+        ),
+        throwsA(isA<LinkShareGone>()),
+      );
+      expect(await needsReauth(guest.id), isFalse);
+
+      await expectLater(
+        currentUserOver(
+          _CountingAdapter(
+            status: 401,
+            body: '<html><title>Sign in</title></html>',
+            contentType: 'text/html',
+          ),
+        ),
+        throwsA(
+          isA<UnexpectedResponse>().having((f) => f.statusCode, 'status', 401),
+        ),
+      );
+      expect(await needsReauth(guest.id), isFalse);
+    });
+  });
+
+  group("a proxy's own page instead of the server", () {
+    for (final (what, status, body, contentType) in [
+      ('404 page', 404, '404 page not found\n', 'text/plain; charset=utf-8'),
+      ('401 page', 401, '<html><title>Sign in</title></html>', 'text/html'),
+    ]) {
+      late _CountingAdapter proxy;
+
+      LinkShareSessions behindProxy() {
+        proxy = _CountingAdapter(
+          status: status,
+          body: body,
+          contentType: contentType,
+        );
+        return LinkShareSessions(
+          store: fakes.linkShareStore,
+          gateway: ApiLinkShareGateway(Dio()..httpClientAdapter = proxy),
+          connectionFor: (id) async =>
+              (await fakes.registry.find(id))?.connection,
+          markNeedsReauth: fakes.registry.markNeedsReauth,
+          clock: () => now,
+        );
+      }
+
+      test('$what on a renewal keeps the token, renewed again only after the '
+          'pause', () async {
+        final old = issuedAgo(const Duration(hours: 40));
+        final guest = await seed(old);
+        final session = behindProxy().forAccount(guest.id);
+
+        expect(await session.validAccessToken(), old.jwt);
+        expect(await session.validAccessToken(), old.jwt);
+        expect(proxy.requests, 1);
+        expect(await storedToken(guest.id), old.jwt);
+        expect(await needsReauth(guest.id), isFalse);
+
+        now = now.add(LinkShareSession.renewalBackoff);
+
+        expect(await session.validAccessToken(), old.jwt);
+        expect(proxy.requests, 2);
+      });
+
+      test('$what on authenticating again ends nothing and fails the request '
+          'as the server being unavailable', () async {
+        final guest = await seed(issuedAgo(const Duration(hours: 80)));
+
+        await expectLater(
+          behindProxy().forAccount(guest.id).validAccessToken(),
+          throwsA(
+            isA<ServerFailure>().having((f) => f.statusCode, 'status', 503),
+          ),
+        );
+        expect(await needsReauth(guest.id), isFalse);
+        expect(await fakes.linkShareStore.read(guest.id), isNotNull);
+      });
+    }
   });
 
   group("a 500, v1's answer to a gone share's token before 2.7,", () {
@@ -550,6 +669,12 @@ void main() {
         const DomainError(412, code: 13001),
         SessionEndCause.sharePasswordNeeded,
         13001,
+      ),
+      (
+        'a refused remembered password',
+        const Forbidden(code: 13002),
+        SessionEndCause.sharePasswordNeeded,
+        13002,
       ),
     ]) {
       test('$what, which no restore takes back', () async {
@@ -748,10 +873,15 @@ void main() {
 }
 
 final class _CountingAdapter implements HttpClientAdapter {
-  new({this.status = 200, this.body = '{}'});
+  new({
+    this.status = 200,
+    this.body = '{}',
+    this.contentType = 'application/json',
+  });
 
   final int status;
   final String body;
+  final String contentType;
   int requests = 0;
 
   @override
@@ -765,7 +895,7 @@ final class _CountingAdapter implements HttpClientAdapter {
       body,
       status,
       headers: {
-        Headers.contentTypeHeader: ['application/json'],
+        Headers.contentTypeHeader: [contentType],
       },
     );
   }

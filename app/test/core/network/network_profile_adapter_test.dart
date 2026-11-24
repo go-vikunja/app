@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart' show preConsentProbeKey;
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/network/certificate_probe.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profile_adapter.dart';
@@ -194,6 +195,43 @@ final class _DelayingProxy {
 
   Future<void> close() async {
     for (final socket in _sockets) {
+      socket.destroy();
+    }
+    await _server.close();
+  }
+}
+
+/// Completes every handshake and never answers; counts the connections.
+final class _SilentTlsServer {
+  new _(this._server);
+
+  static Future<_SilentTlsServer> start() async => _SilentTlsServer._(
+    await SecureServerSocket.bind(
+      InternetAddress.loopbackIPv4,
+      0,
+      serverContext('server.pem', 'server.key'),
+    ),
+  ).._listen();
+
+  final SecureServerSocket _server;
+  final _open = <SecureSocket>[];
+  final requestArrived = Completer<void>();
+
+  int get port => _server.port;
+
+  int get connections => _open.length;
+
+  void _listen() {
+    _server.listen((socket) {
+      _open.add(socket);
+      socket.listen((_) {
+        if (!requestArrived.isCompleted) requestArrived.complete();
+      }, onError: (Object _) {});
+    }, onError: (Object _) {});
+  }
+
+  Future<void> close() async {
+    for (final socket in _open) {
       socket.destroy();
     }
     await _server.close();
@@ -608,6 +646,35 @@ void main() {
       },
     );
 
+    test('the certificate the probe shows for a server that sends its CA '
+        'along, once trusted, lets requests through', () async {
+      final chain = await RecordingTlsServer.start(
+        certificate: 'server.pem',
+        key: 'server.key',
+        issuers: ['ca.pem'],
+      );
+      addTearDown(chain.close);
+      final chainOrigin = OriginKey.fromString(
+        'https://localhost:${chain.port}',
+      );
+      final probed = await const CertificateProbe().fetch(
+        chainOrigin,
+      ) as ProbedCertificate;
+
+      await profiles.trustCertificate(chainOrigin, probed.certificate);
+      final response = await dio().get<String>(
+        'https://localhost:${chain.port}/api/v1/info',
+      );
+
+      expect(response.data, 'ok');
+      expect(
+        (await profiles.metadataFor(chainOrigin))!.pin!.certificate.sha256,
+        tlsFixtureSha256('server.pem'),
+      );
+      expect(platform.requests, isEmpty);
+      expect(chain.requests, hasLength(1));
+    });
+
     test('an edit closes the old dart:io adapter; the next request uses a '
         'new one', () async {
       final made = <_TrackedAdapter>[];
@@ -866,6 +933,42 @@ void main() {
     await server.quietConnectionClosed.future.timeout(
       const Duration(seconds: 3),
     );
+  });
+
+  test('a request canceled before its answer opens no second connection for '
+      'a client-certificate check', () async {
+    final server = await _SilentTlsServer.start();
+    addTearDown(server.close);
+    await profiles.trustCaCertificate(
+      OriginKey.fromString('https://localhost:${server.port}'),
+      fileName: 'ca.pem',
+      pem: tlsFixtureText('ca.pem'),
+    );
+    final adapter = adapterOver(platform);
+    addTearDown(adapter.close);
+    final cancel = Completer<void>();
+    // Dio hands the caller its cancel at once and leaves the adapter
+    // running, so only the adapter's own future shows whether a check ran.
+    final fetching = adapter.fetch(
+      RequestOptions(path: 'https://localhost:${server.port}/api/v1/info'),
+      null,
+      cancel.future,
+    );
+
+    await server.requestArrived.future.timeout(const Duration(seconds: 3));
+    cancel.complete();
+
+    await expectLater(
+      fetching,
+      throwsA(
+        isA<DioException>().having(
+          (e) => e.error,
+          'error',
+          isA<HttpException>(),
+        ),
+      ),
+    );
+    expect(server.connections, 1);
   });
 
   test('close closes the platform adapter and every dart:io adapter', () async {

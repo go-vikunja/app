@@ -30,3 +30,14 @@ String? notSentFailureText(AppLocalizations l10n, Object? error) =>
             '${l10n.failureRenewalDeferredSuggestion}',
       _ => null,
     };
+
+/// Our text for a request the stored connection settings stopped, which an
+/// action words before its own network failures (decision log: Connections).
+String? connectionSettingsFailureText(AppLocalizations l10n, Object? error) =>
+    switch (error) {
+      NetworkFailure(
+        problem: NetworkProblem(concernsConnectionSettings: true),
+      ) =>
+        l10n.actionFailureConnectionSettings,
+      _ => null,
+    };

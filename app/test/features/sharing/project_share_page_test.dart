@@ -784,6 +784,24 @@ void main() {
     expect(find.text('Ben Brown'), findsOneWidget);
   });
 
+  testWidgets('a read the connection settings stopped says what went wrong '
+      'and offers the settings, not offline', (tester) async {
+    data.sharing.failure = const NetworkFailure(
+      NetworkProblem.clientCertificate,
+    );
+    await pumpSharePage(tester);
+
+    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(find.text(en.connectionOpenSettings), findsOneWidget);
+
+    data.sharing.failure = null;
+    await tester.tap(find.text(en.retry));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ben Brown'), findsOneWidget);
+  });
+
   testWidgets('a read that got no token is no outage: the failure is told, '
       'the links too', (tester) async {
     const noToken = NetworkFailure(
@@ -803,6 +821,126 @@ void main() {
 
     expect(find.text('Ben Brown'), findsOneWidget);
     expect(find.byType(DataFailureCard), findsOneWidget);
+  });
+
+  testWidgets('links the network failed to read say why above the Links '
+      'section, with Create link off, and Retry reads them', (tester) async {
+    data.sharing.failures['linkShares'] = const NetworkFailure(
+      NetworkProblem.unreachable,
+    );
+    await pumpSharePage(tester);
+
+    expect(find.text('Ben Brown'), findsOneWidget);
+    expect(find.text('Design'), findsOneWidget);
+    expect(find.byType(OfflineNotice), findsNothing);
+
+    await scrollTo(tester, find.text(en.linkShareCreate));
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(find.text(en.dataFailureLoadTitle), findsOneWidget);
+    expect(
+      find.text(en.failureUnreachableExplanation('tasks.example.org')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<ListTile>(find.widgetWithText(ListTile, en.linkShareCreate))
+          .enabled,
+      isFalse,
+    );
+
+    data.sharing.failures.remove('linkShares');
+    final retry = find.descendant(
+      of: find.byType(DataFailureCard),
+      matching: find.text(en.retry),
+    );
+    await tester.ensureVisible(retry);
+    await tester.pumpAndSettle();
+    await tester.tap(retry);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DataFailureCard), findsNothing);
+    await scrollTo(tester, find.text('Family'));
+    expect(find.text('Family'), findsOneWidget);
+    expect(
+      tester
+          .widget<ListTile>(find.widgetWithText(ListTile, en.linkShareCreate))
+          .enabled,
+      isTrue,
+    );
+    expect(data.sharing.calls.where((c) => c == 'linkShares 1'), hasLength(2));
+  });
+
+  testWidgets('links the network failed to read are read again once a sync '
+      'gets through', (tester) async {
+    data.sharing.failures['linkShares'] = const NetworkFailure(
+      NetworkProblem.timeout,
+    );
+    await pumpSharePage(tester);
+
+    data.engine.emit(
+      SyncFailed(
+        failure: const NetworkFailure(NetworkProblem.unreachable),
+        lastSyncedAt: now,
+      ),
+    );
+    await tester.pumpAndSettle();
+    data.sharing.failures.remove('linkShares');
+    data.engine.emit(SyncIdle(lastSyncedAt: now));
+    await tester.pumpAndSettle();
+
+    expect(data.sharing.calls.where((c) => c == 'linkShares 1'), hasLength(2));
+    await scrollTo(tester, find.text('Family'));
+    expect(find.text('Family'), findsOneWidget);
+    expect(find.byType(DataFailureCard), findsNothing);
+  });
+
+  testWidgets('an outage after the links failed to read shows the offline '
+      "notice alone, not the links' stale failure", (tester) async {
+    data.sharing.failures['linkShares'] = const NetworkFailure(
+      NetworkProblem.timeout,
+    );
+    await pumpSharePage(tester);
+    await scrollTo(tester, find.text(en.linkShareCreate));
+    expect(find.byType(DataFailureCard), findsOneWidget);
+
+    data.sharing.failure = const NetworkFailure(NetworkProblem.unreachable);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ProjectSharePage),
+        matching: find.byTooltip(en.refresh),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.linkShareCreate), findsOneWidget);
+    expect(find.byType(DataFailureCard), findsNothing);
+    await tester.scrollUntilVisible(
+      find.byType(OfflineNotice),
+      -200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ProjectSharePage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(find.byType(OfflineNotice), findsOneWidget);
+    expect(find.byType(DataFailureCard), findsNothing);
+  });
+
+  testWidgets('links the connection settings stopped say so above the Links '
+      'section and offer the settings', (tester) async {
+    data.sharing.failures['linkShares'] = const NetworkFailure(
+      NetworkProblem.clientCertificate,
+    );
+    await pumpSharePage(tester);
+
+    expect(find.text('Ben Brown'), findsOneWidget);
+    expect(find.byType(OfflineNotice), findsNothing);
+
+    await scrollTo(tester, find.text(en.linkShareCreate));
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(find.text(en.connectionOpenSettings), findsOneWidget);
   });
 
   testWidgets('the people search says a search that got no token failed, '
@@ -856,6 +994,22 @@ void main() {
     expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
   });
 
+  testWidgets('after a read the connection settings stopped, the people '
+      'search does not call itself offline', (tester) async {
+    await pumpSharePage(tester);
+    data.sharing.failure = const NetworkFailure(
+      NetworkProblem.cleartextBlocked,
+    );
+    await pullToRefresh(tester, find.byType(ListView).last);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    data.sharing.failure = null;
+
+    await tester.tap(find.text(en.shareAddPerson));
+    await tester.pumpAndSettle();
+
+    expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
+  });
+
   testWidgets('the people search follows a sync that loses the connection '
       'after the page read the shares, and one that gets through again', (
     tester,
@@ -902,6 +1056,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
     expect(sheetText('Kim Kowalski'), findsOneWidget);
+  });
+
+  testWidgets('the people search says when the connection settings stopped '
+      'a search', (tester) async {
+    await pumpSharePage(tester);
+    await tester.tap(find.text(en.shareAddPerson));
+    await tester.pumpAndSettle();
+    data.users.searchFailure = const NetworkFailure(
+      NetworkProblem.clientCertificate,
+    );
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(TextField),
+      ),
+      'kim',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(sheetText(en.actionFailureConnectionSettings), findsOneWidget);
+    expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
   });
 
   testWidgets('the project menu opens the share page', (tester) async {

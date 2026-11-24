@@ -164,6 +164,11 @@ void main() {
           en.shareFailureOffline,
         ),
         (
+          const NetworkFailure(NetworkProblem.cleartextBlocked),
+          ShareChange.createLink,
+          en.actionFailureConnectionSettings,
+        ),
+        (
           const DomainError(409, code: 7002),
           ShareChange.addPerson,
           en.shareFailureAlreadyShared,

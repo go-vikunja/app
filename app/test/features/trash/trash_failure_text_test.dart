@@ -57,6 +57,22 @@ void main() {
         }
       });
 
+      test('a request the connection settings stopped points to them, not '
+          'to a missing connection', () {
+        for (final problem in [
+          NetworkProblem.clientCertificate,
+          NetworkProblem.cleartextBlocked,
+        ]) {
+          for (final action in TrashAction.values) {
+            expect(
+              text(NetworkFailure(problem), action),
+              l10n.actionFailureConnectionSettings,
+              reason: '$action $problem',
+            );
+          }
+        }
+      });
+
       test('a 404 without a code means the server has no bin', () {
         for (final action in TrashAction.values) {
           expect(

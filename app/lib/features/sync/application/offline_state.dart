@@ -49,15 +49,8 @@ OfflineState? offlineAfter(OfflineState? previous, SyncStatus? status) =>
       // answer.
       SyncFailed(failure: NetworkFailure(cause: SecureStorageUnreadable())) =>
         previous,
-      SyncFailed(:final failure) when failedWithoutToken(failure) => null,
-      // A failure of the connection settings is no outage: retrying alone
-      // never gets through.
-      SyncFailed(
-        failure: NetworkFailure(
-          problem: NetworkProblem(concernsConnectionSettings: false),
-        ),
-        :final lastSyncedAt,
-      ) =>
+      SyncFailed(:final failure, :final lastSyncedAt)
+          when failedAsOutage(failure) =>
         OfflineState(lastSyncedAt: lastSyncedAt),
       SyncRunning() || null => previous,
       _ => null,

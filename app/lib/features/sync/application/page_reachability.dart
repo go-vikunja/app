@@ -19,7 +19,7 @@ mixin PageReachability<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 
   /// Inside `setState`, after a request of the page failed with [error].
   void noteFailure(Object error) {
-    if (failedOnTheNetwork(error)) _reachable = false;
+    if (failedAsOutage(error)) _reachable = false;
   }
 
   /// For `build`. [onBackOnline] runs when a sync run gets through again

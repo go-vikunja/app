@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/read_notice.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
@@ -150,21 +149,18 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
           maxWidth: maxWidth,
           child: LoadingPlaceholder(label: loadingLabel),
         ),
-        AsyncValue(:final value?) => builder(value, switch (_refreshFailure) {
-          NetworkFailure(
-            problem: NetworkProblem(concernsConnectionSettings: false),
-          )
-              when !failedWithoutToken(_refreshFailure) =>
-            underBanner ? null : const OfflineNotice(),
-          final failure? => DataFailureCard(
-            error: failure,
-            stale: true,
-            onRetry: refresh,
-          ),
-          null when offline => underBanner ? null : const OfflineNotice(),
-          null when _waiting => const ServerWaitNotice(),
-          null => null,
-        }),
+        AsyncValue(:final value?) => builder(
+          value,
+          _refreshFailure == null && !offline && _waiting
+              ? const ServerWaitNotice()
+              : readNotice(
+                  _refreshFailure,
+                  hasData: true,
+                  offline: offline,
+                  showsOffline: !underBanner,
+                  onRetry: refresh,
+                ),
+        ),
         AsyncError(:final error) when !_refreshing => CenteredScrollView(
           header: header,
           maxWidth: maxWidth,

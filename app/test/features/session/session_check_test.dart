@@ -267,7 +267,7 @@ void main() {
 
     for (final (version, failure) in [
       ('v1', const LinkShareGone(code: 13003) as VikunjaFailure),
-      ('v2', const UnexpectedResponse(401)),
+      ('v2', const LinkShareGone()),
     ]) {
       test('whose share is gone ($version) needs the link again', () async {
         final guest = await auth.seedGuest(
@@ -335,6 +335,24 @@ void main() {
         await pumpEventQueue();
 
         expect(await needsReauth(guest.id), isFalse);
+      },
+    );
+
+    test(
+      'is not ended by a 401 from something in front of the server',
+      () async {
+        final guest = await auth.seedGuest(
+          fullServer270(),
+          token: issueLinkShareToken(issuedAt: now),
+        );
+        auth.accountGateway.onCurrentUser = (_) async =>
+            throw const UnexpectedResponse(401);
+
+        await check.check(guest);
+        await pumpEventQueue();
+
+        expect(await needsReauth(guest.id), isFalse);
+        expect(auth.linkShareGateway.renewedTokens, isEmpty);
       },
     );
   });

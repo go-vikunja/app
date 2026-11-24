@@ -592,6 +592,25 @@ void main() {
         isA<RateLimited>().having((f) => f.retryAfter, 'retryAfter', isNull),
       );
     });
+
+    test(
+      '429 whose X-RateLimit-Reset is beyond any real date has no retryAfter',
+      () async {
+        expect(
+          await _failureFor(
+            body(
+              429,
+              {'message': 'Too Many Requests'},
+              headers: {
+                'x-ratelimit-reset': '1791533555000000',
+                'date': 'Fri, 09 Oct 2026 08:11:36 GMT',
+              },
+            ),
+          ),
+          isA<RateLimited>().having((f) => f.retryAfter, 'retryAfter', isNull),
+        );
+      },
+    );
   });
 
   group('requests without a response', () {

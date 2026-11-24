@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
@@ -142,10 +143,12 @@ class _PersonSearchSheetState extends ConsumerState<PersonSearchSheet> {
           if (!widget.excludedUserIds.contains(user.id)) user,
     ];
     final notice = switch (_failure) {
-      _ when offline => l10n.sharePeopleSearchOffline,
-      _ when failedOnTheNetwork(_failure) => l10n.sharePeopleSearchOffline,
+      _ when offline || failedAsOutage(_failure) =>
+        l10n.sharePeopleSearchOffline,
       null => null,
-      _ => l10n.sharePeopleSearchFailed,
+      final failure =>
+        connectionSettingsFailureText(l10n, failure) ??
+            l10n.sharePeopleSearchFailed,
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

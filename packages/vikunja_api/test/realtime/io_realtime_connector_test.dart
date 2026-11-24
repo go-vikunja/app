@@ -229,6 +229,24 @@ void main() {
       );
     });
 
+    test(
+      '429 with an X-RateLimit-Reset beyond any real date carries no wait',
+      () async {
+        await serve(
+          (request) => answer(
+            request,
+            HttpStatus.tooManyRequests,
+            headers: {'X-RateLimit-Reset': '1792414000000000'},
+          ),
+        );
+
+        await expectLater(
+          _connector.connect(server.url),
+          throwsA(_refused(429)),
+        );
+      },
+    );
+
     for (final status in const [400, 401, 403, 404, 426, 500, 502, 503]) {
       test('$status carries no wait', () async {
         await serve(

@@ -111,6 +111,8 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    var canceled = false;
+    cancelFuture?.whenComplete(() => canceled = true).ignore();
     // Picked and used in one synchronous step after the profile lookup, so
     // a concurrent revision change cannot close it in between.
     var io = _dartIoFor(profile);
@@ -129,7 +131,13 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
         return await io.adapter.fetch(sent, requestStream, cancelFuture);
       }
     } on Object catch (error) {
-      if (!profile.origin.isSecure || !_isLostBeforeResponse(error)) rethrow;
+      // dart:io fails a request aborted by its cancel like one whose
+      // connection dropped; the caller has its cancel already.
+      if (canceled ||
+          !profile.origin.isSecure ||
+          !_isLostBeforeResponse(error)) {
+        rethrow;
+      }
       if (await _refusals.refused(profile, io.context)) {
         throw _connectionError(
           sent,

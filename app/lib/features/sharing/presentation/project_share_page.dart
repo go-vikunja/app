@@ -459,7 +459,10 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     final l10n = context.l10n;
     watchOffline(
       onBackOnline: () {
-        if (_shares.failure is NetworkFailure) unawaited(_load());
+        if (_shares.failure is NetworkFailure ||
+            _shares.value?.linksFailure is NetworkFailure) {
+          unawaited(_load());
+        }
       },
     );
     // A sync after the user's own share changed may bring other rights.
@@ -556,7 +559,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
                 MediaQuery.paddingOf(context).copyWith(top: 0) +
                 EdgeInsets.fromLTRB(inset, 0, inset, 32),
             children: [
-              if (failedOnTheNetwork(failure))
+              if (failedAsOutage(failure))
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: OfflineNotice(),
@@ -631,9 +634,11 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
                   ],
                 ),
                 if (showsLinks) ...[
+                  // A failed read of the page keeps the links' failure of the
+                  // last good one, which its own notice above replaces.
                   if (linksFailure != null &&
                       linksFailure is! NotFound &&
-                      !failedOnTheNetwork(linksFailure))
+                      failure == null)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                       child: DataFailureCard(

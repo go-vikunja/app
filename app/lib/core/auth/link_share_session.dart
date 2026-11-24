@@ -25,6 +25,17 @@ bool serverErrorMayMeanShareGone(ServerConnection connection) =>
     connection.preferredApiVersion == ApiVersion.v1 &&
     !(connection.info.version?.isAtLeast(2, 7) ?? false);
 
+// A share endpoint's answer that is not Vikunja's, such as a proxy's page
+// while the server restarts, reaches the caller as the failure of the
+// request the token was for. As that request's own 404 it would read as a
+// route the server lacks, so it stands for the server being unavailable
+// (decision log: Accounts and sign-in); a 500 would read as v1's gone share.
+VikunjaFailure _fromShareEndpoint(VikunjaFailure failure) => switch (failure) {
+  NotFound(routeAbsent: true) ||
+  UnexpectedResponse() => ServerFailure(503, message: failure.message),
+  _ => failure,
+};
+
 /// Keeps a link-share guest's token valid, without a refresh token: the
 /// token is renewed through `POST /user/token` once half of its lifetime
 /// (72 h on a default server) has passed, and the old one stays valid, so
@@ -130,7 +141,7 @@ final class LinkShareSession implements AccessTokenSource {
       rethrow;
     } on VikunjaFailure catch (failure) {
       _log.info('Renewal of guest $accountId failed: $failure');
-      if (_isExpired(token)) rethrow;
+      if (_isExpired(token)) throw _fromShareEndpoint(failure);
       return token.jwt;
     }
   }
@@ -355,7 +366,8 @@ final class LinkShareSession implements AccessTokenSource {
           cause: SessionEndCause.sharePasswordNeeded,
         );
       }
-      rethrow;
+      _log.info('Authenticating guest $accountId again failed: $failure');
+      throw _fromShareEndpoint(failure);
     }
   }
 

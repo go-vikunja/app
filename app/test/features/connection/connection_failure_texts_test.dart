@@ -1,12 +1,17 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
 import 'package:vikunja_mobile/features/connection/application/connection_fix.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/share_texts.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
+import 'package:vikunja_mobile/features/teams/presentation/team_failure.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -145,7 +150,50 @@ void main() {
           isNull,
         );
       });
+
+      test('$name is no outage, and the team and share messages point to '
+          'the settings', () {
+        final failure = NetworkFailure(problem);
+
+        expect(failedAsOutage(failure), isFalse);
+        expect(
+          teamFailureText(en, failure, TeamChange.create),
+          en.actionFailureConnectionSettings,
+        );
+        expect(
+          shareFailureText(en, failure, ShareChange.addPerson),
+          en.actionFailureConnectionSettings,
+        );
+      });
     }
+
+    test('only a failure that may pass counts as an outage', () {
+      for (final problem in [
+        NetworkProblem.unreachable,
+        NetworkProblem.timeout,
+        NetworkProblem.tls,
+      ]) {
+        expect(
+          failedAsOutage(NetworkFailure(problem)),
+          isTrue,
+          reason: '$problem',
+        );
+      }
+      for (final error in <Object?>[
+        const NetworkFailure(
+          NetworkProblem.timeout,
+          cause: RefreshDeferred.race,
+        ),
+        const NetworkFailure(
+          NetworkProblem.unreachable,
+          cause: SecureStorageUnreadable(PlatformException),
+        ),
+        const ServerFailure(502),
+        null,
+      ]) {
+        expect(failedAsOutage(error), isFalse, reason: '$error');
+      }
+    });
 
     test('an unreachable server is still offline', () {
       expect(

@@ -30,8 +30,10 @@ String shareFailureText(
 ) {
   final shared = actionFailureText(l10n, error);
   final notSent = notSentFailureText(l10n, error);
+  final settings = connectionSettingsFailureText(l10n, error);
   return switch (error) {
     _ when notSent != null => notSent,
+    _ when settings != null => settings,
     // The server may have made the change before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) =>
       l10n.shareFailureUnconfirmed,

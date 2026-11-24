@@ -94,13 +94,6 @@ final class SessionCheck {
     } on LinkShareGone catch (failure) {
       session.noteGone(failure);
       rethrow;
-    } on UnexpectedResponse catch (failure) {
-      // v2's answer to the token of a deleted share; this client has no
-      // LinkShareGoneInterceptor.
-      if (failure.statusCode != 401) rethrow;
-      final gone = LinkShareGone(message: failure.message);
-      session.noteGone(gone);
-      throw gone;
     } on ServerFailure catch (failure) {
       if (failure.statusCode != 500 ||
           !serverErrorMayMeanShareGone(entry.connection)) {

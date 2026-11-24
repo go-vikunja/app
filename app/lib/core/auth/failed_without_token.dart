@@ -12,7 +12,16 @@ bool failedWithoutToken(Object? error) =>
       _ => false,
     };
 
-/// A request that failed on its way to or from the server, which counts as
-/// offline; not one that got no token and so never left ([failedWithoutToken]).
+/// A request that failed on its way to or from the server; not one that got
+/// no token and so never left ([failedWithoutToken]).
 bool failedOnTheNetwork(Object? error) =>
     error is NetworkFailure && !failedWithoutToken(error);
+
+/// A request that failed for a reason that may pass, which shows as offline:
+/// not one the stored connection settings stopped, which retrying at once
+/// does not get through, nor one that got no token (decision log:
+/// Connections).
+bool failedAsOutage(Object? error) =>
+    error is NetworkFailure &&
+    !error.problem.concernsConnectionSettings &&
+    !failedWithoutToken(error);

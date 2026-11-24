@@ -43,6 +43,21 @@ void main() {
           l10n.teamRefused('Odd'),
         );
       });
+
+      test('a request the connection settings stopped points to them, in '
+          'every change', () {
+        for (final change in TeamChange.values) {
+          expect(
+            teamFailureText(
+              l10n,
+              const NetworkFailure(NetworkProblem.clientCertificate),
+              change,
+            ),
+            l10n.actionFailureConnectionSettings,
+            reason: '$change',
+          );
+        }
+      });
     });
   }
 }

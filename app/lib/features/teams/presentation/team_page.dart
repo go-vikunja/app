@@ -12,7 +12,6 @@ import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
-import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/title_order.dart';
@@ -22,6 +21,7 @@ import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/read_notice.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
@@ -30,7 +30,6 @@ import 'package:vikunja_mobile/features/description_editor/application/descripti
 import 'package:vikunja_mobile/features/sharing/application/access_cleanup.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/person_search_sheet.dart';
 import 'package:vikunja_mobile/features/sync/application/page_reachability.dart';
-import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
@@ -355,20 +354,12 @@ class _TeamPageState extends ConsumerState<TeamPage>
         team: team,
         guards: guards,
         userId: userId,
-        notice: switch (failure) {
-          NetworkFailure(
-            problem: NetworkProblem(concernsConnectionSettings: false),
-          )
-              when !failedWithoutToken(failure) =>
-            const OfflineNotice(),
-          final failure? => DataFailureCard(
-            error: failure,
-            stale: true,
-            onRetry: () => unawaited(_load()),
-          ),
-          null when offline => const OfflineNotice(),
-          null => null,
-        },
+        notice: readNotice(
+          failure,
+          hasData: true,
+          offline: offline,
+          onRetry: () => unawaited(_load()),
+        ),
         badges: teamBadges(
           l10n,
           team,

@@ -10,18 +10,17 @@ import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
-import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/online_only_fab.dart';
+import 'package:vikunja_mobile/features/common/presentation/read_notice.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/sync/application/page_reachability.dart';
-import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/teams/application/team_server_providers.dart';
 import 'package:vikunja_mobile/features/teams/presentation/new_team_sheet.dart';
@@ -95,18 +94,12 @@ class _TeamsPageState extends ConsumerState<TeamsPage>
     );
     final userId = ref.watch(activeUserIdProvider);
     final publicTeams = ref.watch(activeServerHasPublicTeamsProvider);
-    final notice = switch (failure) {
-      NetworkFailure(problem: NetworkProblem(concernsConnectionSettings: false))
-          when !failedWithoutToken(failure) =>
-        const OfflineNotice(),
-      final failure? when teams != null => DataFailureCard(
-        error: failure,
-        stale: true,
-        onRetry: () => unawaited(_load()),
-      ),
-      null when offline => const OfflineNotice(),
-      _ => null,
-    };
+    final notice = readNotice(
+      failure,
+      hasData: teams != null,
+      offline: offline,
+      onRetry: () => unawaited(_load()),
+    );
 
     return Scaffold(
       appBar: ReadableAppBar(
@@ -142,9 +135,7 @@ class _TeamsPageState extends ConsumerState<TeamsPage>
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: notice,
                 ),
-              if (teams == null &&
-                  failure != null &&
-                  !failedOnTheNetwork(failure))
+              if (teams == null && failure != null && notice == null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: DataFailureCard(

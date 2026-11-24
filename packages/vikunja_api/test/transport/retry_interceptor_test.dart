@@ -215,6 +215,49 @@ void main() {
     expect(delays.waited, [const Duration(seconds: 60)]);
   });
 
+  test(
+    '429 whose X-RateLimit-Reset is beyond any real date backs off and stays '
+    'a rate limit',
+    () async {
+      final (:dio, :delays) = _client(
+        status(
+          429,
+          headers: {
+            'x-ratelimit-reset': ['1791533555000000'],
+          },
+        ),
+      );
+
+      expect(
+        await _failure(dio.get<Object?>(_url)),
+        isA<RateLimited>().having((f) => f.retryAfter, 'retryAfter', isNull),
+      );
+      expect(adapterOf(dio).requests, hasLength(3));
+      expect(delays.waited, [
+        const Duration(milliseconds: 375),
+        const Duration(milliseconds: 750),
+      ]);
+    },
+  );
+
+  test('a repeated Retry-After waits for its first value', () async {
+    final (:dio, :delays) = _client(
+      sequence([
+        status(
+          429,
+          headers: {
+            'retry-after': ['7', '9'],
+          },
+        ),
+        json({}),
+      ]),
+    );
+
+    await dio.get<Object?>(_url);
+
+    expect(delays.waited, [const Duration(seconds: 7)]);
+  });
+
   test('a refused connection is retried', () async {
     final (:dio, delays: _) = _client(sequence([refused, json({})]));
 

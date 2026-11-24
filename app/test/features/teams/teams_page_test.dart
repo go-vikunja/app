@@ -227,6 +227,25 @@ void main() {
       expect(find.text(en.teamsNewOffline), findsOneWidget);
     });
 
+    testWidgets('a refusal of the connection settings says where to fix them, '
+        'not that a connection is needed', (tester) async {
+      harness.teams.failures['create'] = const NetworkFailure(
+        NetworkProblem.profileIncomplete,
+      );
+      await harness.pump(tester, location: AppRoutes.teams);
+      await tester.tap(find.widgetWithText(FloatingActionButton, en.teamsNew));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(nameField(), 'Garden club');
+      await tester.pump();
+      await tester.tap(createButton());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NewTeamSheet), findsOneWidget);
+      expect(find.text(en.actionFailureConnectionSettings), findsOneWidget);
+      expect(find.text(en.teamsNewOffline), findsNothing);
+    });
+
     group('dragged shut while it is created', () {
       late Completer<void> answer;
 
@@ -311,6 +330,63 @@ void main() {
 
     expect(find.byType(OfflineNotice), findsNothing);
     expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(
+      tester
+          .widget<FloatingActionButton>(find.byType(FloatingActionButton))
+          .onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('a first read the connection settings stopped says what went '
+      'wrong, offers the settings, and the new team button stays on', (
+    tester,
+  ) async {
+    harness.teams.failure = const NetworkFailure(
+      NetworkProblem.clientCertificate,
+    );
+    await harness.pump(tester, location: AppRoutes.teams);
+
+    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(
+      find.text(
+        en.connectionClientCertificateFailureExplanation('tasks.example.org'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(en.connectionOpenSettings), findsOneWidget);
+    expect(
+      tester
+          .widget<FloatingActionButton>(find.byType(FloatingActionButton))
+          .onPressed,
+      isNotNull,
+    );
+
+    harness.teams
+      ..failure = null
+      ..teams = [sampleTeam(id: 1, name: 'Design')];
+    await tester.tap(find.text(en.retry));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Design'), findsOneWidget);
+    expect(find.byType(DataFailureCard), findsNothing);
+  });
+
+  testWidgets('a read again the connection settings stopped keeps the teams '
+      'under the failure, not an offline notice', (tester) async {
+    harness.teams.teams = [sampleTeam(id: 1, name: 'Design')];
+    await harness.pump(tester, location: AppRoutes.teams);
+
+    harness.teams.failure = const NetworkFailure(
+      NetworkProblem.cleartextBlocked,
+    );
+    await tester.tap(find.byTooltip(en.refresh));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.text('Design'), findsOneWidget);
     expect(
       tester
           .widget<FloatingActionButton>(find.byType(FloatingActionButton))

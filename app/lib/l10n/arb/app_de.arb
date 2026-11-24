@@ -2313,6 +2313,7 @@
   "actionFailureGuestAccessEnded": "Dein Gastzugang ist beendet. Öffne den Link im Tab „Account“ erneut.",
   "actionFailureSignInUnreadable": "Der sichere Speicher deines Geräts konnte deine Anmeldung nicht lesen, deshalb wurde nichts an den Server gesendet.",
   "actionFailureRenewalDeferred": "Ein anderer Teil der App war im selben Moment dabei, deine Anmeldung zu erneuern, deshalb wurde nichts an den Server gesendet.",
+  "actionFailureConnectionSettings": "Die Verbindungseinstellungen dieses Servers haben die Anfrage gestoppt. Prüfe sie im Tab „Account“ unter „Verbindung“.",
   "attachmentFileMissing": "Die Datei fehlt auf dem Server.",
   "attachmentDownloadForbidden": "Du hast keinen Zugriff mehr auf diesen Anhang.",
   "taskDuplicateForbidden": "Du darfst diesem Projekt keine Aufgaben hinzufügen.",

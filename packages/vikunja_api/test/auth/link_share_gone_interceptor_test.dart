@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -85,6 +86,86 @@ void main() {
       ),
     );
     expect(user.gone, isEmpty);
+  });
+
+  test("a proxy's own 401 or 404 for a guest is no gone share", () async {
+    final unexpected401 = isA<UnexpectedResponse>().having(
+      (f) => f.statusCode,
+      'status',
+      401,
+    );
+    for (final version in ['v1', 'v2']) {
+      for (final (answer, matcher) in [
+        (
+          html('<html><title>Sign in</title></html>', status: 401),
+          unexpected401,
+        ),
+        (plainText('Unauthorized\n', status: 401), unexpected401),
+        (status(401), unexpected401),
+        (
+          plainText('404 page not found\n', status: 404),
+          isA<NotFound>().having((f) => f.code, 'code', isNull),
+        ),
+      ]) {
+        final guest = _guest(version, answer);
+
+        await expectLater(
+          guest.projects.list(),
+          throwsA(matcher),
+          reason: version,
+        );
+        expect(guest.gone, isEmpty, reason: version);
+        expect(guest.tokens.rejectedTokens, isEmpty, reason: version);
+      }
+    }
+  });
+
+  test("a proxy's streamed 401 page, or a 401 body that breaks off, for a "
+      'guest is no gone share', () async {
+    final gone = <LinkShareGone>[];
+    final dio = Dio()
+      ..httpClientAdapter = FakeHttpAdapter({
+        '$testServerRoot/page': (_) => ResponseBody.fromString(
+          '<html><title>Sign in</title></html>',
+          401,
+          headers: {
+            Headers.contentTypeHeader: ['text/html'],
+          },
+        ),
+        '$testServerRoot/broken': (_) => ResponseBody(
+          Stream<Uint8List>.error(Exception('connection reset')),
+          401,
+          headers: {
+            Headers.contentTypeHeader: ['application/json'],
+          },
+        ),
+      })
+      ..interceptors.add(LinkShareGoneInterceptor(onGone: gone.add));
+
+    for (final path in ['page', 'broken']) {
+      await expectLater(
+        dio.get<ResponseBody>(
+          '$testServerRoot/$path',
+          options: Options(
+            responseType: ResponseType.stream,
+            headers: {'Authorization': 'Bearer ${fakeLinkShareJwt()}'},
+          ),
+        ),
+        throwsA(
+          isA<DioException>().having(
+            normalizeError,
+            'failure',
+            isA<UnexpectedResponse>().having(
+              (f) => f.statusCode,
+              'status',
+              401,
+            ),
+          ),
+        ),
+        reason: path,
+      );
+    }
+    expect(gone, isEmpty);
   });
 
   test("a user's 13003 is mapped without calling back", () async {

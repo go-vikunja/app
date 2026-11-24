@@ -83,6 +83,14 @@ final class _UpgradingServer {
     ),
   );
 
+  static Future<_UpgradingServer> caSignedWithChain() async => _UpgradingServer(
+    await HttpServer.bindSecure(
+      InternetAddress.loopbackIPv4,
+      0,
+      serverContext('server.pem', 'server.key', issuers: ['ca.pem']),
+    ),
+  );
+
   static Future<_UpgradingServer> selfSigned() async => _UpgradingServer(
     await HttpServer.bindSecure(
       InternetAddress.loopbackIPv4,
@@ -141,6 +149,18 @@ void main() {
   Future<void> open(Uri url, {Map<String, String> headers = const {}}) async {
     final socket = await connector.connect(url, headers: headers);
     await socket.close();
+  }
+
+  Future<PinMismatch?> recordedIn(
+    NetworkProfiles store,
+    OriginKey origin,
+  ) async {
+    PinMismatch? mismatch;
+    for (var i = 0; i < 40 && mismatch == null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+      mismatch = (await store.metadataFor(origin))?.lastPinMismatch;
+    }
+    return mismatch;
   }
 
   group('ws://', () {
@@ -288,15 +308,6 @@ void main() {
     });
     tearDown(() => server.close());
 
-    Future<PinMismatch?> recordedIn(NetworkProfiles store) async {
-      PinMismatch? mismatch;
-      for (var i = 0; i < 40 && mismatch == null; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 25));
-        mismatch = (await store.metadataFor(origin))?.lastPinMismatch;
-      }
-      return mismatch;
-    }
-
     test('the pinned client upgrades with the headers', () async {
       await profiles.trustCertificate(
         origin,
@@ -319,7 +330,7 @@ void main() {
 
         await expectLater(open(url), throwsA(isA<HandshakeException>()));
 
-        final mismatch = await recordedIn(profiles);
+        final mismatch = await recordedIn(profiles, origin);
         expect(mismatch?.sha256, tlsFixtureSha256('selfsigned.pem'));
         expect(server.requests, isEmpty);
       },
@@ -343,7 +354,7 @@ void main() {
         socket.connect(url),
         throwsA(isA<HandshakeException>()),
       );
-      expect(await recordedIn(store), isNotNull);
+      expect(await recordedIn(store, origin), isNotNull);
       counted
         ..reads = 0
         ..writes = 0;
@@ -368,13 +379,13 @@ void main() {
           tlsFixtureCertificate('server.pem'),
         );
         await expectLater(open(url), throwsA(isA<HandshakeException>()));
-        expect(await recordedIn(profiles), isNotNull);
+        expect(await recordedIn(profiles, origin), isNotNull);
 
         await profiles.dismissPinMismatch(origin);
         await expectLater(open(url), throwsA(isA<HandshakeException>()));
 
         expect(
-          (await recordedIn(profiles))?.sha256,
+          (await recordedIn(profiles, origin))?.sha256,
           tlsFixtureSha256('selfsigned.pem'),
         );
       },
@@ -426,6 +437,43 @@ void main() {
       ).connect(url).then((socket) => socket.close());
 
       expect(platform.asked, isEmpty);
+    });
+  });
+
+  group('wss:// with a pin, the server sending its CA along', () {
+    late _UpgradingServer server;
+    late OriginKey origin;
+    late Uri url;
+
+    setUp(() async {
+      server = await _UpgradingServer.caSignedWithChain();
+      origin = OriginKey.fromString('https://localhost:${server.port}');
+      url = Uri.parse('wss://localhost:${server.port}/api/v2/ws');
+    });
+    tearDown(() => server.close());
+
+    test('the pinned leaf upgrades', () async {
+      await profiles.trustCertificate(
+        origin,
+        tlsFixtureCertificate('server.pem'),
+      );
+
+      await open(url);
+
+      expect(server.requests, hasLength(1));
+    });
+
+    test('a pin on the CA fails in the handshake and records the leaf as the '
+        'mismatch', () async {
+      await profiles.trustCertificate(origin, tlsFixtureCertificate('ca.pem'));
+
+      await expectLater(open(url), throwsA(isA<HandshakeException>()));
+
+      expect(
+        (await recordedIn(profiles, origin))?.sha256,
+        tlsFixtureSha256('server.pem'),
+      );
+      expect(server.requests, isEmpty);
     });
   });
 

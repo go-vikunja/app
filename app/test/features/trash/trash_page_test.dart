@@ -906,6 +906,18 @@ void main() {
       expect(rowOf('Call the plumber'), findsOneWidget);
     });
 
+    testWidgets('a first read the connection settings stopped says what went '
+        'wrong and offers the settings, not offline', (tester) async {
+      harness.data.trash.failures['tasks'] = const NetworkFailure(
+        NetworkProblem.clientCertificate,
+      );
+      await pumpPage(tester);
+
+      expect(find.byType(DataFailureCard), findsOneWidget);
+      expect(find.byType(OfflineNotice), findsNothing);
+      expect(find.text(en.connectionOpenSettings), findsOneWidget);
+    });
+
     testWidgets('a server without the bin says so on both tabs, not that '
         'something is gone', (tester) async {
       harness.data.trash.failures

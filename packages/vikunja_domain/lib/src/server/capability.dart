@@ -1,6 +1,12 @@
-/// Something the connected server can do. Features are gated on these, never
-/// on raw version strings, so a server whose proxy hides `/api/v2` or whose
-/// admin disabled attachments is handled the same way as an old server.
+/// Something the connected server offers: `/api/v2`, a route or behavior a
+/// release added, a feature its admin can switch off in `/info`, or a pro
+/// feature its license enables. Features follow these and the API versions
+/// that answered, so a proxy that hides `/api/v2` or an admin who disabled
+/// attachments is handled like an old server. A workaround for what an
+/// older release does differently reads the server version where it
+/// applies, with its own default for a version the app cannot read
+/// (decision log: Servers). Values no feature checks stay: the support
+/// details list every capability, and the contract tests read some.
 enum Capability {
   apiV2,
   sessionRefresh,

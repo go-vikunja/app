@@ -73,6 +73,78 @@ void main() {
     );
   });
 
+  test('a wait of up to a week is kept', () {
+    expect(_retryAfter({'retry-after': '604800'}), const Duration(days: 7));
+    expect(
+      _retryAfter({
+        'x-ratelimit-reset': '1791619896',
+        'date': 'Fri, 09 Oct 2026 08:11:36 GMT',
+      }),
+      const Duration(days: 1, seconds: 1),
+    );
+  });
+
+  test('a longer Retry-After is an unknown wait', () {
+    for (final value in ['604801', '9223372036855', '9223372036854775807']) {
+      expect(_retryAfter({'retry-after': value}), isNull, reason: value);
+    }
+    expect(
+      _retryAfter({
+        'retry-after': 'Sat, 09 Oct 2027 08:11:36 GMT',
+        'date': 'Fri, 09 Oct 2026 08:11:36 GMT',
+      }),
+      isNull,
+    );
+  });
+
+  test(
+    'an X-RateLimit-Reset in milli-, micro- or nanoseconds is an unknown wait',
+    () {
+      for (final value in [
+        '1791533555000',
+        '1791533555000000',
+        '1791533555000000000',
+        '9223372036854775807',
+      ]) {
+        expect(
+          _retryAfter({
+            'x-ratelimit-reset': value,
+            'date': 'Fri, 09 Oct 2026 08:11:36 GMT',
+          }),
+          isNull,
+          reason: value,
+        );
+      }
+    },
+  );
+
+  test('a negative X-RateLimit-Reset is ignored', () {
+    expect(_retryAfter({'x-ratelimit-reset': '-1'}), isNull);
+    expect(_retryAfter({'x-ratelimit-reset': '-9223372036854775808'}), isNull);
+  });
+
+  test('a repeated header counts by its first value', () {
+    expect(
+      retryAfterOf(
+        Headers.fromMap({
+          'retry-after': ['5', '7'],
+        }),
+        now: () => _deviceNow,
+      ),
+      const Duration(seconds: 5),
+    );
+    expect(
+      retryAfterOf(
+        Headers.fromMap({
+          'x-ratelimit-reset': ['1791533555', '1791533999'],
+          'date': ['Fri, 09 Oct 2026 08:11:36 GMT'],
+        }),
+        now: () => _deviceNow,
+      ),
+      const Duration(seconds: 60),
+    );
+  });
+
   test('nothing usable is null', () {
     expect(_retryAfter({}), isNull);
     expect(_retryAfter({'retry-after': 'soon'}), isNull);

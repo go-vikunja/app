@@ -48,14 +48,15 @@ enum OutboxSenderState {
 ///
 /// Transient failures (network, 5xx, 429, a token the server rejected
 /// after the interceptor's own refresh, and answers that are not Vikunja's,
-/// such as a proxy's redirect or a web server's 404) are retried with
-/// exponential backoff from [initialBackoff], doubling per attempt up to
-/// [maxBackoff], shortened by up to half at random; a `Retry-After` is
-/// honoured instead. A request that the account's client refused because
-/// it was replaced while the op was on its way (a changed server version
-/// rebuilds the clients) goes again at once over the new one. The oldest
-/// op blocks the queue while it waits, so later ops never overtake it. An
-/// answer that is neither success nor the server's last word counts, and
+/// such as a proxy's redirect, an access gate's 401 or 407, or a web
+/// server's 404) are retried with exponential backoff from
+/// [initialBackoff], doubling per attempt up to [maxBackoff], shortened by
+/// up to half at random; a `Retry-After` is honored instead. A request
+/// that the account's client refused because it was replaced while the op
+/// was on its way (a changed server version rebuilds the clients) goes
+/// again at once over the new one. The oldest op blocks the queue while it
+/// waits, so later ops never overtake it. An answer that is neither
+/// success nor the server's last word counts, and
 /// the op becomes a `SyncProblem` after [maxFailedAnswersInARow] of them in
 /// a row (an upload after [maxFailedUploadAnswersInARow]); a network
 /// failure, a captive portal's page, a 429 or a rejected token never does,
@@ -1792,7 +1793,8 @@ final class OutboxSender {
   /// token; the session that ended for good arrives as `SessionEnded`. A
   /// 2xx whose body is no JSON at all is a captive portal's page on a
   /// cleartext network, which waits like being offline. An answer without
-  /// a Vikunja error code (a proxy's redirect, a web server's 404 during a
+  /// a Vikunja error code (a proxy's redirect, an access gate's 401 or 407
+  /// such as for an expired access header, a web server's 404 during a
   /// deploy) is not the server's last word. A 2xx whose JSON cannot be
   /// read, or an exception without a status, is final (a retry would only
   /// repeat it), except for a create or an upload: the server may have
@@ -1808,6 +1810,7 @@ final class OutboxSender {
     TokenRejected() => _Retry.waits,
     ServerFailure() => _Retry.counted,
     NotFound(:final routeAbsent) => routeAbsent ? _Retry.counted : _Retry.never,
+    UnexpectedResponse(statusCode: 401 || 407) => _Retry.counted,
     UnexpectedResponse(:final statusCode?) when statusCode >= 400 =>
       _Retry.never,
     UnexpectedResponse(:final statusCode?) when statusCode >= 300 =>

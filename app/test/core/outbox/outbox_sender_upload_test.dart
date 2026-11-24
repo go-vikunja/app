@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart'
+    show Dio, Headers, HttpClientAdapter, RequestOptions, ResponseBody;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
@@ -8,6 +11,8 @@ import 'package:path/path.dart' as p;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
+import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
+import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -18,11 +23,14 @@ import 'package:vikunja_mobile/core/outbox/set_aside_upload_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 
+import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_timers.dart';
 import '../../helpers/fake_write_client.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/test_database.dart';
 import '../../helpers/zero_random.dart';
 
@@ -799,6 +807,41 @@ void main() {
       },
     );
 
+    test("a guest's upload whose token fetch meets a proxy's 404 page while "
+        'the server restarts waits like a 5xx, not as attachments being '
+        'off', () async {
+      final fakes = AuthFakes();
+      final guest = await fakes.seedGuest(
+        fullServer270(),
+        token: issueLinkShareToken(
+          issuedAt: now.subtract(const Duration(hours: 80)),
+        ),
+      );
+      final session = LinkShareSessions(
+        store: fakes.linkShareStore,
+        gateway: ApiLinkShareGateway(Dio()..httpClientAdapter = _ProxyPage()),
+        connectionFor: (id) async =>
+            (await fakes.registry.find(id))?.connection,
+        markNeedsReauth: fakes.registry.markNeedsReauth,
+        clock: () => now,
+      ).forAccount(guest.id);
+      await queueUpload(1);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) await session.validAccessToken();
+      };
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      final op = (await db.outboxDao.all()).single;
+      expect(op.state, OutboxState.pending.name);
+      expect(op.attempts, 1);
+      expect(decodeFailure(op.lastError!), isA<ServerFailure>());
+      expect(outbox.state, OutboxSenderState.waiting);
+      expect(timers.pendingWait, OutboxSender.initialBackoff);
+    });
+
     test('a stored copy that is gone is a problem without a request', () async {
       await queueUpload(1);
       for (final name in await storedCopies()) {
@@ -1513,4 +1556,23 @@ void main() {
       expect(outbox.blockedBy, isA<ServerFailure>());
     });
   });
+}
+
+/// Traefik's answer while no backend is up.
+final class _ProxyPage implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(
+    '404 page not found\n',
+    404,
+    headers: {
+      Headers.contentTypeHeader: ['text/plain; charset=utf-8'],
+    },
+  );
+
+  @override
+  void close({bool force = false}) {}
 }

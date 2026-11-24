@@ -26,6 +26,42 @@ String _api(String version) => '$testServerRoot/api/$version';
 Matcher _gone(int? code) =>
     isA<LinkShareGone>().having((f) => f.code, 'code', code);
 
+final Matcher _routeAbsent = isA<NotFound>().having(
+  (f) => f.code,
+  'code',
+  isNull,
+);
+final Matcher _unexpected401 = isA<UnexpectedResponse>().having(
+  (f) => f.statusCode,
+  'status',
+  401,
+);
+
+// A reverse proxy's own answers while the server is away, such as Traefik's
+// 404 for a missing backend or an access gate's sign-in page: only Vikunja's
+// own JSON answer means the link is gone (decision log: Accounts and
+// sign-in).
+final List<(String, FakeRoute, Matcher)> _proxyPages = [
+  (
+    'plain-text 404',
+    plainText('404 page not found\n', status: 404),
+    _routeAbsent,
+  ),
+  (
+    'HTML 404',
+    html('<html><title>404 Not Found</title></html>', status: 404),
+    _routeAbsent,
+  ),
+  ('404 without a body', status(404), _routeAbsent),
+  ('plain-text 401', plainText('Unauthorized\n', status: 401), _unexpected401),
+  (
+    'HTML 401',
+    html('<html><title>Sign in</title></html>', status: 401),
+    _unexpected401,
+  ),
+  ('401 without a body', status(401), _unexpected401),
+];
+
 void main() {
   for (final version in ['v1', 'v2']) {
     group('$version authenticate', () {
@@ -115,6 +151,17 @@ void main() {
           throwsA(_gone(null)),
         );
       });
+
+      for (final (what, page, failure) in _proxyPages) {
+        test("a proxy's $what is no gone link", () async {
+          final dio = fakeDio({url: page});
+
+          await expectLater(
+            _client(dio, version).authenticate(_hash),
+            throwsA(failure),
+          );
+        });
+      }
 
       test('the shared limit is RateLimited with its wait', () async {
         final dio = fakeDio({url: errorFixture('v1_429_oauth_token_2.7.0')});
@@ -245,6 +292,17 @@ void main() {
           throwsA(_gone(version == 'v1' ? 3006 : null)),
         );
       });
+
+      for (final (what, page, failure) in _proxyPages) {
+        test("a proxy's $what is no gone link", () async {
+          final dio = fakeDio({url: page});
+
+          await expectLater(
+            _client(dio, version).renew(current),
+            throwsA(failure),
+          );
+        });
+      }
 
       test("a user's token is refused with a 400", () async {
         final dio = fakeDio({url: _captured('${version}_renew_user_token')});

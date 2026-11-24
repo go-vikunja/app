@@ -55,10 +55,12 @@ void main() {
       expect(server.requests, isEmpty);
     });
 
-    test('shows the leaf of a CA-signed server, not the CA', () async {
+    test('shows the leaf of a CA-signed server that sends its CA along, not '
+        'the CA', () async {
       final server = await RecordingTlsServer.start(
         certificate: 'server.pem',
         key: 'server.key',
+        issuers: ['ca.pem'],
       );
       addTearDown(server.close);
 
@@ -68,7 +70,10 @@ void main() {
 
       final certificate = (result as ProbedCertificate).certificate;
       expect(certificate.sha256, tlsFixtureSha256('server.pem'));
+      expect(certificate.subject, contains('Vikunja app test server'));
+      expect(certificate.issuer, contains('Vikunja app test CA'));
       expect(certificate.selfSigned, isFalse);
+      expect(server.requests, isEmpty);
     });
 
     test('a closed port is unreachable', () async {
@@ -151,6 +156,27 @@ void main() {
         (check as CaNotTrusted).leaf.sha256,
         tlsFixtureSha256('selfsigned.pem'),
       );
+    });
+
+    test('not trusted: shows the leaf of a server that sends its CA along, '
+        'not the CA', () async {
+      final server = await RecordingTlsServer.start(
+        certificate: 'server.pem',
+        key: 'server.key',
+        issuers: ['ca.pem'],
+      );
+      addTearDown(server.close);
+
+      final check = await const CertificateProbe().verifyWithCa(
+        localhost(server.port),
+        tlsFixtureText('client-ca.pem'),
+      );
+
+      expect(
+        (check as CaNotTrusted).leaf.sha256,
+        tlsFixtureSha256('server.pem'),
+      );
+      expect(server.requests, isEmpty);
     });
 
     test('trusted on an mTLS server that then refuses the missing client '

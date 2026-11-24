@@ -24,9 +24,11 @@ String trashFailureText(
   };
   final shared = actionFailureText(l10n, error);
   final notSent = notSentFailureText(l10n, error);
+  final settings = connectionSettingsFailureText(l10n, error);
   return switch (error) {
     TaskDeleteInFlight() => l10n.trashDeleteStillSending,
     _ when notSent != null => notSent,
+    _ when settings != null => settings,
     // No "unconfirmed" text for a timeout: a second restore succeeds, and a
     // second permanent delete says the item is no longer in the bin.
     NetworkFailure() when restore => l10n.trashRestoreNeedsConnection,
