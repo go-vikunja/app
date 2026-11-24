@@ -88,7 +88,8 @@ final class ConnectServerInviteFound extends ConnectServerState {
 /// A shared link or an invite was refused, or opening it failed in a way
 /// that is not about reaching the server: a `VikunjaFailure` (an invite
 /// refused is a `NotFound` code 2005, a link share gone a
-/// `LinkShareGone`) or anything unexpected.
+/// `LinkShareGone`), a `GuestServerUnsupported` when a shared link's server
+/// is below the support floor, or anything unexpected.
 final class ConnectServerLinkFailed extends ConnectServerState {
   const new({required this.serverRoot, required this.error});
 
@@ -104,6 +105,7 @@ final class ConnectServerShareNeedsServer extends ConnectServerState {
     required this.linkBase,
     required this.failure,
     this.claimingServer,
+    this.addressFailed,
   });
 
   final Uri linkBase;
@@ -113,6 +115,18 @@ final class ConnectServerShareNeedsServer extends ConnectServerState {
   /// offered as the address; the link goes there only once the user
   /// continues with it.
   final Uri? claimingServer;
+
+  /// The address last given for the link and why it failed; the link still
+  /// waits, for that address again or another.
+  final ConnectServerFailed? addressFailed;
+
+  ConnectServerShareNeedsServer withAddressFailed(ConnectServerFailed failed) =>
+      ConnectServerShareNeedsServer(
+        linkBase: linkBase,
+        failure: failure,
+        claimingServer: claimingServer,
+        addressFailed: failed,
+      );
 }
 
 /// The shared project has a password, which the screen asks for, naming

@@ -60,13 +60,25 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
     if (next is SignInSucceeded) _start();
   }
 
+  /// Routing keeps this screen, and so skips initState, when Cancel's
+  /// sign-out activates another account that has not synced either.
+  void _onActiveAccountChanged(String? previous, String? next) {
+    if (next == null || next == previous) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
   /// Another account, if any, becomes active again and opens its shell.
   Future<void> _cancel(RegisteredAccount entry) =>
       removeAccount(context, ref, entry, pendingChanges: 0);
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(signInControllerProvider, _onSignInChanged);
+    ref
+      ..listen(signInControllerProvider, _onSignInChanged)
+      ..listen<String?>(
+        accountsProvider.select((accounts) => accounts.value?.activeAccountId),
+        _onActiveAccountChanged,
+      );
     final entry = ref.watch(accountsProvider).value?.activeAccount;
     // Briefly null while this route animates out after signing out.
     if (entry == null) return const Scaffold();

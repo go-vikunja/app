@@ -10,7 +10,9 @@ import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
+import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
+import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
 import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
@@ -32,75 +34,103 @@ final _log = Logger('AccountData');
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled, the session
-/// reminder included, and in the tray) and forgets their preferences, the
-/// background notes, the last session end, the sign-in page on another
-/// host it confirmed, that it was kept as an http account, the unsent
-/// comments and the description draft, replaces its home-screen widgets'
-/// content with "Account removed", stops its outbox sender and sync engine,
-/// closes its database and deletes the files: the database, the stored
-/// copies of queued uploads, the downloaded attachments and the images
-/// kept on disk.
+/// reminder included, whatever else the OS holds for it, and in the tray)
+/// and forgets their preferences, the background notes, the last session
+/// end, the sign-in page on another host it confirmed, that it was kept as
+/// an http account, the unsent comments and the description draft, replaces
+/// its home-screen widgets' content with "Account removed", stops its
+/// outbox sender and sync engine, closes its database and deletes the
+/// files: the database, the stored copies of queued uploads, the downloaded
+/// attachments, the images kept on disk and, on Android, share_plus's copy
+/// of the file shared last, whichever account it came from. Every part is
+/// tried, also after one failed, and the first failure is thrown at the
+/// end, so the account stays listed to delete and the next start tries
+/// again (decision log: Accounts and sign-in).
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
+  (Object, StackTrace)? failed;
+  Future<void> attempt(String what, Future<void> Function() remove) async {
+    try {
+      await remove();
+    } on Object catch (error, stackTrace) {
+      _log.warning(
+        '$what of account $accountId was not removed: ${error.runtimeType}',
+      );
+      failed ??= (error, stackTrace);
+    }
+  }
+
   BackgroundRunnerChannel.release(accountId);
   ref
     ..invalidate(accountAvatarCacheProvider(accountId))
     ..invalidate(accountAttachmentImagesProvider(accountId));
-  await _disposeQuietly('Background notes', accountId, () async {
-    await ref.read(backgroundRunLogProvider).forget(accountId);
-    await ref.read(sessionEndLogProvider).forget(accountId);
-    await ref.read(sessionDiagnosticsProvider).forget(accountId);
-    await ref
+  await attempt(
+    'Background run log',
+    () => ref.read(backgroundRunLogProvider).forget(accountId),
+  );
+  await attempt(
+    'Session end log',
+    () => ref.read(sessionEndLogProvider).forget(accountId),
+  );
+  await attempt(
+    'Session diagnostics',
+    () => ref.read(sessionDiagnosticsProvider).forget(accountId),
+  );
+  await attempt(
+    'Session end notice',
+    () => ref
         .read(preferencesStoreProvider)
-        .remove(ActivityNotifier.sessionEndedKey(accountId));
-  });
-  await _disposeQuietly(
+        .remove(ActivityNotifier.sessionEndedKey(accountId)),
+  );
+  await attempt(
     'Confirmed sign-in host',
-    accountId,
     () =>
         ConfirmedSignInHosts(ref.read(preferencesStoreProvider))
             .forget(accountId),
   );
-  await _disposeQuietly(
+  await attempt(
     'Kept http account',
-    accountId,
     () => KeptHttpTwins(ref.read(preferencesStoreProvider)).forget(accountId),
   );
-  await _disposeQuietly(
+  await attempt(
     'Comment drafts',
-    accountId,
     () => ref.read(commentDraftsProvider).discardAll(accountId),
   );
-  await _disposeQuietly(
+  await attempt(
     'Description draft',
-    accountId,
     () => ref.read(descriptionDraftsProvider).discardAll(accountId),
   );
-  await _disposeQuietly(
+  await attempt(
     'Notification scheduler',
-    accountId,
     () => ref.read(notificationSchedulersProvider).cancelAll(accountId),
   );
-  await _disposeQuietly(
+  await attempt(
     'Session reminder',
-    accountId,
     () => ref.read(sessionRemindersProvider).cancel(accountId),
   );
-  await _disposeQuietly(
+  await attempt('Pending notifications', () async {
+    // A later start has no scheduler and no table (gone with the database),
+    // so only the payloads name what the OS still holds.
+    final gateway = ref.read(notificationGatewayProvider);
+    for (final MapEntry(key: osId, value: payload)
+        in (await gateway.pendingIds()).entries) {
+      if (NotificationPayload.tryParse(payload)?.accountId == accountId) {
+        await gateway.cancel(osId);
+      }
+    }
+  });
+  await attempt(
     'Delivered notifications',
-    accountId,
     () =>
         ActivityTray(ref.read(notificationGatewayProvider))
             .withdrawAll(accountId),
   );
-  await _disposeQuietly(
+  await attempt(
     'Notification preferences',
-    accountId,
     () => ref.read(notificationPreferencesStoreProvider).delete(accountId),
   );
-  await _disposeQuietly(
+  await attempt(
     'Widgets',
-    accountId,
     () => ref.read(widgetPublishersProvider).wipe(accountId),
   );
   if (ref.exists(outboxSenderProvider(accountId))) {
@@ -117,22 +147,32 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
       () => ref.read(syncEngineProvider(accountId)).dispose(),
     );
   }
-  await ref.read(openDatabasesProvider).closeForDeletion(accountId);
-  await ref.read(accountDatabaseFilesProvider).deleteFor(accountId);
+  await attempt('Database', () async {
+    await ref.read(openDatabasesProvider).closeForDeletion(accountId);
+    await ref.read(accountDatabaseFilesProvider).deleteFor(accountId);
+  });
   ref.invalidate(accountUploadFilesProvider(accountId));
-  await _disposeQuietly(
+  await attempt(
     'Downloaded attachments',
-    accountId,
     () => ref.read(attachmentDownloadsProvider).purgeAccount(accountId),
   );
-  // Not quietly: unlike the downloads, which go after a few days unused,
-  // nothing else deletes the images of an account still listed to delete,
-  // so a failure leaves the account to the next start's wipe. The closed
-  // instance goes either way: a sign-in again would find it closed.
-  try {
-    await ref.read(accountImageDiskCacheProvider(accountId)).deleteAll();
-  } finally {
-    ref.invalidate(accountImageDiskCacheProvider(accountId));
+  await attempt('Images on disk', () async {
+    // The closed instance goes either way: a sign-in again would find it
+    // closed.
+    try {
+      await ref.read(accountImageDiskCacheProvider(accountId)).deleteAll();
+    } finally {
+      ref.invalidate(accountImageDiskCacheProvider(accountId));
+    }
+  });
+  await attempt('Shared copy', () async {
+    // Nothing else deletes it before the next share; it holds only the last
+    // share's files, which may be another account's.
+    final folder = await ref.read(shareCopiesFolderProvider)();
+    if (folder.existsSync()) await folder.delete(recursive: true);
+  });
+  if (failed case (final error, final stackTrace)?) {
+    Error.throwWithStackTrace(error, stackTrace);
   }
 };
 
@@ -180,4 +220,5 @@ SignOut signOut(Ref ref) => SignOut(
   linkShares: ref.watch(linkShareSessionsProvider),
   accountGateway: ref.watch(accountGatewayProvider),
   deletions: ref.watch(accountDeletionsProvider),
+  diagnostics: ref.watch(sessionDiagnosticsProvider),
 );

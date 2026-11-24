@@ -305,6 +305,194 @@ void main() {
       expectNoSecretsLogged(password: 'tomato');
     });
 
+    test('with a password, closed while the password is checked stores '
+        'nothing and keeps the active account', () async {
+      final other = await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      await controller().connect(shareLink());
+      expect(state(), isA<ConnectServerSharePasswordNeeded>());
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+
+      final trying = controller().submitSharePassword('tomato', remember: true);
+      await pumpEventQueue();
+      expect(auth.linkShareGateway.authentications, hasLength(2));
+      controller().reset();
+      answer.complete();
+
+      expect(await trying, SharePasswordOutcome.failed);
+      expect(state(), isA<ConnectServerIdle>());
+      expect(states.whereType<ConnectServerGuestSignedIn>(), isEmpty);
+      expect(
+        auth.secureStore.values.keys,
+        isNot(anyElement(contains(accountId))),
+      );
+      final registry = await auth.registry.load();
+      expect(registry.find(accountId), isNull);
+      expect(registry.activeAccountId, other.id);
+      expect(container.read(guestLandingsProvider).take(accountId), isNull);
+      expectNoSecretsLogged(password: 'tomato');
+    });
+
+    test('with a password, closed once the server has accepted the password '
+        'refuses the reset and keeps the guest', () async {
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      await controller().connect(shareLink());
+      final storing = Completer<void>();
+      auth.secureStore.beforeWrite = (key) async {
+        if (key == LinkShareStore.hashKey(accountId)) await storing.future;
+      };
+
+      final trying = controller().submitSharePassword('tomato');
+      await pumpEventQueue();
+      expect(
+        state(),
+        isA<ConnectServerConnecting>()
+            .having((s) => s.target, 'target', ConnectTarget.sharedLink)
+            .having((s) => s.cancellable, 'cancellable', isFalse),
+      );
+      controller().reset();
+      expect(
+        state(),
+        isA<ConnectServerConnecting>().having(
+          (s) => s.cancellable,
+          'cancellable',
+          isFalse,
+        ),
+      );
+      storing.complete();
+
+      expect(await trying, SharePasswordOutcome.accepted);
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+      expect((await auth.registry.load()).activeAccountId, accountId);
+    });
+
+    test('with a password, removed with its screen while the password is '
+        'checked stores nothing', () async {
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      await controller().connect(shareLink());
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+
+      final trying = controller().submitSharePassword('tomato');
+      await pumpEventQueue();
+      expect(auth.linkShareGateway.authentications, hasLength(2));
+      container.invalidate(connectServerControllerProvider);
+      answer.complete();
+
+      expect(await trying, SharePasswordOutcome.failed);
+      expect(
+        auth.secureStore.values.keys,
+        isNot(anyElement(contains(accountId))),
+      );
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(container.read(guestLandingsProvider).take(accountId), isNull);
+    });
+
+    test('with a password, another address opened while the password is '
+        'checked ends that try', () async {
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      await controller().connect(shareLink());
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+
+      final trying = controller().submitSharePassword('tomato');
+      await pumpEventQueue();
+      connector.handler = (_) async => oauthServer230();
+      await controller().connect('vikunja.example.com');
+      answer.complete();
+
+      expect(await trying, SharePasswordOutcome.failed);
+      expect(state(), isA<ConnectServerConnected>());
+      expect(
+        auth.secureStore.values.keys,
+        isNot(anyElement(contains(accountId))),
+      );
+      expect((await auth.registry.load()).accounts, isEmpty);
+    });
+
+    test('with a password, a late answer to a try closed meanwhile leaves '
+        'the next link alone', () async {
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      await controller().connect(shareLink());
+      auth.linkShareGateway.onAuthenticate = (_, _) async =>
+          throw const RateLimited(retryAfter: Duration(seconds: 20));
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+      final trying = controller().submitSharePassword('tomato');
+      await pumpEventQueue();
+      controller().reset();
+      connector.handler = (_) async => insecureServer();
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink(base: 'http://192.168.1.20:3456/'));
+      expect(state(), isA<ConnectServerAwaitingInsecureConsent>());
+
+      answer.complete();
+      expect(await trying, SharePasswordOutcome.failed);
+      expect(state(), isA<ConnectServerAwaitingInsecureConsent>());
+      await controller().acceptInsecureConnection();
+
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+      expect(auth.linkShareGateway.authentications.last, (fakeShareHash, null));
+    });
+
+    test('on a server below the support floor says so before the link is '
+        'sent', () async {
+      auth.linkShareGateway.serve(token);
+      final root = server.rootUri.toString();
+
+      for (final (unsupported, version) in [
+        (legacyServer200(root: root), '2.0.0'),
+        (unknownVersionServer(root: root), null),
+      ]) {
+        connector.handler = (_) async => unsupported;
+
+        await controller().connect(shareLink());
+
+        expect(
+          state(),
+          isA<ConnectServerLinkFailed>()
+              .having((s) => s.serverRoot, 'serverRoot', unsupported.rootUri)
+              .having(
+                (s) => s.error,
+                'error',
+                isA<GuestServerUnsupported>().having(
+                  (error) => error.version?.display,
+                  'version',
+                  version,
+                ),
+              ),
+        );
+      }
+      expect(auth.linkShareGateway.authentications, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(container.read(currentServerProvider), isNull);
+      expectNoSecretsLogged();
+    });
+
+    test('on a plain http server below the support floor says so without '
+        'asking to accept http', () async {
+      final oldPlain = legacyServer200(root: 'http://192.168.1.20:3456');
+      connector.handler = (_) async => oldPlain;
+      auth.linkShareGateway.serve(token);
+
+      await controller().connect(shareLink(base: 'http://192.168.1.20:3456/'));
+
+      expect(states.whereType<ConnectServerAwaitingInsecureConsent>(), isEmpty);
+      expect(
+        state(),
+        isA<ConnectServerLinkFailed>().having(
+          (s) => s.error,
+          'error',
+          isA<GuestServerUnsupported>(),
+        ),
+      );
+      final profile = await container
+          .read(networkProfilesProvider)
+          .metadataFor(OriginKey.of(oldPlain.rootUri));
+      expect(profile?.hasCleartextConsent ?? false, isFalse);
+      expect(auth.linkShareGateway.authentications, isEmpty);
+    });
+
     test('a password the server then fails on ends in the failure', () async {
       auth.linkShareGateway.serve(token, password: 'tomato');
       await controller().connect(shareLink());
@@ -484,6 +672,43 @@ void main() {
         expect(state(), isA<ConnectServerGuestSignedIn>());
       });
 
+      test('when it cannot be reached, offers it again and still sends it the '
+          'link only once the user continues with it', () async {
+        var reachable = false;
+        connector.handler = (input) async {
+          if (input != claimingAddress) {
+            throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+          }
+          if (!reachable) throw ServerUnreachable(claiming.rootUri);
+          return claiming;
+        };
+        await controller().connect(shareLink());
+        await controller().connect(claimingAddress, forPendingShare: true);
+
+        expect(
+          state(),
+          isA<ConnectServerShareNeedsServer>()
+              .having(
+                (s) => s.claimingServer,
+                'claimingServer',
+                claiming.rootUri,
+              )
+              .having(
+                (s) => s.addressFailed?.failure,
+                'failure',
+                isA<ServerUnreachable>(),
+              ),
+        );
+        expect(auth.linkShareGateway.authentications, isEmpty);
+
+        reachable = true;
+        await controller().connect(claimingAddress, forPendingShare: true);
+
+        expect(connector.inputs, [base, claimingAddress, claimingAddress]);
+        expect(auth.linkShareGateway.connections.single, same(claiming));
+        expect(state(), isA<ConnectServerGuestSignedIn>());
+      });
+
       test('another address entered instead gets the link, and the stored '
           'server gets nothing', () async {
         final apiServer = fullServer270(root: 'https://api.example.org');
@@ -540,6 +765,188 @@ void main() {
       controller().reset();
       connector.handler = (_) async => oauthServer230();
       await controller().connect('vikunja.example.com');
+
+      expect(state(), isA<ConnectServerConnected>());
+      expect(auth.linkShareGateway.authentications, isEmpty);
+    });
+
+    test('waiting for its server, says why an address given for it failed '
+        'and opens the link at a corrected one', () async {
+      final apiServer = fullServer270(root: 'https://api.example.org');
+      connector.handler = (input) async {
+        if (input == 'api.example.org') return apiServer;
+        if (input == 'api.exmaple.org') {
+          throw ServerUnreachable(Uri.parse('https://api.exmaple.org/'));
+        }
+        throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+      };
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink());
+
+      await controller().connect('api.exmaple.org', forPendingShare: true);
+
+      expect(
+        state(),
+        isA<ConnectServerShareNeedsServer>()
+            .having((s) => s.linkBase, 'linkBase', Uri.parse(base))
+            .having((s) => s.addressFailed?.input, 'input', 'api.exmaple.org')
+            .having(
+              (s) => s.addressFailed?.failure,
+              'failure',
+              isA<ServerUnreachable>(),
+            ),
+      );
+      expect(auth.linkShareGateway.authentications, isEmpty);
+
+      await controller().connect('api.example.org', forPendingShare: true);
+
+      expect(connector.inputs, [base, 'api.exmaple.org', 'api.example.org']);
+      expect(auth.linkShareGateway.connections.single, same(apiServer));
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+      expect(container.read(currentServerProvider), isNull);
+      expectNoSecretsLogged();
+    });
+
+    test('waiting for its server, opens the link when an address that timed '
+        'out is tried again', () async {
+      final apiServer = fullServer270(root: 'https://api.example.org');
+      var timedOut = false;
+      connector.handler = (input) async {
+        if (input == base) {
+          throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+        }
+        if (!timedOut) {
+          timedOut = true;
+          throw ServerTimeout(Uri.parse('https://api.example.org/'));
+        }
+        return apiServer;
+      };
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink());
+      await controller().connect('api.example.org', forPendingShare: true);
+      expect(
+        state(),
+        isA<ConnectServerShareNeedsServer>().having(
+          (s) => s.addressFailed?.failure,
+          'failure',
+          isA<ServerTimeout>(),
+        ),
+      );
+
+      await controller().connect('api.example.org', forPendingShare: true);
+
+      expect(auth.linkShareGateway.connections.single, same(apiServer));
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+    });
+
+    test('waiting for its server, keeps waiting when an address given for it '
+        'fails unexpectedly', () async {
+      final apiServer = fullServer270(root: 'https://api.example.org');
+      var broken = true;
+      connector.handler = (input) async {
+        if (input == base) {
+          throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+        }
+        if (broken) throw StateError('the connector broke');
+        return apiServer;
+      };
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink());
+
+      await controller().connect('api.example.org', forPendingShare: true);
+
+      expect(
+        state(),
+        isA<ConnectServerShareNeedsServer>()
+            .having((s) => s.addressFailed?.input, 'input', 'api.example.org')
+            .having((s) => s.addressFailed?.failure, 'failure', isNull),
+      );
+      broken = false;
+      await controller().connect('api.example.org', forPendingShare: true);
+      expect(auth.linkShareGateway.connections.single, same(apiServer));
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+    });
+
+    test('waiting for its server, opens the link at an address behind an '
+        'untrusted certificate once its settings changed', () async {
+      final apiServer = fullServer270(root: 'https://api.example.org');
+      var trusted = false;
+      connector.handler = (input) async {
+        if (input == base) {
+          throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+        }
+        if (!trusted) {
+          throw TlsFailure(
+            Uri.parse('https://api.example.org/'),
+            certificateRejected: true,
+          );
+        }
+        return apiServer;
+      };
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink());
+      await controller().connect('api.example.org', forPendingShare: true);
+      expect(
+        state(),
+        isA<ConnectServerShareNeedsServer>().having(
+          (s) => s.addressFailed?.failure,
+          'failure',
+          isA<TlsFailure>(),
+        ),
+      );
+
+      trusted = true;
+      await controller().retryAfterConnectionChange();
+
+      expect(connector.inputs, [base, 'api.example.org', 'api.example.org']);
+      expect(auth.linkShareGateway.connections.single, same(apiServer));
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+    });
+
+    test('waiting for its server after a failed address goes to no server '
+        'the user did not give for it', () async {
+      connector.handler = (input) async {
+        if (input == base) {
+          throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+        }
+        if (input == 'api.example.org') {
+          throw ServerUnreachable(Uri.parse('https://api.example.org/'));
+        }
+        return oauthServer230();
+      };
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink());
+      await controller().connect('api.example.org', forPendingShare: true);
+      expect(state(), isA<ConnectServerShareNeedsServer>());
+
+      await controller().connect('https://try.vikunja.io');
+
+      expect(state(), isA<ConnectServerConnected>());
+      expect(auth.linkShareGateway.authentications, isEmpty);
+    });
+
+    test('waiting for its server is forgotten when the address given for it '
+        'is cancelled', () async {
+      final probe = Completer<ServerConnection>();
+      connector.handler = (input) => input == base
+          ? Future.error(NotAVikunjaServer(Uri.parse(base), statusCode: 200))
+          : probe.future;
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink());
+
+      final connecting = controller().connect(
+        'api.example.org',
+        forPendingShare: true,
+      );
+      controller().cancel();
+      probe.completeError(
+        ServerUnreachable(Uri.parse('https://api.example.org/')),
+      );
+      await connecting;
+      expect(state(), isA<ConnectServerIdle>());
+
+      connector.handler = (_) async => oauthServer230();
+      await controller().connect('vikunja.example.com', forPendingShare: true);
 
       expect(state(), isA<ConnectServerConnected>());
       expect(auth.linkShareGateway.authentications, isEmpty);

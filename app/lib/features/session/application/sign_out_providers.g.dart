@@ -11,14 +11,18 @@ part of 'sign_out_providers.dart';
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled, the session
-/// reminder included, and in the tray) and forgets their preferences, the
-/// background notes, the last session end, the sign-in page on another
-/// host it confirmed, that it was kept as an http account, the unsent
-/// comments and the description draft, replaces its home-screen widgets'
-/// content with "Account removed", stops its outbox sender and sync engine,
-/// closes its database and deletes the files: the database, the stored
-/// copies of queued uploads, the downloaded attachments and the images
-/// kept on disk.
+/// reminder included, whatever else the OS holds for it, and in the tray)
+/// and forgets their preferences, the background notes, the last session
+/// end, the sign-in page on another host it confirmed, that it was kept as
+/// an http account, the unsent comments and the description draft, replaces
+/// its home-screen widgets' content with "Account removed", stops its
+/// outbox sender and sync engine, closes its database and deletes the
+/// files: the database, the stored copies of queued uploads, the downloaded
+/// attachments, the images kept on disk and, on Android, share_plus's copy
+/// of the file shared last, whichever account it came from. Every part is
+/// tried, also after one failed, and the first failure is thrown at the
+/// end, so the account stays listed to delete and the next start tries
+/// again (decision log: Accounts and sign-in).
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
@@ -26,14 +30,18 @@ final accountDataWiperProvider = AccountDataWiperProvider._();
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled, the session
-/// reminder included, and in the tray) and forgets their preferences, the
-/// background notes, the last session end, the sign-in page on another
-/// host it confirmed, that it was kept as an http account, the unsent
-/// comments and the description draft, replaces its home-screen widgets'
-/// content with "Account removed", stops its outbox sender and sync engine,
-/// closes its database and deletes the files: the database, the stored
-/// copies of queued uploads, the downloaded attachments and the images
-/// kept on disk.
+/// reminder included, whatever else the OS holds for it, and in the tray)
+/// and forgets their preferences, the background notes, the last session
+/// end, the sign-in page on another host it confirmed, that it was kept as
+/// an http account, the unsent comments and the description draft, replaces
+/// its home-screen widgets' content with "Account removed", stops its
+/// outbox sender and sync engine, closes its database and deletes the
+/// files: the database, the stored copies of queued uploads, the downloaded
+/// attachments, the images kept on disk and, on Android, share_plus's copy
+/// of the file shared last, whichever account it came from. Every part is
+/// tried, also after one failed, and the first failure is thrown at the
+/// end, so the account stays listed to delete and the next start tries
+/// again (decision log: Accounts and sign-in).
 
 final class AccountDataWiperProvider
     extends
@@ -46,14 +54,18 @@ final class AccountDataWiperProvider
   /// The last step of a sign-out: makes a background run in another isolate
   /// let go of the account, drops its avatars and attachment images from
   /// memory, cancels the account's notifications (scheduled, the session
-  /// reminder included, and in the tray) and forgets their preferences, the
-  /// background notes, the last session end, the sign-in page on another
-  /// host it confirmed, that it was kept as an http account, the unsent
-  /// comments and the description draft, replaces its home-screen widgets'
-  /// content with "Account removed", stops its outbox sender and sync engine,
-  /// closes its database and deletes the files: the database, the stored
-  /// copies of queued uploads, the downloaded attachments and the images
-  /// kept on disk.
+  /// reminder included, whatever else the OS holds for it, and in the tray)
+  /// and forgets their preferences, the background notes, the last session
+  /// end, the sign-in page on another host it confirmed, that it was kept as
+  /// an http account, the unsent comments and the description draft, replaces
+  /// its home-screen widgets' content with "Account removed", stops its
+  /// outbox sender and sync engine, closes its database and deletes the
+  /// files: the database, the stored copies of queued uploads, the downloaded
+  /// attachments, the images kept on disk and, on Android, share_plus's copy
+  /// of the file shared last, whichever account it came from. Every part is
+  /// tried, also after one failed, and the first failure is thrown at the
+  /// end, so the account stays listed to delete and the next start tries
+  /// again (decision log: Accounts and sign-in).
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -87,7 +99,7 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'b200cdb67f3a98f1b3edc12dab1a6a8d65da87cf';
+String _$accountDataWiperHash() => r'8bf68884d8ca5646d1d28e095ee3f29bb21de18c';
 
 @ProviderFor(accountDeletions)
 final accountDeletionsProvider = AccountDeletionsProvider._();
@@ -174,4 +186,4 @@ final class SignOutProvider
   }
 }
 
-String _$signOutHash() => r'e1df79231ce00d7798edb25c968b9aacc00611e5';
+String _$signOutHash() => r'4865fdf538be06782fa1d3016d936bc01ae3e08b';

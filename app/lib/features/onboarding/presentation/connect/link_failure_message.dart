@@ -11,7 +11,8 @@ const _inviteInvalid = 2005;
 
 /// Why a shared link or an invite could not be opened on [serverRoot]:
 /// [error] is a `VikunjaFailure`, a [GuestLinkGone], a
-/// [SignOutStillFinishing] or anything unexpected.
+/// [GuestServerUnsupported], a [SignOutStillFinishing] or anything
+/// unexpected.
 FailureMessage describeLinkFailure(
   AppLocalizations l10n,
   Object error, {
@@ -38,6 +39,21 @@ FailureMessage describeLinkFailure(
     title: l10n.guestRemoveStillFinishingTitle,
     explanation: l10n.guestRemoveStillFinishingExplanation,
     suggestion: l10n.signOutStillFinishingSuggestion,
+  ),
+  GuestServerUnsupported(:final version?) => FailureMessage(
+    title: l10n.unsupportedTitle,
+    explanation: l10n.unsupportedBody(
+      ServerCapabilities.minimumSupportedVersion.display,
+      version.display,
+    ),
+    suggestion: l10n.unsupportedSuggestion,
+  ),
+  GuestServerUnsupported() => FailureMessage(
+    title: l10n.unsupportedUnknownVersionTitle,
+    explanation: l10n.unsupportedUnknownVersionBody(
+      ServerCapabilities.minimumSupportedVersion.display,
+    ),
+    suggestion: l10n.unsupportedUnknownVersionSuggestion,
   ),
   _ => describeSignInFailure(
     l10n,

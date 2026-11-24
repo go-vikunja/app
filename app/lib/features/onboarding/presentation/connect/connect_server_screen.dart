@@ -219,6 +219,31 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   void _onFix(ConnectionFix fix, OriginKey origin) =>
       unawaited(_fix(fix, origin));
 
+  Widget _addressFailureCard(ConnectServerFailed failed, {Key? key}) {
+    final l10n = context.l10n;
+    final platform = Theme.of(context).platform;
+    final failure = failed.failure;
+    return ConnectFailureCard(
+      key: key,
+      error: failure,
+      origin: switch (failure?.uri) {
+        final uri? => OriginKey.tryOf(uri),
+        null => null,
+      },
+      onFix: _onFix,
+      describe: (settings) => FailureMessage.describe(
+        l10n,
+        failure: failure,
+        input: failed.input,
+        platform: platform,
+        hasClientCertificate: settings == null
+            ? null
+            : settings.profile?.clientCertificate != null,
+        pinned: settings?.profile?.pin != null,
+      ),
+    );
+  }
+
   /// A shared link's own host that refused the app like an access proxy.
   static OriginKey? _headersFixOrigin(ServerConnectionFailure failure) =>
       switch ((connectionFixFor(failure), failure.uri)) {
@@ -291,7 +316,9 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
       case ConnectServerConnecting(:final input, target: ConnectTarget.server)
           when input.trim() != _address.text.trim():
         _address.text = input;
-      case ConnectServerFailed() || ConnectServerLinkFailed():
+      case ConnectServerFailed() ||
+          ConnectServerLinkFailed() ||
+          ConnectServerShareNeedsServer(addressFailed: _?):
         unawaited(HapticFeedback.heavyImpact());
       case ConnectServerAwaitingInsecureConsent(
         :final connection,
@@ -504,30 +531,10 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                         alignment: Alignment.topCenter,
                         onEnd: () => unawaited(_revealError()),
                         child: switch (state) {
-                          ConnectServerFailed(:final failure, :final input) =>
-                            Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: ConnectFailureCard(
-                                key: _errorKey,
-                                error: failure,
-                                origin: switch (failure?.uri) {
-                                  final uri? => OriginKey.tryOf(uri),
-                                  null => null,
-                                },
-                                onFix: _onFix,
-                                describe: (settings) => FailureMessage.describe(
-                                  l10n,
-                                  failure: failure,
-                                  input: input,
-                                  platform: theme.platform,
-                                  hasClientCertificate: settings == null
-                                      ? null
-                                      : settings.profile?.clientCertificate !=
-                                            null,
-                                  pinned: settings?.profile?.pin != null,
-                                ),
-                              ),
-                            ),
+                          ConnectServerFailed() && final failed => Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: _addressFailureCard(failed, key: _errorKey),
+                          ),
                           ConnectServerLinkFailed(
                             :final error,
                             :final serverRoot,
@@ -551,52 +558,75 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                             :final linkBase,
                             :final failure,
                             :final claimingServer,
+                            :final addressFailed,
                           ) =>
                             Padding(
                               padding: const EdgeInsets.only(top: 16),
-                              child: StatusCard(
+                              child: Column(
                                 key: _errorKey,
-                                icon: Icons.help_outline,
-                                title: l10n.guestServerNeededTitle,
-                                body: l10n.guestServerNeededExplanation(
-                                  displayHost(linkBase),
-                                ),
-                                // Only while Continue sends the link there.
-                                footnote: switch (claimingServer) {
-                                  final server?
-                                      when _typedOrigin ==
-                                          OriginKey.tryOf(server) =>
-                                    _claimedServerNote(
-                                      l10n,
-                                      linkBase: linkBase,
-                                      server: server,
-                                    ),
-                                  _ => l10n.guestServerNeededSuggestion,
-                                },
-                                background:
-                                    theme.colorScheme.secondaryContainer,
-                                foreground:
-                                    theme.colorScheme.onSecondaryContainer,
-                                liveRegion: true,
-                                action: Wrap(
-                                  alignment: WrapAlignment.end,
-                                  spacing: 8,
-                                  children: [
-                                    if (_headersFixOrigin(failure)
-                                        case final origin?)
-                                      TextButton(
-                                        onPressed: () => _onFix(
-                                          ConnectionFix.addHeaders,
-                                          origin,
-                                        ),
-                                        child: Text(l10n.connectionAddHeaders),
-                                      ),
-                                    TextButton(
-                                      onPressed: _controller.reset,
-                                      child: Text(l10n.cancel),
-                                    ),
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Like a failed address on its own, it goes
+                                  // once the field names another address.
+                                  if (addressFailed != null &&
+                                      _typedOrigin ==
+                                          originOfTypedAddress(
+                                            addressFailed.input,
+                                          )) ...[
+                                    _addressFailureCard(addressFailed),
+                                    const SizedBox(height: 8),
                                   ],
-                                ),
+                                  StatusCard(
+                                    icon: Icons.help_outline,
+                                    title: l10n.guestServerNeededTitle,
+                                    body: l10n.guestServerNeededExplanation(
+                                      displayHost(linkBase),
+                                    ),
+                                    // Only while Continue sends the link there.
+                                    footnote: switch (claimingServer) {
+                                      final server?
+                                          when _typedOrigin ==
+                                              OriginKey.tryOf(server) =>
+                                        _claimedServerNote(
+                                          l10n,
+                                          linkBase: linkBase,
+                                          server: server,
+                                        ),
+                                      _ => l10n.guestServerNeededSuggestion,
+                                    },
+                                    background:
+                                        theme.colorScheme.secondaryContainer,
+                                    foreground:
+                                        theme.colorScheme.onSecondaryContainer,
+                                    // The failure above is what is announced.
+                                    liveRegion: addressFailed == null,
+                                    action: Wrap(
+                                      alignment: WrapAlignment.end,
+                                      spacing: 8,
+                                      children: [
+                                        // Once an address has failed, a
+                                        // settings change retries that
+                                        // address, not the link's own host.
+                                        if (_headersFixOrigin(failure)
+                                            case final origin?
+                                            when addressFailed == null)
+                                          TextButton(
+                                            onPressed: () => _onFix(
+                                              ConnectionFix.addHeaders,
+                                              origin,
+                                            ),
+                                            child: Text(
+                                              l10n.connectionAddHeaders,
+                                            ),
+                                          ),
+                                        TextButton(
+                                          onPressed: _controller.reset,
+                                          child: Text(l10n.cancel),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ConnectServerInviteFound(

@@ -295,6 +295,42 @@ final List<SweepScenario> onboardingStateScenarios = [
   ),
   SweepScenario(
     kind: SweepKind.state,
+    name: 'shared link server question after a failed address',
+    route: AppRoutes.addAccount,
+    setUp: (tester, _) async {
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        accountPagesServer270(
+          root: 'https://api.example.org',
+          frontendUrl: Uri.parse(_webOnly),
+        ),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: sweepData(),
+        connector: FakeServerConnector(
+          (input) => Future.error(
+            input == 'api.example.org'
+                ? ServerUnreachable(Uri.parse('https://api.example.org/'))
+                : NotAVikunjaServer(Uri.parse(_webOnly), statusCode: 200),
+          ),
+        ),
+        overrides: guestEntryOverrides(),
+      );
+    },
+    navigate: (tester, _) async {
+      pushTo(tester, AppRoutes.addAccount);
+      await tester.pumpAndSettle();
+      await _submitAddress(tester, shareLink(base: _webOnly));
+      await tester.pumpAndSettle();
+      await _submitAddress(tester, 'api.example.org');
+    },
+    expectScreen: (l10n) => find.text(l10n.failureUnreachableTitle),
+  ),
+  SweepScenario(
+    kind: SweepKind.state,
     name: 'browser hint',
     route: AppRoutes.serverOverview,
     setUp: (tester, _) async {

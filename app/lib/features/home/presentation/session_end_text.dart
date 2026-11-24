@@ -23,6 +23,7 @@ String describeSessionEndCause(
     SessionEndCause.accountLocked => l10n.sessionEndCauseLocked,
     SessionEndCause.missingTokens => l10n.sessionEndCauseMissingTokens,
     SessionEndCause.storageUnreadable => l10n.sessionEndCauseStorageUnreadable,
+    SessionEndCause.signOutFailed => l10n.sessionEndCauseSignOutFailed,
     SessionEndCause.shareGone => l10n.sessionEndCauseShareGone,
     SessionEndCause.sharePasswordNeeded => l10n.sessionEndCauseSharePassword,
   };
@@ -43,14 +44,19 @@ bool _mayHaveLostAnswer(SessionEndResolution? resolution) =>
       null => true,
     };
 
-/// What became of the ended session, when that tells something.
+/// What became of the ended session, when that tells something. A session
+/// a sign-out could not finish was left alive on purpose, not by the app's
+/// mistake.
 String? describeSessionEndResolution(
   AppLocalizations l10n,
-  SessionEndResolution? resolution,
-) => switch (resolution) {
+  SessionEndDiagnosis diagnosis,
+) => switch (diagnosis.resolution) {
   SessionEndResolution.orphanRevoked => l10n.sessionEndResolvedOrphan,
   SessionEndResolution.goneOnServer => l10n.sessionEndResolvedGone,
-  SessionEndResolution.wasAlive => l10n.sessionEndResolvedAlive,
+  SessionEndResolution.wasAlive =>
+    diagnosis.cause == SessionEndCause.signOutFailed
+        ? null
+        : l10n.sessionEndResolvedAlive,
   SessionEndResolution.restored => l10n.sessionEndResolvedRestored,
   SessionEndResolution.noTokens || SessionEndResolution.unknown || null => null,
 };

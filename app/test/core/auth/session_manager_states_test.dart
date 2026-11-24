@@ -16,6 +16,12 @@ import '../../helpers/server_connections.dart';
 const _accountId = 'a1';
 const _raceLost = RefreshRaceLost(message: 'already used');
 
+final Matcher _noTokenYet = isA<NetworkFailure>().having(
+  (f) => f.cause,
+  'cause',
+  RefreshDeferred.signIn,
+);
+
 /// The value a call completed with, or the error it threw.
 Future<Object?> _outcome(Future<Object?> call) =>
     call.then((value) => value, onError: (Object error) => error);
@@ -132,6 +138,43 @@ void main() {
       );
       expect(await manager.refreshAfterRejection(fresh.accessToken), isNull);
       await expectLater(manager.refreshNow(), throwsA(isA<SessionEnded>()));
+      await manager.settle();
+      expect(secureStore.operations, isEmpty);
+      expect(await storedRefreshToken(), stored.refreshToken);
+      expect(refreshCalls, [stored.refreshToken]);
+      expect(sleeps, isEmpty);
+      expect(ended, isEmpty);
+    });
+
+    test('for a sign-in answers every call with no token yet, never as '
+        'ended, and writes nothing', () async {
+      final stored = await store(expiresIn: Duration.zero);
+      final fresh = issueTokens(issuedAt: now);
+      onRefresh = (_) async => fresh;
+      final writing = Completer<void>();
+      final gate = Completer<void>();
+      secureStore.beforeWrite = (_) async {
+        if (!writing.isCompleted) writing.complete();
+        await gate.future;
+        throw StateError('keystore');
+      };
+      final manager = createManager();
+
+      final valid = _outcome(manager.validAccessToken());
+      await writing.future;
+      final retiring = manager.retire(forSignIn: true);
+      gate.complete();
+      await retiring;
+
+      expect(await valid, _noTokenYet);
+      secureStore.beforeWrite = null;
+      secureStore.operations.clear();
+      await expectLater(manager.validAccessToken(), throwsA(_noTokenYet));
+      await expectLater(
+        manager.refreshAfterRejection(fresh.accessToken),
+        throwsA(_noTokenYet),
+      );
+      await expectLater(manager.refreshNow(), throwsA(_noTokenYet));
       await manager.settle();
       expect(secureStore.operations, isEmpty);
       expect(await storedRefreshToken(), stored.refreshToken);
@@ -358,10 +401,7 @@ void main() {
       expect(await clockOffsets.read(_accountId), skew);
       expect(managers.forAccount(_accountId), same(manager));
       expect(await manager.validAccessToken(), signIn.accessToken);
-      await expectLater(
-        previous.validAccessToken(),
-        throwsA(isA<SessionEnded>()),
-      );
+      await expectLater(previous.validAccessToken(), throwsA(_noTokenYet));
       expect(gateway.refreshedTokens, isEmpty);
 
       // 30 s before expiry in server time, 5.5 min on the device's clock.
@@ -379,20 +419,64 @@ void main() {
       'failure',
       same(failure),
     );
-    final retired = isA<RetiredStop>();
+    final retired = isA<RetiredStop>().having(
+      (stop) => stop.forSignIn,
+      'forSignIn',
+      isFalse,
+    );
+    final retiredForSignIn = isA<RetiredStop>().having(
+      (stop) => stop.forSignIn,
+      'forSignIn',
+      isTrue,
+    );
+
+    String describeStop(SessionStop? stop) => switch (stop) {
+      null => 'live',
+      EndedStop() => 'ended',
+      RetiredStop(forSignIn: true) => 'retired for a sign-in',
+      RetiredStop() => 'retired',
+    };
+    String describeEvent(StopEvent event) => switch (event) {
+      EndEvent() => 'an end',
+      ReviveEvent() => 'a revival',
+      RetireEvent(forSignIn: true) => "a sign-in's retirement",
+      RetireEvent() => "a sign-out's retirement",
+    };
 
     for (final (from, event, to) in <(SessionStop?, StopEvent, Matcher)>[
       (null, const EndEvent(failure), endedBy),
       (null, const ReviveEvent(), isNull),
       (null, const RetireEvent(), retired),
+      (null, const RetireEvent(forSignIn: true), retiredForSignIn),
       (const EndedStop(earlier), const EndEvent(failure), endedBy),
       (const EndedStop(earlier), const ReviveEvent(), isNull),
       (const EndedStop(earlier), const RetireEvent(), retired),
+      (
+        const EndedStop(earlier),
+        const RetireEvent(forSignIn: true),
+        retiredForSignIn,
+      ),
       (const RetiredStop(), const EndEvent(failure), retired),
       (const RetiredStop(), const ReviveEvent(), retired),
       (const RetiredStop(), const RetireEvent(), retired),
+      (
+        const RetiredStop(),
+        const RetireEvent(forSignIn: true),
+        retiredForSignIn,
+      ),
+      (const RetiredStop(forSignIn: true), const RetireEvent(), retired),
+      (
+        const RetiredStop(forSignIn: true),
+        const EndEvent(failure),
+        retiredForSignIn,
+      ),
+      (
+        const RetiredStop(forSignIn: true),
+        const ReviveEvent(),
+        retiredForSignIn,
+      ),
     ]) {
-      test('${from?.runtimeType ?? 'live'} after ${event.runtimeType}', () {
+      test('${describeStop(from)} after ${describeEvent(event)}', () {
         expect(stopAfter(from, event), to);
       });
     }

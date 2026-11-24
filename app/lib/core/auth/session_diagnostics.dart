@@ -27,6 +27,10 @@ enum SessionEndCause {
   /// for longer than a day without a good read in between.
   storageUnreadable,
 
+  /// A sign-out retired the session on this device but could not remove
+  /// the account.
+  signOutFailed,
+
   /// A guest's share is gone: deleted, never there, or link sharing off.
   shareGone,
 
@@ -42,9 +46,9 @@ enum SessionEndCause {
     SessionEndReason.accountLocked => accountLocked,
   };
 
-  /// This device's storage ended the session, not the server.
+  /// This device ended the session, not the server.
   bool get onDevice => switch (this) {
-    missingTokens || storageUnreadable => true,
+    missingTokens || storageUnreadable || signOutFailed => true,
     refreshRejected ||
     sessionExpired ||
     accountDisabled ||

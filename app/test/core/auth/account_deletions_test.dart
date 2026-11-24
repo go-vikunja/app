@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
@@ -55,6 +56,9 @@ void main() {
         ),
         notificationGatewayProvider.overrideWithValue(gateway),
         widgetHostProvider.overrideWithValue(FakeWidgetHost()),
+        attachmentDownloadsProvider.overrideWithValue(
+          AttachmentDownloads(() async => Directory('/no-cache')),
+        ),
       ],
     );
     addTearDown(container.dispose);

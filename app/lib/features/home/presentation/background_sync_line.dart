@@ -97,7 +97,7 @@ class BackgroundSyncLine extends ConsumerWidget {
               else
                 l10n.accountLastSessionEnd(ago(ended.at)),
               describeSessionEndCause(l10n, ended, now: now),
-              ?describeSessionEndResolution(l10n, ended.resolution),
+              ?describeSessionEndResolution(l10n, ended),
             ].join(' '),
             style: style,
           ),

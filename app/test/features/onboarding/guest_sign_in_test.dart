@@ -324,6 +324,111 @@ void main() {
       expect(await session.validAccessToken(), old.jwt);
       expect((await auth.linkShareStore.read(guestId))?.token, old.jwt);
     });
+
+    test('a server older than 2.3.0, or without /api/v2 and with a version '
+        'the app cannot read, is not asked and stores nothing (decision log: '
+        'Servers)', () async {
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+      final root = server.rootUri.toString();
+
+      for (final (unsupported, version) in [
+        (legacyServer200(root: root), '2.0.0'),
+        (unknownVersionServer(root: root), null),
+      ]) {
+        expect(
+          await guestSignIn.signIn(unsupported, link()),
+          isA<GuestServerUnsupported>().having(
+            (result) => result.version?.display,
+            'version',
+            version,
+          ),
+        );
+      }
+
+      expect(gateway.authentications, isEmpty);
+      expect(auth.secureStore.values, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(landings.take(guestId), isNull);
+      expect(titleReads, isEmpty);
+    });
+
+    test('a guest the registry cannot store takes back its link, token and '
+        'remembered password, and its landing', () async {
+      gateway.serve(issueLinkShareToken(issuedAt: now), password: 'p4ss-word');
+      auth.preferences.failWrites.add(AccountRegistry.storageKey);
+
+      await expectLater(
+        guestSignIn.signIn(
+          server,
+          link(),
+          password: 'p4ss-word',
+          rememberPassword: true,
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(auth.secureStore.values, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(landings.take(guestId), isNull);
+      await expectLater(
+        sessions.forAccount(guestId).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+    });
+
+    test('a guest whose token cannot be stored after its link takes the link '
+        'back', () async {
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+      auth.secureStore.beforeWrite = (key) async {
+        if (key == LinkShareStore.tokenKey(guestId)) {
+          throw StateError('the keystore is locked');
+        }
+      };
+
+      await expectLater(
+        guestSignIn.signIn(server, link()),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(auth.secureStore.values, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+    });
+
+    test('a registry that cannot be read before the link is stored stores '
+        'nothing', () async {
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+      auth.preferences.failNextRead.add(AccountRegistry.storageKey);
+
+      await expectLater(
+        guestSignIn.signIn(server, link()),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(auth.secureStore.operations, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(landings.take(guestId), isNull);
+    });
+
+    test('a link storage held for a guest the registry does not list stays: '
+        'an entry this build cannot read may name it', () async {
+      await auth.linkShareStore.write(
+        guestId,
+        hash: fakeShareHash,
+        token: issueLinkShareToken(issuedAt: now).jwt,
+      );
+      final fresh = issueLinkShareToken(issuedAt: now);
+      gateway.serve(fresh);
+      auth.preferences.failWrites.add(AccountRegistry.storageKey);
+
+      await expectLater(
+        guestSignIn.signIn(server, link()),
+        throwsA(isA<Exception>()),
+      );
+
+      final stored = await auth.linkShareStore.read(guestId);
+      expect(stored?.hash, fakeShareHash);
+      expect(stored?.token, fresh.jwt);
+    });
   });
 
   group('the same share opened again', () {
@@ -361,6 +466,24 @@ void main() {
       auth.secureStore.beforeWrite = null;
       expect(await sessions.forAccount(guestId).validAccessToken(), old.jwt);
       expect((await auth.registry.find(guestId))?.account.needsReauth, isFalse);
+    });
+
+    test('keeps its link and the new session when its entry cannot be '
+        'written', () async {
+      final fresh = issueLinkShareToken(issuedAt: now);
+      gateway.serve(fresh);
+      auth.preferences.failWrites.add(AccountRegistry.storageKey);
+
+      await expectLater(
+        guestSignIn.signIn(server, link()),
+        throwsA(isA<Exception>()),
+      );
+
+      final stored = await auth.linkShareStore.read(guestId);
+      expect(stored?.hash, fakeShareHash);
+      expect(stored?.token, fresh.jwt);
+      expect(await sessions.forAccount(guestId).validAccessToken(), fresh.jwt);
+      expect(await auth.registry.find(guestId), isNotNull);
     });
   });
 
@@ -474,6 +597,32 @@ void main() {
         expect(await guestSignIn.serverClaiming(link()), sameHost.rootUri);
       });
     }
+
+    test('never takes a stored server whose snapshot is below the support '
+        "floor: the link's host is probed, and the link opened there "
+        'replaces the snapshot', () async {
+      await auth.seedGuest(
+        legacyServer200(root: 'https://tasks.example.org/vikunja'),
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+
+      final connection = await guestSignIn.connect(link());
+      final result = await guestSignIn.signIn(connection, link());
+
+      expect(connection, same(server));
+      expect(connector.inputs, ['https://tasks.example.org/vikunja/']);
+      expect((result as GuestSignedIn).isNewAccount, isFalse);
+      expect(
+        (await auth.registry.find(guestId))?.connection.capabilities,
+        isA<ServerCapabilities>().having(
+          (capabilities) => capabilities.isSupported,
+          'isSupported',
+          isTrue,
+        ),
+      );
+    });
 
     test('offers no server when none names the link as its web', () async {
       await auth.seedAccount(
@@ -595,6 +744,31 @@ void main() {
       expect(opened, isA<GuestSignedIn>());
       expect(gateway.connections.single.rootUri, api.rootUri);
       expect(connector.inputs, isEmpty);
+    });
+
+    test('opened again on a server below the support floor is refused the '
+        'same way, without asking it', () async {
+      final old = issueLinkShareToken(issuedAt: now);
+      await auth.seedGuest(
+        legacyServer200(root: 'https://tasks.example.org/vikunja'),
+        token: old,
+        needsReauth: true,
+      );
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+
+      expect(
+        await guestSignIn.reopen(guestId),
+        isA<GuestServerUnsupported>().having(
+          (result) => result.version?.display,
+          'version',
+          '2.0.0',
+        ),
+      );
+
+      expect(gateway.authentications, isEmpty);
+      expect(connector.inputs, isEmpty);
+      expect((await auth.registry.find(guestId))?.account.needsReauth, isTrue);
+      expect((await auth.linkShareStore.read(guestId))?.token, old.jwt);
     });
 
     test('is gone with its hash', () async {

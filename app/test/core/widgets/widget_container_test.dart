@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
@@ -94,6 +97,9 @@ void main() {
         backgroundSchedulerProvider.overrideWithValue(background),
         widgetHostProvider.overrideWithValue(host),
         runsHeadlessProvider.overrideWithValue(headless),
+        attachmentDownloadsProvider.overrideWithValue(
+          AttachmentDownloads(() async => Directory('/no-cache')),
+        ),
         if (utcOffsetAt != null)
           utcOffsetAtProvider.overrideWithValue(utcOffsetAt),
       ],

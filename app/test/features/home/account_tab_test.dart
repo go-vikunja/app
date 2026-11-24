@@ -10,7 +10,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
@@ -835,6 +837,72 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(auth.accountGateway.currentUserTokens, hasLength(2));
+    });
+
+    testWidgets('a sign-out that fails on the device keeps the banner through '
+        'the next check, telling why', (tester) async {
+      auth.serveUser(
+        const User(id: 7, username: 'alice', name: 'Alice Example'),
+        now: now,
+      );
+      await pumpHome(tester, overrides: [checkingEveryTime()]);
+      final accountId = (await auth.registry.load()).activeAccountId!;
+      await SessionDiagnostics(auth.preferences).recordEnd(
+        accountId,
+        SessionEndDiagnosis(
+          at: now.subtract(const Duration(days: 1)),
+          cause: SessionEndCause.refreshRejected,
+          part: AppPart.app,
+          failedToken: tokenFingerprint('refresh-that-failed'),
+          resolution: SessionEndResolution.restored,
+        ),
+      );
+      auth.secureStore.beforeDelete = (_) async =>
+          throw StateError('Keychain locked');
+
+      await tapSignOut(tester);
+      await tester.tap(
+        find.widgetWithText(TextButton, en.signOutDialogConfirm),
+      );
+      await tester.pumpAndSettle();
+      [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ].forEach(tester.binding.handleAppLifecycleStateChanged);
+      await tester.pumpAndSettle();
+
+      final banner = find.byType(ReauthBanner);
+      await tester.scrollUntilVisible(
+        banner,
+        -100,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountTab),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(banner, findsOneWidget);
+      expect(
+        find.descendant(
+          of: banner,
+          matching: find.text(en.reauthTitleOnDevice),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: banner,
+          matching: find.textContaining(en.sessionEndCauseSignOutFailed),
+        ),
+        findsOneWidget,
+      );
+      final kept = (await auth.registry.find(accountId))!;
+      expect(kept.account.needsReauth, isTrue);
     });
 
     testWidgets('an account that already needs a new sign-in is not checked', (

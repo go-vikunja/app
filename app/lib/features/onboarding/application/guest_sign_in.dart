@@ -57,6 +57,15 @@ final class GuestLinkGone extends GuestSignInResult {
   final bool sharingOff;
 }
 
+/// The server is below the support floor: older than 2.3.0, or without
+/// `/api/v2` and with a [version] the app cannot read (null). Nothing was
+/// sent to it.
+final class GuestServerUnsupported extends GuestSignInResult {
+  const new(this.version);
+
+  final ServerVersion? version;
+}
+
 /// Any other failure: offline, the server's error, the sign-in limit
 /// ([RateLimited] with its wait).
 final class GuestSignInFailed extends GuestSignInResult {
@@ -122,7 +131,10 @@ final class GuestSignIn {
     final linkOrigin = OriginKey.tryOf(link.base);
     if (serverAddress == null && linkOrigin != null) {
       for (final entry in (await _registry.load()).accounts) {
-        if (_frontendOf(entry.connection) == link.base &&
+        // A snapshot below the floor may be stale; only a fresh probe may
+        // refuse the link (decision log: Servers).
+        if (entry.connection.capabilities.isSupported &&
+            _frontendOf(entry.connection) == link.base &&
             OriginKey.tryOf(entry.connection.rootUri) == linkOrigin) {
           return entry.connection;
         }
@@ -154,8 +166,10 @@ final class GuestSignIn {
   /// for a share already on this device before it becomes active again.
   /// [commit] is asked once the server has answered with a token, before
   /// anything is stored: false ends it as [GuestSignInCancelled], and after
-  /// true it runs to its end. Throws [SignOutStillFinishing] while the
-  /// database of the same guest's sign-out is still held.
+  /// true it runs to its end. A server below the support floor ends it as
+  /// [GuestServerUnsupported] before the hash is sent. Throws
+  /// [SignOutStillFinishing] while the database of the same guest's
+  /// sign-out is still held.
   Future<GuestSignInResult> signIn(
     ServerConnection connection,
     ParsedLinkShareUrl link, {
@@ -184,6 +198,10 @@ final class GuestSignIn {
     Future<void> Function(String accountId)? beforeActivatingExisting,
     bool Function()? commit,
   }) async {
+    if (!connection.capabilities.isSupported) {
+      _log.info('The server of the link is below the support floor');
+      return GuestServerUnsupported(connection.info.version);
+    }
     // A stored account's `/info` can be hours old (it is read again at most
     // every few hours while signed in), so only a fresh probe may save the
     // request; the server's 404 without a code says the same.
@@ -225,63 +243,105 @@ final class GuestSignIn {
     // accounts).
     return await _sessions.exclusive(accountId, () async {
       await settleSignedOutDatabases(_files, accountId: accountId);
-      if (reopening && await _registry.find(accountId) == null) {
-        _log.info('Guest $accountId was removed while its link opened');
-        return const GuestSignInCancelled();
-      }
-      await _store.write(accountId, hash: link.hash, token: auth.token.jwt);
-      await _store.writePassword(accountId, rememberPassword ? password : null);
-      await _settleEnded(accountId);
-      // The old session goes only now: retired before, it would answer the
-      // requests in between as ended, which pauses the outbox. A token it
-      // still writes is one of the same share, which renewal does not rotate.
-      final session = _sessions.signedIn(
-        accountId,
-        auth.token,
-        receivedAt: receivedAt,
-      );
-
       final existing = await _registry.find(accountId);
-      final title = await _titleOf(connection, session, auth.projectId);
-      if (existing != null) await beforeActivatingExisting?.call(accountId);
-      final entry = RegisteredAccount(
-        account: Account.linkShare(
-          id: accountId,
-          serverRoot: connection.rootUri,
-          shareId: auth.shareId,
-          projectId: auth.projectId,
-          shareName: auth.name,
-          displayName:
-              auth.name ??
-              title ??
-              existing?.account.displayName ??
-              'link-share-${auth.shareId}',
-          addedAt: existing?.account.addedAt ?? receivedAt.toUtc(),
-        ),
-        connection: connection,
-      );
-      if (land) {
-        _landing.remember(
-          accountId,
-          GuestLanding(projectId: auth.projectId, viewId: link.viewId),
-        );
-      }
-      if (!reopening) {
-        await _registry.upsert(entry, activate: true);
-      } else if (!await _registry.replace(entry)) {
-        // Removed by another isolate after the check above. Only what this
-        // call stored goes: a sign-in that stored the guest again keeps its
-        // own session and link.
-        await session.retire();
-        if ((await _store.read(accountId))?.token == auth.token.jwt) {
-          await _store.delete(accountId);
-        }
+      if (reopening && existing == null) {
         _log.info('Guest $accountId was removed while its link opened');
         return const GuestSignInCancelled();
       }
-      _log.info('Opened link share as guest $accountId');
-      return GuestSignedIn(entry, isNewAccount: existing == null);
+      // Only a guest new to the device whose storage held no link: a link
+      // held before may be named by an entry this build cannot read
+      // (decision log: Sessions).
+      final takeBack = existing == null && await _holdsNoLink(accountId);
+      LinkShareSession? stored;
+      try {
+        await _store.write(accountId, hash: link.hash, token: auth.token.jwt);
+        await _store.writePassword(
+          accountId,
+          rememberPassword ? password : null,
+        );
+        await _settleEnded(accountId);
+        // The old session goes only now: retired before, it would answer the
+        // requests in between as ended, which pauses the outbox. A token it
+        // still writes is one of the same share, which renewal does not
+        // rotate.
+        final session = stored = _sessions.signedIn(
+          accountId,
+          auth.token,
+          receivedAt: receivedAt,
+        );
+
+        final title = await _titleOf(connection, session, auth.projectId);
+        if (existing != null) await beforeActivatingExisting?.call(accountId);
+        final entry = RegisteredAccount(
+          account: Account.linkShare(
+            id: accountId,
+            serverRoot: connection.rootUri,
+            shareId: auth.shareId,
+            projectId: auth.projectId,
+            shareName: auth.name,
+            displayName:
+                auth.name ??
+                title ??
+                existing?.account.displayName ??
+                'link-share-${auth.shareId}',
+            addedAt: existing?.account.addedAt ?? receivedAt.toUtc(),
+          ),
+          connection: connection,
+        );
+        if (land) {
+          _landing.remember(
+            accountId,
+            GuestLanding(projectId: auth.projectId, viewId: link.viewId),
+          );
+        }
+        if (!reopening) {
+          await _registry.upsert(entry, activate: true);
+        } else if (!await _registry.replace(entry)) {
+          // Removed by another isolate after the check above. Only what this
+          // call stored goes: a sign-in that stored the guest again keeps its
+          // own session and link.
+          await session.retire();
+          if ((await _store.read(accountId))?.token == auth.token.jwt) {
+            await _store.delete(accountId);
+          }
+          _log.info('Guest $accountId was removed while its link opened');
+          return const GuestSignInCancelled();
+        }
+        _log.info('Opened link share as guest $accountId');
+        return GuestSignedIn(entry, isNewAccount: existing == null);
+      } on Object {
+        if (takeBack) await _takeBack(accountId, stored);
+        rethrow;
+      }
     });
+  }
+
+  /// A read that fails counts as holding one.
+  Future<bool> _holdsNoLink(String accountId) async {
+    try {
+      return await _store.read(accountId) == null;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Never throws: the sign-in's own failure is what the caller sees.
+  Future<void> _takeBack(String accountId, LinkShareSession? session) async {
+    _landing.take(accountId);
+    try {
+      await session?.retire();
+      // Without the reopen undo's token compare: inside exclusive, for a
+      // guest unlisted with storage empty before, all under its id is this
+      // call's, and a compare would miss a hash stored before a failed
+      // token write.
+      await _store.delete(accountId);
+      _log.info('Took back the link of guest $accountId');
+    } on Object catch (error) {
+      _log.warning(
+        'Could not take back the link of guest $accountId: '
+        '${error.runtimeType}',
+      );
+    }
   }
 
   /// The stored link of a guest, to open it again once its session ended;

@@ -6,10 +6,12 @@ import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 
 final _log = Logger('SignOut');
 
@@ -157,6 +159,8 @@ final class SignOut {
     required this._accountGateway,
     required this._deletions,
     this._logoutTimeout = const Duration(seconds: 15),
+    this._diagnostics,
+    this._clock = DateTime.now,
   });
 
   final AccountRegistry _registry;
@@ -168,6 +172,8 @@ final class SignOut {
   final AccountGateway _accountGateway;
   final AccountDeletions _deletions;
   final Duration _logoutTimeout;
+  final SessionDiagnostics? _diagnostics;
+  final Clock _clock;
 
   Future<void> call(String accountId) async {
     final entry = await _registry.find(accountId);
@@ -207,7 +213,10 @@ final class SignOut {
         await _registry.remove(accountId);
       } on Object {
         // The account stays, but its retired session hands out nothing for
-        // good: marked, it offers to sign in again, which replaces it.
+        // good: marked, it offers to sign in again, which replaces it. The
+        // end goes on record first: a restore would take an earlier end's
+        // record for this one and unmark it (decision log: Several accounts).
+        await _recordEnd(accountId);
         await _markNeedsReauthQuietly(accountId);
         rethrow;
       }
@@ -216,6 +225,17 @@ final class SignOut {
       await _deletions.finish(accountId);
     });
     _log.info('Signed out account $accountId');
+  }
+
+  Future<void> _recordEnd(String accountId) async {
+    await _diagnostics?.recordEnd(
+      accountId,
+      SessionEndDiagnosis(
+        at: _clock(),
+        cause: SessionEndCause.signOutFailed,
+        part: AppPart.app,
+      ),
+    );
   }
 
   Future<void> _markNeedsReauthQuietly(String accountId) async {

@@ -73,20 +73,26 @@ class ConnectServerController extends _$ConnectServerController {
   }
 
   /// With [forPendingShare], an address the user gave for the shared link
-  /// that waits for its server; any other input forgets that link, whose
-  /// secret goes to no other server.
+  /// that waits for its server, which waits on when that address fails; any
+  /// other input forgets that link, whose secret goes to no other server.
   Future<void> connect(String input, {bool forPendingShare = false}) async {
     if (state is ConnectServerConnecting) return;
     final share = parseLinkShareUrl(input);
     final invite = share == null ? parseInviteLink(input) : null;
-    final shareAwaitingServer =
-        forPendingShare && state is ConnectServerShareNeedsServer
-        ? _share
-        : null;
+    final question = switch (state) {
+      final ConnectServerShareNeedsServer question when forPendingShare =>
+        question,
+      _ => null,
+    };
+    final shareAwaitingServer = question == null ? null : _share;
     await _run(switch ((share, invite, shareAwaitingServer)) {
       (final share?, _, _) => _ShareTarget(share),
       (_, final invite?, _) => _InviteTarget(invite),
-      (_, _, final share?) => _ShareTarget(share, serverAddress: input),
+      (_, _, final share?) => _ShareTarget(
+        share,
+        serverAddress: input,
+        question: question,
+      ),
       _ => _AddressTarget(input),
     });
   }
@@ -105,6 +111,9 @@ class ConnectServerController extends _$ConnectServerController {
   }
 
   Future<void> _run(_PendingTarget target) async {
+    // Outside connecting only a password try holds a token; a new target
+    // ends it.
+    _cancelToken?.cancel();
     final cancelToken = _cancelToken = CancelToken();
     _forgetLink();
     _pending = target;
@@ -126,11 +135,13 @@ class ConnectServerController extends _$ConnectServerController {
     };
 
     final outcome = switch (target) {
-      _ShareTarget(:final share, :final serverAddress) => await _openShare(
-        share,
-        cancelToken,
-        serverAddress: serverAddress,
-      ),
+      _ShareTarget(:final share, :final serverAddress, :final question) =>
+        await _openShare(
+          share,
+          cancelToken,
+          serverAddress: serverAddress,
+          question: question,
+        ),
       _InviteTarget(:final invite) => await _openInvite(invite, cancelToken),
       _AddressTarget(:final input) => await _probe(input, cancelToken),
     };
@@ -213,6 +224,7 @@ class ConnectServerController extends _$ConnectServerController {
     ParsedLinkShareUrl share,
     CancelToken cancelToken, {
     String? serverAddress,
+    ConnectServerShareNeedsServer? question,
   }) async {
     final ServerConnection connection;
     try {
@@ -239,22 +251,54 @@ class ConnectServerController extends _$ConnectServerController {
           claimingServer: claimingServer,
         );
       }
-      return ConnectServerFailed(
-        input: serverAddress ?? share.base.toString(),
-        failure: failure,
+      return _stillWaiting(
+        share,
+        question,
+        cancelToken,
+        ConnectServerFailed(
+          input: serverAddress ?? share.base.toString(),
+          failure: failure,
+        ),
       );
     } on Object catch (error, stackTrace) {
       if (!cancelToken.isCancelled) _logUnexpected(error, stackTrace);
-      return ConnectServerFailed(input: serverAddress ?? share.base.toString());
+      return _stillWaiting(
+        share,
+        question,
+        cancelToken,
+        ConnectServerFailed(input: serverAddress ?? share.base.toString()),
+      );
     }
-    final question = await _needsConsent(connection, input: serverAddress);
+    // Before the question about http, which would record a consent for a
+    // server the link cannot open on.
+    if (!connection.capabilities.isSupported) {
+      return ConnectServerLinkFailed(
+        serverRoot: connection.rootUri,
+        error: GuestServerUnsupported(connection.info.version),
+      );
+    }
+    final consent = await _needsConsent(connection, input: serverAddress);
     if (cancelToken.isCancelled) return const ConnectServerIdle();
-    if (question != null) {
+    if (consent != null) {
       _afterConsent = (connection, token) =>
           _signInAsGuest(connection, share, cancelToken: token);
-      return question;
+      return consent;
     }
     return await _signInAsGuest(connection, share, cancelToken: cancelToken);
+  }
+
+  /// A failed address given for a link waiting for its server asks again;
+  /// the link waits on until Cancel, the demo or another input.
+  ConnectServerState _stillWaiting(
+    ParsedLinkShareUrl share,
+    ConnectServerShareNeedsServer? question,
+    CancelToken cancelToken,
+    ConnectServerFailed failed,
+  ) {
+    if (question == null) return failed;
+    if (cancelToken.isCancelled) return const ConnectServerIdle();
+    _share = share;
+    return question.withAddressFailed(failed);
   }
 
   /// The question before [connection] is used over http, or null when it
@@ -303,9 +347,9 @@ class ConnectServerController extends _$ConnectServerController {
   Future<ConnectServerState> _signInAsGuest(
     ServerConnection connection,
     ParsedLinkShareUrl share, {
+    required CancelToken cancelToken,
     String? password,
     bool rememberPassword = false,
-    CancelToken? cancelToken,
   }) async {
     final container = ref.container;
     final GuestSignInResult result;
@@ -320,7 +364,7 @@ class ConnectServerController extends _$ConnectServerController {
             // Opened again, the guest becomes active at once, like a switch.
             beforeActivatingExisting: (accountId) =>
                 prepareSyncStatus(container, accountId),
-            commit: cancelToken == null ? null : () => _commit(cancelToken),
+            commit: () => _commit(cancelToken, share),
           );
     } on Object catch (error, stackTrace) {
       _logUnexpected(error, stackTrace);
@@ -329,6 +373,8 @@ class ConnectServerController extends _$ConnectServerController {
         error: error,
       );
     }
+    // Ended meanwhile: the link fields may belong to a link opened since.
+    if (cancelToken.isCancelled) return const ConnectServerIdle();
     switch (result) {
       case GuestSignedIn(:final account, :final isNewAccount):
         _forgetLink();
@@ -337,7 +383,7 @@ class ConnectServerController extends _$ConnectServerController {
         _share = share;
         _shareConnection = connection;
         return ConnectServerSharePasswordNeeded(connection.rootUri);
-      case GuestLinkGone():
+      case GuestLinkGone() || GuestServerUnsupported():
         _forgetLink();
         return ConnectServerLinkFailed(
           serverRoot: connection.rootUri,
@@ -354,21 +400,31 @@ class ConnectServerController extends _$ConnectServerController {
     }
   }
 
-  /// A cancel before the server has answered the link stores nothing; from
-  /// the answer on, Cancel and Close are refused and the guest is kept, like
-  /// the previous app's session once its server has confirmed the account
-  /// (decision log: The first start after the update).
-  bool _commit(CancelToken cancelToken) {
+  /// A cancel before the server has answered the link, closing the password
+  /// sheet included, stores nothing; from the answer on, Cancel and Close
+  /// are refused and the guest is kept, like the previous app's session once
+  /// its server has confirmed the account (decision log: The first start
+  /// after the update).
+  bool _commit(CancelToken cancelToken, ParsedLinkShareUrl share) {
     if (!ref.mounted || cancelToken.isCancelled) return false;
     if (identical(_cancelToken, cancelToken)) _cancelToken = null;
     if (state case final ConnectServerConnecting connecting) {
       state = connecting.committed;
+    } else if (state is ConnectServerSharePasswordNeeded) {
+      // The password sheet can still be dragged shut; the screen below then
+      // refuses Close and the reset as well.
+      state = ConnectServerConnecting(
+        share.shortened,
+        target: ConnectTarget.sharedLink,
+        cancellable: false,
+      );
     }
     return true;
   }
 
   /// One try of the shared project's password; the state follows unless
-  /// the password was wrong.
+  /// the password was wrong. A reset or the screen's end before the
+  /// server's answer ends the try and stores nothing.
   Future<SharePasswordOutcome> submitSharePassword(
     String password, {
     bool remember = false,
@@ -380,13 +436,18 @@ class ConnectServerController extends _$ConnectServerController {
         connection == null) {
       return SharePasswordOutcome.failed;
     }
+    final cancelToken = _cancelToken = CancelToken();
     final next = await _signInAsGuest(
       connection,
       share,
       password: password,
       rememberPassword: remember,
+      cancelToken: cancelToken,
     );
-    if (!ref.mounted) return SharePasswordOutcome.failed;
+    if (identical(_cancelToken, cancelToken)) _cancelToken = null;
+    if (!ref.mounted || cancelToken.isCancelled) {
+      return SharePasswordOutcome.failed;
+    }
     if (next is ConnectServerSharePasswordNeeded) {
       return SharePasswordOutcome.wrong;
     }
@@ -450,6 +511,11 @@ class ConnectServerController extends _$ConnectServerController {
 
   void reset() {
     if (state is ConnectServerConnecting) return;
+    // A drag closes the password sheet past its PopScope; a try still
+    // waiting for the server then stores nothing (decision log: Link-share
+    // guests).
+    _cancelToken?.cancel();
+    _cancelToken = null;
     _forgetLink();
     _pending = null;
     state = const ConnectServerIdle();
@@ -472,6 +538,9 @@ class ConnectServerController extends _$ConnectServerController {
   static bool _keepsTarget(ConnectServerState state) => switch (state) {
     ConnectServerAwaitingInsecureConsent() => true,
     ConnectServerFailed(:final failure) => connectionFixFor(failure) != null,
+    ConnectServerShareNeedsServer(addressFailed: final failed?) => _keepsTarget(
+      failed,
+    ),
     ConnectServerShareNeedsServer(:final failure) =>
       connectionFixFor(failure) != null,
     ConnectServerLinkFailed(:final error) => connectionFixFor(error) != null,
@@ -501,12 +570,14 @@ final class _AddressTarget extends _PendingTarget {
   final String input;
 }
 
-/// With [serverAddress] when the link's own host is not the API.
+/// With [serverAddress] when the link's own host is not the API, given in
+/// answer to [question], which a failure there asks again.
 final class _ShareTarget extends _PendingTarget {
-  const new(this.share, {this.serverAddress});
+  const new(this.share, {this.serverAddress, this.question});
 
   final ParsedLinkShareUrl share;
   final String? serverAddress;
+  final ConnectServerShareNeedsServer? question;
 }
 
 final class _InviteTarget extends _PendingTarget {

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_notifier.dart';
 import 'package:vikunja_mobile/core/activity/activity_sync.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -19,6 +22,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/support/session_end_log.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -29,6 +33,7 @@ import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 import '../../helpers/test_database.dart';
+import '../../helpers/widget_fakes.dart';
 
 void main() {
   final noon = DateTime.utc(2026, 10, 13, 12);
@@ -272,6 +277,10 @@ void main() {
           notificationGatewayProvider.overrideWithValue(
             gateway = FakeNotificationGateway(),
           ),
+          attachmentDownloadsProvider.overrideWithValue(
+            AttachmentDownloads(() async => Directory('/no-cache')),
+          ),
+          widgetHostProvider.overrideWithValue(FakeWidgetHost()),
         ],
       );
       addTearDown(container.dispose);

@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
 import 'package:vikunja_mobile/core/storage/draft_files.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
@@ -84,6 +85,9 @@ final class MemoryPreferencesStore implements PrefixedPreferencesStore {
   /// Keys whose next read throws, once each.
   final Set<String> failNextRead = {};
 
+  /// Keys whose writes throw while listed.
+  final Set<String> failWrites = {};
+
   @override
   Future<String?> getString(String key) async {
     if (failNextRead.remove(key)) throw Exception('Preferences unreadable');
@@ -91,7 +95,10 @@ final class MemoryPreferencesStore implements PrefixedPreferencesStore {
   }
 
   @override
-  Future<void> setString(String key, String value) async => values[key] = value;
+  Future<void> setString(String key, String value) async {
+    if (failWrites.contains(key)) throw Exception('Preferences refused');
+    values[key] = value;
+  }
 
   @override
   Future<void> remove(String key) async => values.remove(key);
@@ -327,6 +334,11 @@ final class AuthFakes {
   Future<Directory> Function() imageCacheRoot = () async =>
       Directory('/no-cache/images');
 
+  /// share_plus's folder of shared copies; like [imageCacheRoot], by default
+  /// one that never exists.
+  Future<Directory> Function() shareCopiesFolder = () async =>
+      Directory('/no-cache/share_plus');
+
   late final tokenStore = TokenStore(secureStore);
   late final registry = AccountRegistry(preferences);
   late final clockOffsets = ServerClockOffsets(preferences);
@@ -337,6 +349,7 @@ final class AuthFakes {
     prefixedPreferencesStoreProvider.overrideWithValue(preferences),
     draftStoreProvider.overrideWithValue(drafts),
     imageDiskCacheRootProvider.overrideWithValue(() => imageCacheRoot()),
+    shareCopiesFolderProvider.overrideWithValue(() => shareCopiesFolder()),
     webAuthenticatorProvider.overrideWithValue(webAuthenticator),
     tokenGatewayProvider.overrideWithValue(tokenGateway),
     accountGatewayProvider.overrideWithValue(accountGateway),

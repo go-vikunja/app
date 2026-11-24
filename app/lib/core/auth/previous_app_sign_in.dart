@@ -99,8 +99,9 @@ final class PreviousAppSignIn {
   /// is logged out then. Throws [PreviousAppSessionNotKept],
   /// `ServerConnectionFailure`, `VikunjaFailure`, a `TimeoutException`
   /// when `GET /user` does not answer within its own bound, also after a
-  /// cancel, or what secure storage threw when it kept refusing the tokens.
-  /// Stores nothing in either case.
+  /// cancel, or what secure storage or the registry threw. Nothing of an
+  /// account new to this device whose storage held no tokens for it stays
+  /// in either case.
   Future<RegisteredAccount?> signIn({
     required String serverAddress,
     required String refreshToken,
@@ -132,6 +133,8 @@ final class PreviousAppSignIn {
     }
 
     final User user;
+    final String accountId;
+    final RegisteredAccount? existing;
     try {
       // Its retries could take more than a minute, and the old token is
       // spent either way.
@@ -144,6 +147,8 @@ final class PreviousAppSignIn {
           message: 'GET /user returned a different user than the token',
         );
       }
+      accountId = accountIdFor(connection.rootUri, user.id);
+      existing = await _registry.find(accountId);
     } on Object {
       unawaited(_endSession(connection, tokens.accessToken));
       rethrow;
@@ -153,13 +158,16 @@ final class PreviousAppSignIn {
       return null;
     }
 
-    final accountId = accountIdFor(connection.rootUri, user.id);
-    await _sessions.retire(accountId);
+    await _sessions.retireForSignIn(accountId);
     final ReplacedTokens replaced;
     try {
       replaced = await _signInTokens.store(accountId, tokens);
     } on Object {
       unawaited(_endSession(connection, tokens.accessToken));
+      // As in the browser sign-in: a new manager reads what storage still
+      // holds; the retired one would answer "no token yet" for as long as
+      // the app runs.
+      _sessions.replaceRetired(accountId);
       rethrow;
     }
     final session = await _sessions.signedIn(
@@ -178,7 +186,21 @@ final class PreviousAppSignIn {
       ),
       connection: connection,
     );
-    await _registry.upsert(entry, activate: true);
+    try {
+      await _registry.upsert(entry, activate: true);
+    } on Object {
+      // An account already listed, or one whose storage held tokens that an
+      // entry this build cannot read may name, keeps the new ones
+      // (decision log: Sessions).
+      if (existing == null && replaced.heldNone) {
+        await session.retire();
+        if (await _signInTokens.takeBack(accountId, tokens)) {
+          await _sessions.forgetClockOffset(accountId);
+        }
+        unawaited(_endSession(connection, tokens.accessToken));
+      }
+      rethrow;
+    }
     _log.info('Kept the previous app session as account $accountId');
     unawaited(
       _signInTokens.settleReplaced(

@@ -21,6 +21,10 @@ final class ReplacedTokens {
   final StoredTokens? _previous;
   final bool _unreadable;
   final TokenSet _by;
+
+  /// Storage held no tokens for the account before the sign-in; a read that
+  /// failed counts as holding some.
+  bool get heldNone => _previous == null && !_unreadable;
 }
 
 /// What a sign-in does with the tokens it got, a browser sign-in and the
@@ -125,6 +129,27 @@ final class SignInTokens {
       _log.info('The ended session of account $accountId: ${resolution.name}');
     } on Object catch (error) {
       _log.info('Could not settle the replaced session: ${error.runtimeType}');
+    }
+  }
+
+  /// Deletes [tokens] of a sign-in that could not register its account,
+  /// only while storage still holds their refresh token, so tokens another
+  /// sign-in stored meanwhile stay. The caller retires the sign-in's
+  /// manager first, so nothing writes them back. Whether it deleted them;
+  /// never throws.
+  Future<bool> takeBack(String accountId, TokenSet tokens) async {
+    try {
+      final stored = await _tokenStore.read(accountId);
+      if (stored?.refreshToken != tokens.refreshToken) return false;
+      await _tokenStore.delete(accountId);
+      _log.info('Took back the tokens of account $accountId');
+      return true;
+    } on Object catch (error) {
+      _log.warning(
+        'Could not take back the tokens of account $accountId: '
+        '${error.runtimeType}',
+      );
+      return false;
     }
   }
 

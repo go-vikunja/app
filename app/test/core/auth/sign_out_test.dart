@@ -5,9 +5,11 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -18,6 +20,7 @@ import '../../helpers/sync_fakes.dart';
 void main() {
   late DateTime now;
   late AuthFakes fakes;
+  late SessionDiagnostics diagnostics;
   late SessionManagers sessions;
   late LinkShareSessions linkShares;
   late AccountDeletions deletions;
@@ -30,12 +33,18 @@ void main() {
     fakes = AuthFakes();
     wiped = [];
     wipeAccountData = (accountId) async => wiped.add(accountId);
+    diagnostics = SessionDiagnostics(
+      fakes.preferences,
+      accountExists: (id) async => await fakes.registry.find(id) != null,
+    );
     sessions = SessionManagers(
       tokenStore: fakes.tokenStore,
       clockOffsets: fakes.clockOffsets,
       tokenGateway: fakes.tokenGateway,
       connectionFor: (id) async => (await fakes.registry.find(id))?.connection,
       markNeedsReauth: fakes.registry.markNeedsReauth,
+      clearNeedsReauth: fakes.registry.clearNeedsReauth,
+      diagnostics: diagnostics,
       clock: () => now,
       sleep: (_) async {},
     );
@@ -44,6 +53,8 @@ void main() {
       gateway: fakes.linkShareGateway,
       connectionFor: (id) async => (await fakes.registry.find(id))?.connection,
       markNeedsReauth: fakes.registry.markNeedsReauth,
+      clearNeedsReauth: fakes.registry.clearNeedsReauth,
+      diagnostics: diagnostics,
       clock: () => now,
     );
     deletions = AccountDeletions(
@@ -60,6 +71,8 @@ void main() {
       accountGateway: fakes.accountGateway,
       deletions: deletions,
       logoutTimeout: const Duration(milliseconds: 50),
+      diagnostics: diagnostics,
+      clock: () => now,
     );
   });
 
@@ -448,6 +461,95 @@ void main() {
       final kept = (await fakes.registry.find(alice.id))!;
       expect(kept.account.needsReauth, isTrue);
       expect(wiped, isEmpty);
+    });
+
+    test('records the end on this device before the mark, for the banner '
+        '(decision log: Several accounts)', () async {
+      final alice = await fakes.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      fakes.secureStore.beforeDelete = (_) async =>
+          throw StateError('Keychain locked');
+      bool? recordedAtMark;
+      final changes = fakes.registry.changes.listen((state) {
+        if (state.find(alice.id)?.account.needsReauth ?? false) {
+          recordedAtMark ??= fakes.preferences.values.containsKey(
+            SessionDiagnostics.endKey(alice.id),
+          );
+        }
+      });
+      addTearDown(changes.cancel);
+
+      await expectLater(signOut(alice.id), throwsA(isA<StateError>()));
+      await pumpEventQueue();
+
+      expect(recordedAtMark, isTrue);
+      final ended = (await diagnostics.lastEnd(alice.id))!;
+      expect(ended.cause, SessionEndCause.signOutFailed);
+      expect(ended.part, AppPart.app);
+      expect(ended.at, now);
+      expect(ended.resolution, isNull);
+      expect(await diagnostics.endedOnDevice(alice.id), isTrue);
+    });
+
+    test('keeps the account marked through a session check after an earlier '
+        'restore', () async {
+      final alice = await fakes.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      await diagnostics.recordEnd(
+        alice.id,
+        SessionEndDiagnosis(
+          at: now.subtract(const Duration(days: 1)),
+          cause: SessionEndCause.refreshRejected,
+          part: AppPart.app,
+          failedToken: tokenFingerprint('refresh-that-failed'),
+          resolution: SessionEndResolution.restored,
+        ),
+      );
+      fakes.secureStore.beforeDelete = (_) async =>
+          throw StateError('Keychain locked');
+      await expectLater(signOut(alice.id), throwsA(isA<StateError>()));
+
+      expect(await sessions.tryRestore(alice.id), isFalse);
+
+      final kept = (await fakes.registry.find(alice.id))!;
+      expect(kept.account.needsReauth, isTrue);
+      await expectLater(
+        sessions.forAccount(alice.id).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+      expect(fakes.tokenGateway.refreshedTokens, isEmpty);
+    });
+
+    test('keeps a guest marked when its link reads again after storage had '
+        'refused it', () async {
+      final guest = await fakes.seedGuest(
+        fullServer270(),
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      await diagnostics.recordEnd(
+        guest.id,
+        SessionEndDiagnosis(
+          at: now.subtract(const Duration(days: 1)),
+          cause: SessionEndCause.storageUnreadable,
+          part: AppPart.app,
+        ),
+      );
+      var deletes = 0;
+      fakes.secureStore.beforeDelete = (_) async {
+        if (++deletes == 1) throw StateError('Keychain locked');
+      };
+      await expectLater(signOut(guest.id), throwsA(isA<StateError>()));
+
+      expect(await linkShares.tryRestore(guest.id), isFalse);
+
+      final kept = (await fakes.registry.find(guest.id))!;
+      expect(kept.account.needsReauth, isTrue);
+      expect(await fakes.linkShareStore.read(guest.id), isNotNull);
     });
 
     test('passes its own failure on when the mark cannot be stored '

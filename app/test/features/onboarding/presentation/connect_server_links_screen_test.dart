@@ -278,6 +278,104 @@ void main() {
       expect(find.text(en.guestAlreadyAdded), findsOneWidget);
     });
 
+    Future<void> dragPasswordSheetShut(WidgetTester tester) async {
+      // Past half its height closes it, as a swipe down does.
+      final height = tester.getSize(find.byType(SharePasswordSheet)).height;
+      await tester.drag(
+        find.text(en.guestPasswordTitle),
+        Offset(0, height * .7),
+      );
+    }
+
+    testWidgets('added as an account, the password sheet dragged shut while '
+        'the password is checked stores nothing and keeps the active '
+        'account', (tester) async {
+      usePhoneSurface(tester);
+      final other = await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      await pump(tester);
+      unawaited(
+        containerOf(tester).read(appRouterProvider).push(AppRoutes.addAccount),
+      );
+      await tester.pumpAndSettle();
+      await submit(tester, shareLink());
+      await tester.pumpAndSettle();
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+
+      await tester.enterText(inPasswordSheet(find.byType(TextField)), 'tomato');
+      await tester.pump();
+      await tester.tap(inPasswordSheet(find.text(en.guestLinkOpen)));
+      await tester.pump();
+      expect(auth.linkShareGateway.authentications, hasLength(2));
+      await dragPasswordSheetShut(tester);
+      await tester.pumpAndSettle();
+      expect(find.byType(SharePasswordSheet), findsNothing);
+      answer.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectServerScreen), findsOneWidget);
+      expect(find.byType(CloseButton), findsOneWidget);
+      final registry = await auth.registry.load();
+      expect(registry.find(guestId), isNull);
+      expect(registry.activeAccountId, other.id);
+      expect(
+        auth.secureStore.values.keys.where((key) => key.contains(guestId)),
+        isEmpty,
+      );
+    });
+
+    testWidgets('added as an account, the password sheet dragged shut once '
+        'the server has accepted the password offers no Close and keeps the '
+        'guest', (tester) async {
+      usePhoneSurface(tester);
+      await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      final storing = Completer<void>();
+      auth.secureStore.beforeWrite = (key) async {
+        if (key == LinkShareStore.hashKey(guestId)) await storing.future;
+      };
+      await pump(tester);
+      unawaited(
+        containerOf(tester).read(appRouterProvider).push(AppRoutes.addAccount),
+      );
+      await tester.pumpAndSettle();
+      await submit(tester, shareLink());
+      await tester.pumpAndSettle();
+
+      await tester.enterText(inPasswordSheet(find.byType(TextField)), 'tomato');
+      await tester.pump();
+      await tester.tap(inPasswordSheet(find.text(en.guestLinkOpen)));
+      await tester.pump();
+      await dragPasswordSheetShut(tester);
+      // The progress line runs on, so the screen never settles.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+
+      expect(find.byType(SharePasswordSheet), findsNothing);
+      expect(find.byType(CloseButton), findsNothing);
+      expect(find.text(en.connectCancel), findsNothing);
+      expect(
+        find.text(en.guestConnectingTo('${base}share/xxxx…/auth')),
+        findsOneWidget,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.byType(ConnectServerScreen), findsOneWidget);
+
+      storing.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectServerScreen), findsNothing);
+      expect((await auth.registry.load()).activeAccountId, guestId);
+    });
+
     testWidgets('closing the password sheet returns to the address', (
       tester,
     ) async {
@@ -374,6 +472,97 @@ void main() {
         ),
         isNotNull,
       );
+    });
+
+    testWidgets('on a server older than the app supports says so and never '
+        'sends the link', (tester) async {
+      connector.handler = (_) async =>
+          legacyServer200(root: server.rootUri.toString());
+      auth.linkShareGateway.serve(token);
+      await pump(tester);
+
+      await submit(tester, shareLink());
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.unsupportedTitle), findsOneWidget);
+      expect(find.text(en.unsupportedBody('2.3.0', '2.0.0')), findsOneWidget);
+      expect(find.byType(ServerOverviewScreen), findsNothing);
+      expect(auth.linkShareGateway.authentications, isEmpty);
+    });
+
+    testWidgets('whose server address cannot be reached says why, keeps the '
+        'link waiting and opens it at the corrected address, never adding a '
+        'plain server', (tester) async {
+      final apiServer = fullServer270(root: 'https://api.example.org');
+      connector.handler = (input) async {
+        if (input == 'api.example.org') return apiServer;
+        if (input == 'api.exmaple.org') {
+          throw ServerUnreachable(Uri.parse('https://api.exmaple.org/'));
+        }
+        throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+      };
+      auth.linkShareGateway.serve(token);
+      await pump(tester);
+      await submit(tester, shareLink());
+      await tester.pumpAndSettle();
+
+      await submit(tester, 'api.exmaple.org');
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.failureUnreachableTitle), findsOneWidget);
+      expect(find.text(en.guestServerNeededTitle), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'api.exmaple.org',
+      );
+
+      await tester.enterText(_addressField, 'api.example.org');
+      await tester.pumpAndSettle();
+      expect(find.text(en.failureUnreachableTitle), findsNothing);
+      expect(find.text(en.guestServerNeededTitle), findsOneWidget);
+      await tester.ensureVisible(_continueButton);
+      await tester.pumpAndSettle();
+      await tester.tap(_continueButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+      expect(find.byType(ServerOverviewScreen), findsNothing);
+      expect(connector.inputs, [base, 'api.exmaple.org', 'api.example.org']);
+      expect(
+        (await auth.registry.load()).accounts.single.account.isLinkShare,
+        isTrue,
+      );
+    });
+
+    testWidgets('whose server address timed out opens there when continued '
+        'again', (tester) async {
+      final apiServer = fullServer270(root: 'https://api.example.org');
+      var timedOut = false;
+      connector.handler = (input) async {
+        if (input == base) {
+          throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+        }
+        if (!timedOut) {
+          timedOut = true;
+          throw ServerTimeout(Uri.parse('https://api.example.org/'));
+        }
+        return apiServer;
+      };
+      auth.linkShareGateway.serve(token);
+      await pump(tester);
+      await submit(tester, shareLink());
+      await tester.pumpAndSettle();
+      await submit(tester, 'api.example.org');
+      await tester.pumpAndSettle();
+      expect(find.text(en.failureTimeoutTitle), findsOneWidget);
+
+      await tester.ensureVisible(_continueButton);
+      await tester.pumpAndSettle();
+      await tester.tap(_continueButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+      expect(connector.inputs, [base, 'api.example.org', 'api.example.org']);
     });
   });
 

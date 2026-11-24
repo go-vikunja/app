@@ -38,7 +38,11 @@ final class FlutterSecureStore implements SecureStore {
 
   // The plugin's defaults reset storage on error, but it wipes data and
   // keys only when its key cannot be unwrapped while it starts; a write
-  // that just fails stays an error.
+  // that just fails stays an error. Storage keeps the options it was first
+  // opened with until the engine ends, so after such a repair a read in
+  // this engine deletes a value it cannot decrypt and finds nothing. Only a
+  // value written with the replaced key fails then, which no later start
+  // could decrypt either (decision log: Sessions).
   static const AndroidOptions _recoveringKey = AndroidOptions.defaultOptions;
 
   /// The plugin's SharedPreferences file on Android.

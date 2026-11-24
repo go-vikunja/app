@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -142,24 +143,9 @@ void main() {
   late AttachmentDownloads downloads;
   late ProviderContainer container;
 
-  setUp(() {
-    driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
-    addTearDown(
-      () => driftRuntimeOptions.dontWarnAboutMultipleDatabases = false,
-    );
-    root = Directory.systemTemp.createTempSync('account_wipe');
-    addTearDown(() => root.deleteSync(recursive: true));
-    final cache = Directory(p.join(root.path, 'cache'));
-    auth = AuthFakes()
-      ..imageCacheRoot = () async =>
-          Directory(p.join(cache.path, ImageDiskCache.folder));
-    files = PathProviderAccountDatabaseFiles(
-      supportDirectory: () async => Directory(p.join(root.path, 'support')),
-    );
-    downloads = AttachmentDownloads(() async => cache);
-    gateway = FakeNotificationGateway();
-    host = FakeWidgetHost();
-    container = ProviderContainer(
+  /// An app start on the same device: what the stores hold stays.
+  ProviderContainer start() {
+    final started = ProviderContainer(
       overrides: [
         ...auth.overrides,
         accountDatabaseFilesProvider.overrideWithValue(files),
@@ -176,7 +162,30 @@ void main() {
         widgetHostProvider.overrideWithValue(host),
       ],
     );
-    addTearDown(container.dispose);
+    addTearDown(started.dispose);
+    return started;
+  }
+
+  setUp(() {
+    driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+    addTearDown(
+      () => driftRuntimeOptions.dontWarnAboutMultipleDatabases = false,
+    );
+    root = Directory.systemTemp.createTempSync('account_wipe');
+    addTearDown(() => root.deleteSync(recursive: true));
+    final cache = Directory(p.join(root.path, 'cache'));
+    auth = AuthFakes()
+      ..imageCacheRoot = (() async =>
+          Directory(p.join(cache.path, ImageDiskCache.folder)))
+      ..shareCopiesFolder = () async =>
+          Directory(p.join(cache.path, 'share_plus'));
+    files = PathProviderAccountDatabaseFiles(
+      supportDirectory: () async => Directory(p.join(root.path, 'support')),
+    );
+    downloads = AttachmentDownloads(() async => cache);
+    gateway = FakeNotificationGateway();
+    host = FakeWidgetHost();
+    container = start();
   });
 
   _Stores stores() => {
@@ -329,6 +338,19 @@ void main() {
       );
   }
 
+  /// On Android, share_plus's copy of the download [fill] made, as a share
+  /// of it leaves it until the next share.
+  Future<File> seedShareCopy(String accountId) async {
+    final download = await downloads.fileFor(
+      accountId,
+      1,
+      sampleAttachment(id: 2),
+    );
+    final folder = Directory(p.join(root.path, 'cache', 'share_plus'))
+      ..createSync(recursive: true);
+    return download.copySync(p.join(folder.path, p.basename(download.path)));
+  }
+
   void expectOnlyOwnLeft(
     _Stores before,
     _Stores after, {
@@ -371,6 +393,9 @@ void main() {
     await container.read(accountsProvider.future);
     await fill(alice, userId: 7, widgetId: 1);
     await fill(bob, userId: 8, widgetId: 2);
+    // Alice's only: each share empties the folder first, so it holds one
+    // share's files.
+    await seedShareCopy(alice.id);
     container.listen(accountNotificationSchedulersProvider, (_, _) {});
     await pumpEventQueue();
     final before = stores();
@@ -401,6 +426,7 @@ void main() {
       'config 1',
     });
     expect(left, isEmpty);
+    expect(await auth.registry.accountsToDelete(), isEmpty);
     expectOnlyOwnLeft(before, after, kept: bob.id, signedOut: alice.id);
   });
 
@@ -429,7 +455,89 @@ void main() {
     final after = stores();
 
     expect(_mentioning(after, guest.id), isEmpty);
+    expect(await auth.registry.accountsToDelete(), isEmpty);
     expectOnlyOwnLeft(before, after, kept: alice.id, signedOut: guest.id);
+  });
+
+  test('a sign-out that cannot cancel the reminders, clear the widgets or '
+      'forget the description draft still deletes the rest and keeps the '
+      'account listed to delete, and the next start removes what is '
+      'left', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: now),
+    );
+    final bob = await auth.seedAccount(
+      oauthServer230(),
+      tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+      activate: false,
+    );
+    await container.read(accountsProvider.future);
+    await fill(alice, userId: 7, widgetId: 1);
+    await fill(bob, userId: 8, widgetId: 2);
+    container.listen(accountNotificationSchedulersProvider, (_, _) {});
+    await pumpEventQueue();
+    final before = stores();
+    gateway.beforeCall = (call) async {
+      if (call.startsWith('cancel ')) {
+        throw PlatformException(code: 'unavailable');
+      }
+    };
+    host.failure = const FileSystemException('widgets');
+    auth.drafts.failNextRead.add(DescriptionDrafts.key);
+
+    await container.read(signOutProvider).call(alice.id);
+    await pumpEventQueue();
+
+    expect(await auth.registry.accountsToDelete(), [alice.id]);
+    final left = _mentioning(stores(), alice.id);
+    expect(left.keys, {'preferences', 'drafts', 'widgets', 'notifications'});
+    expect(left['preferences']!.keys, {AccountRegistry.storageKey});
+
+    gateway.beforeCall = null;
+    host.failure = null;
+    auth.drafts.failNextRead.clear();
+    container.dispose();
+    container = start();
+    expect(await container.read(accountDeletionsProvider).finishAll(), isTrue);
+    await pumpEventQueue();
+    final after = stores();
+
+    final tombstone = host.snapshot('${alice.id}.today')!;
+    expect(tombstone.state, WidgetSnapshotState.accountRemoved);
+    final rest = _mentioning(after, alice.id);
+    expect(rest.remove('widgets')!.keys, {
+      'snapshot ${alice.id}.today',
+      'config 1',
+    });
+    expect(rest, isEmpty);
+    expect(await auth.registry.accountsToDelete(), isEmpty);
+    expectOnlyOwnLeft(before, after, kept: bob.id, signedOut: alice.id);
+  });
+
+  test("a shared file's copy that cannot be deleted leaves the account to "
+      'the wipe at the next start', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: now),
+    );
+    await container.read(accountsProvider.future);
+    await fill(alice, userId: 7, widgetId: 1);
+    final copy = await seedShareCopy(alice.id);
+    final folder = auth.shareCopiesFolder;
+    auth.shareCopiesFolder = () async =>
+        throw const FileSystemException('cache folder unavailable');
+
+    await container.read(signOutProvider).call(alice.id);
+
+    expect(await auth.registry.accountsToDelete(), [alice.id]);
+    expect(copy.existsSync(), isTrue);
+
+    auth.shareCopiesFolder = folder;
+    expect(await container.read(accountDeletionsProvider).finishAll(), isTrue);
+
+    expect(copy.existsSync(), isFalse);
+    expect(await auth.registry.accountsToDelete(), isEmpty);
   });
 
   test('every name made of an account id is in the inventory, with how it '

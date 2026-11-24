@@ -16,9 +16,14 @@ final class EndedStop extends SessionStop {
   final SessionEnded failure;
 }
 
-/// Signed out or replaced by a new sign-in, for good.
+/// Signed out or replaced by a new sign-in, for good. One a new sign-in
+/// retired ([forSignIn]) tells a call "no token yet" instead of "session
+/// ended": the account's next call reaches the sign-in's manager
+/// (decision log: Sessions).
 final class RetiredStop extends SessionStop {
-  const new();
+  const new({this.forSignIn = false});
+
+  final bool forSignIn;
 }
 
 sealed class StopEvent {
@@ -37,12 +42,15 @@ final class ReviveEvent extends StopEvent {
 }
 
 final class RetireEvent extends StopEvent {
-  const new();
+  const new({this.forSignIn = false});
+
+  final bool forSignIn;
 }
 
 SessionStop? stopAfter(SessionStop? stop, StopEvent event) =>
     switch ((stop, event)) {
-      (RetiredStop(), _) || (_, RetireEvent()) => const RetiredStop(),
+      (_, RetireEvent(:final forSignIn)) => RetiredStop(forSignIn: forSignIn),
+      (final RetiredStop retired, _) => retired,
       (_, EndEvent(:final failure)) => EndedStop(failure),
       (EndedStop(), ReviveEvent()) => null,
       (null, ReviveEvent()) => null,

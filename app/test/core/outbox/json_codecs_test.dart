@@ -677,6 +677,7 @@ void main() {
       for (final (cause, notSent) in const [
         (RefreshDeferred.race, 'deferred'),
         (RefreshDeferred.cutoff, 'deferred'),
+        (RefreshDeferred.signIn, 'deferred'),
         (SecureStorageUnreadable(PlatformException), 'storage'),
       ]) {
         final stored = encodeFailure(

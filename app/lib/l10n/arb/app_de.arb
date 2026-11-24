@@ -357,6 +357,7 @@
   "sessionEndCauseStorageUnreadable": "Der sichere Speicher deines Geräts konnte die Anmeldung einen Tag lang nicht lesen.",
   "sessionEndCauseShareGone": "Der Server hat den geteilten Link nicht mehr akzeptiert.",
   "sessionEndCauseSharePassword": "Der geteilte Link hat erneut nach seinem Passwort gefragt.",
+  "sessionEndCauseSignOutFailed": "Das Abmelden wurde auf diesem Gerät nicht abgeschlossen.",
   "sessionEndCode": "Code {code}.",
   "sessionEndResolvedOrphan": "Die alte Sitzung war auf dem Server noch vorhanden und wurde entfernt.",
   "sessionEndResolvedGone": "Die alte Sitzung war auf dem Server gelöscht worden.",

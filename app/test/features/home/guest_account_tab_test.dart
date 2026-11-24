@@ -41,6 +41,7 @@ void main() {
     WidgetTester tester, {
     Permission? permission = Permission.read,
     bool needsReauth = false,
+    ServerConnection? connection,
   }) async {
     await pumpGuestApp(
       tester,
@@ -48,6 +49,7 @@ void main() {
       data: data,
       permission: permission,
       needsReauth: needsReauth,
+      connection: connection,
     );
     await openTab(tester, en.tabAccount);
   }
@@ -414,6 +416,34 @@ void main() {
           matching: find.text(en.guestSharingOffSuggestion),
         ),
         findsOneWidget,
+      );
+    });
+
+    testWidgets('on a server below the support floor, opening the link again '
+        'says so and keeps the banner', (tester) async {
+      auth.linkShareGateway.serve(
+        issueLinkShareToken(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpGuestTab(
+        tester,
+        needsReauth: true,
+        connection: legacyServer200(root: 'https://$host/vikunja'),
+      );
+
+      await tapOpenLinkAgain(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(ConnectionErrorCard),
+          matching: find.text(en.unsupportedTitle),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(GuestReauthBanner), findsOneWidget);
+      expect(auth.linkShareGateway.authentications, isEmpty);
+      expect(
+        (await auth.registry.load()).activeAccount!.account.needsReauth,
+        isTrue,
       );
     });
 

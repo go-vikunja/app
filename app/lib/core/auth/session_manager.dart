@@ -25,6 +25,10 @@ enum RefreshDeferred {
 
   /// A sibling isolate won the rotation and has not stored its tokens yet.
   race,
+
+  /// A new sign-in is storing the account's session, which the next call
+  /// gets ([SessionManagers.retireForSignIn]).
+  signIn,
 }
 
 /// How long a token request may take in a background run, so that a
@@ -168,7 +172,7 @@ final class SessionManager implements AccessTokenSource {
     try {
       return await _unlessRetired(_validAccessToken);
     } on _Retired {
-      throw const SessionEnded(SessionEndReason.invalidRefreshToken);
+      throw _retiredAnswer();
     }
   }
 
@@ -177,6 +181,7 @@ final class SessionManager implements AccessTokenSource {
     try {
       return await _unlessRetired(() => _refreshAfterRejection(rejectedToken));
     } on _Retired {
+      if (_stop case RetiredStop(forSignIn: true)) throw _retiredAnswer();
       return null;
     }
   }
@@ -192,7 +197,7 @@ final class SessionManager implements AccessTokenSource {
       if (!_refreshes) return;
       await _refreshFrom(session);
     } on _Retired {
-      throw const SessionEnded(SessionEndReason.invalidRefreshToken);
+      throw _retiredAnswer();
     }
   }
 
@@ -203,6 +208,17 @@ final class SessionManager implements AccessTokenSource {
     if (_stop is RetiredStop) throw const _Retired();
     return result;
   }
+
+  /// One a new sign-in retired answers "no token yet": the caller tries
+  /// again and reaches the sign-in's manager, or a new one over what
+  /// storage still holds when the sign-in gives up (decision log: Sessions).
+  VikunjaFailure _retiredAnswer() => switch (_stop) {
+    RetiredStop(forSignIn: true) => const NetworkFailure(
+      NetworkProblem.timeout,
+      cause: RefreshDeferred.signIn,
+    ),
+    _ => const SessionEnded(SessionEndReason.invalidRefreshToken),
+  };
 
   Future<String> _validAccessToken() async {
     await _storeKeptTokens();
@@ -288,12 +304,12 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
-  /// After sign-out or replacement by a new sign-in. Waits only for a storage
-  /// write that has already started, so the caller can wipe storage
-  /// afterwards; a refresh still on the network is abandoned and its result
-  /// discarded, however long the server takes.
-  Future<void> retire() async {
-    _stop = stopAfter(_stop, const RetireEvent());
+  /// After sign-out, or replacement by a new sign-in ([forSignIn]). Waits
+  /// only for a storage write that has already started, so the caller can
+  /// wipe storage afterwards; a refresh still on the network is abandoned
+  /// and its result discarded, however long the server takes.
+  Future<void> retire({bool forSignIn = false}) async {
+    _stop = stopAfter(_stop, RetireEvent(forSignIn: forSignIn));
     _session = null;
     _unpersisted = null;
     final writing = _pendingWrite;
@@ -855,13 +871,34 @@ final class SessionManagers {
   /// out nothing and never writes storage, until [signedIn] replaces it.
   Future<void> retire(String accountId) => forAccount(accountId).retire();
 
+  /// [retire] before a new sign-in of the account stores its tokens: the
+  /// retired manager answers "no token yet" rather than "session ended", so
+  /// a request in between waits for [signedIn], or for [replaceRetired] when
+  /// the sign-in gives up, instead of pausing the account's outbox
+  /// (decision log: Sessions).
+  Future<void> retireForSignIn(String accountId) =>
+      forAccount(accountId).retire(forSignIn: true);
+
   /// For a sign-in that retired the account's manager and then could not
   /// store its tokens: a new manager reads what storage still holds, as at
   /// the next start, and ends the session the usual way when that does not
-  /// work. The retired one stays retired.
+  /// work. The retired one stays retired and answers as it was retired.
   void replaceRetired(String accountId) {
     if (_managers[accountId]?._stop is RetiredStop) {
       _managers[accountId] = _create(accountId);
+    }
+  }
+
+  /// For a sign-in that took back the tokens of an account this device does
+  /// not list: the clock offset its manager stored goes with them. Never
+  /// throws.
+  Future<void> forgetClockOffset(String accountId) async {
+    try {
+      await _clockOffsets.delete(accountId);
+    } on Object catch (error) {
+      _log.info(
+        'Could not remove the server clock offset: ${error.runtimeType}',
+      );
     }
   }
 
@@ -877,7 +914,7 @@ final class SessionManagers {
   }) async {
     final previous = _managers[accountId];
     final manager = _managers[accountId] = _create(accountId);
-    if (previous != null) unawaited(previous.retire());
+    if (previous != null) unawaited(previous.retire(forSignIn: true));
     await manager._startSignedIn(tokens, receivedAt: receivedAt);
     return manager;
   }

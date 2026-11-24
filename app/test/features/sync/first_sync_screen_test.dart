@@ -207,6 +207,78 @@ void main() {
     expect(find.byType(HomeShell), findsOneWidget);
   });
 
+  /// Alice on her first-sync screen with her run held open by [run], and
+  /// Bob, registered before her, who has not synced either.
+  Future<(AuthFakes, AccountDataFakes)> pumpWithBob(
+    WidgetTester tester, {
+    bool bobNeedsReauth = false,
+  }) async {
+    final auth = AuthFakes();
+    final bob = await auth.seedAccount(
+      oauthServer230(),
+      tokens: issueTokens(issuedAt: now.toUtc(), userId: 8, username: 'bob'),
+      displayName: 'Bob',
+      needsReauth: bobNeedsReauth,
+      activate: false,
+    );
+    final bobData = data.accounts[bob.id] = AccountDataFakes(
+      now: now,
+      status: const SyncNeverRun(),
+    );
+    run = Completer<void>();
+    data.engine.onEnsureInitialSync = () => run.future;
+    await pumpSignedInApp(
+      tester,
+      sync: data,
+      auth: auth,
+      now: now,
+      settle: false,
+    );
+    await pumpUntil(tester, find.text(en.syncPhaseAccount));
+    return (auth, bobData);
+  }
+
+  Future<void> cancelConfirmed(WidgetTester tester) async {
+    await tester.tap(find.text(en.firstSyncCancel));
+    await pumpUntil(tester, find.text(en.signOutDialogTitle));
+    await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));
+  }
+
+  testWidgets('cancel with another account that has not synced either starts '
+      "that account's first sync", (tester) async {
+    final (auth, bob) = await pumpWithBob(tester);
+    final bobRun = Completer<void>();
+    bob.engine.onEnsureInitialSync = () => bobRun.future;
+    final aliceId = (await auth.registry.load()).activeAccountId;
+    expect(bob.engine.ensureInitialSyncCalls, 0);
+
+    await cancelConfirmed(tester);
+    await pumpUntil(tester, find.text(en.firstSyncBody('vikunja.example.com')));
+    await pumpUntil(tester, find.text(en.syncPhaseAccount));
+
+    expect(find.byType(FirstSyncScreen), findsOneWidget);
+    expect(find.text(en.firstSyncPreparing), findsNothing);
+    expect(bob.engine.ensureInitialSyncCalls, 1);
+    expect(data.engine.disposed, isTrue);
+
+    bobRun.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeShell), findsOneWidget);
+    expect(data.files.deleted, [aliceId]);
+  });
+
+  testWidgets('cancel with another account that needs a new sign-in asks for '
+      'it instead of starting its sync', (tester) async {
+    final (_, bob) = await pumpWithBob(tester, bobNeedsReauth: true);
+
+    await cancelConfirmed(tester);
+    await pumpUntil(tester, find.byType(ReauthBanner));
+
+    expect(find.text(en.firstSyncBody('vikunja.example.com')), findsOneWidget);
+    expect(find.byType(DataFailureCard), findsNothing);
+    expect(bob.engine.ensureInitialSyncCalls, 0);
+  });
+
   testWidgets('the phase is one live region with the counts as its value, '
       'and the title a heading', (tester) async {
     final semantics = tester.ensureSemantics();

@@ -80,6 +80,7 @@ class _GuestReauthBannerState extends ConsumerState<GuestReauthBanner> {
       _opening = false;
       _failure = switch (result) {
         final GuestLinkGone gone => gone,
+        final GuestServerUnsupported unsupported => unsupported,
         GuestSignInFailed(:final failure) => failure,
         _ => error,
       };

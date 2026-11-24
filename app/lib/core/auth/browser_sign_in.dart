@@ -83,7 +83,9 @@ final class BrowserSignIn {
   /// the sign-in. [beforeActivatingExisting] runs for an account already
   /// on this device before it becomes active again. Throws
   /// `VikunjaFailure`, `AuthorizationCallbackException`,
-  /// [WebAuthenticationFailed] or [SignedInAsDifferentUser].
+  /// [WebAuthenticationFailed] or [SignedInAsDifferentUser]. Also throws
+  /// what secure storage or the registry threw; nothing of an account new
+  /// to this device whose storage held no tokens for it stays then.
   Future<RegisteredAccount?> signIn(
     ServerConnection connection, {
     Account? expectedAccount,
@@ -110,6 +112,7 @@ final class BrowserSignIn {
 
     final User user;
     final String accountId;
+    final RegisteredAccount? existing;
     try {
       user = await _accountGateway.currentUser(
         connection,
@@ -129,12 +132,13 @@ final class BrowserSignIn {
       }
       accountId = accountIdFor(connection.rootUri, user.id);
       await beforeStoring?.call(accountId);
+      existing = await _registry.find(accountId);
     } on Object {
       unawaited(_signInTokens.abandon(connection, tokens));
       rethrow;
     }
 
-    await _sessions.retire(accountId);
+    await _sessions.retireForSignIn(accountId);
     final ReplacedTokens replaced;
     try {
       replaced = await _signInTokens.store(accountId, tokens);
@@ -151,7 +155,6 @@ final class BrowserSignIn {
       receivedAt: receivedAt,
     );
 
-    final existing = await _registry.find(accountId);
     if (existing != null) await beforeActivatingExisting?.call(accountId);
     final entry = RegisteredAccount(
       account: Account(
@@ -164,7 +167,21 @@ final class BrowserSignIn {
       ),
       connection: connection,
     );
-    await _registry.upsert(entry, activate: true);
+    try {
+      await _registry.upsert(entry, activate: true);
+    } on Object {
+      // An account already listed, or one whose storage held tokens that an
+      // entry this build cannot read may name, keeps the new ones
+      // (decision log: Sessions).
+      if (existing == null && replaced.heldNone) {
+        await session.retire();
+        if (await _signInTokens.takeBack(accountId, tokens)) {
+          await _sessions.forgetClockOffset(accountId);
+        }
+        unawaited(_signInTokens.abandon(connection, tokens));
+      }
+      rethrow;
+    }
     _log.info('Signed in account $accountId');
 
     unawaited(

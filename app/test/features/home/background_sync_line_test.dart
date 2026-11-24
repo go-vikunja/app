@@ -576,6 +576,33 @@ void main() {
       });
     }
 
+    testWidgets('a sign-out that did not finish is not told as ended by '
+        'mistake once a sign-in found its session alive', (tester) async {
+      await pumpAccountTab(
+        tester,
+        prepare: (accountId) => SessionDiagnostics(auth.preferences).recordEnd(
+          accountId,
+          SessionEndDiagnosis(
+            at: endedAt,
+            cause: SessionEndCause.signOutFailed,
+            part: AppPart.app,
+            resolution: SessionEndResolution.wasAlive,
+          ),
+        ),
+      );
+
+      expect(
+        find.text(
+          [
+            en.accountLastSessionEnd(ago(endedAt)),
+            en.sessionEndCauseSignOutFailed,
+          ].join(' '),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining(en.sessionEndResolvedAlive), findsNothing);
+    });
+
     testWidgets('a session that ended less than a minute ago reads just now '
         'in the Sync section, as does the lost answer', (tester) async {
       await pumpAccountTab(

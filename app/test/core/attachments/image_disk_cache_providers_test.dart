@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/attachments/image_disk_cache.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
@@ -18,6 +19,7 @@ import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -27,6 +29,7 @@ import '../../helpers/notification_fakes.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 import '../../helpers/task_details_fakes.dart';
+import '../../helpers/widget_fakes.dart';
 
 /// Can hold the wipe where it deletes the database, after the account's
 /// memory caches went and before its images do.
@@ -119,6 +122,10 @@ void main() {
         notificationGatewayProvider.overrideWithValue(
           FakeNotificationGateway(),
         ),
+        attachmentDownloadsProvider.overrideWithValue(
+          AttachmentDownloads(() async => Directory('/no-cache')),
+        ),
+        widgetHostProvider.overrideWithValue(FakeWidgetHost()),
       ],
     );
     addTearDown(container.dispose);

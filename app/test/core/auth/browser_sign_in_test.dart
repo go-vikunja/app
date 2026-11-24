@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
@@ -16,6 +20,12 @@ import '../../helpers/auth_fakes.dart';
 import '../../helpers/server_connections.dart';
 
 const _alice = User(id: 7, username: 'alice', name: 'Alice Example');
+
+final Matcher _noTokenYet = isA<NetworkFailure>().having(
+  (f) => f.cause,
+  'cause',
+  RefreshDeferred.signIn,
+);
 
 /// Memory storage whose reads fail while [failReads] is set.
 final class _FlakyStore implements SecureStore {
@@ -258,16 +268,61 @@ void main() {
         fresh.refreshToken,
       );
       expect(fakes.accountGateway.logoutTokens, [old.accessToken]);
-      await expectLater(
-        oldManager.validAccessToken(),
-        throwsA(isA<SessionEnded>()),
-      );
+      await expectLater(oldManager.validAccessToken(), throwsA(_noTokenYet));
       expect(
         await sessions.forAccount(seeded.id).validAccessToken(),
         fresh.accessToken,
       );
     },
   );
+
+  test('a request while the new tokens are stored gets no token yet without '
+      'marking the account, and the new session once they are', () async {
+    await fakes.seedAccount(
+      connection,
+      tokens: issueTokens(
+        issuedAt: now.subtract(const Duration(minutes: 3)),
+        userId: _alice.id,
+        sessionId: 'old-session',
+      ),
+    );
+    final fresh = issueTokens(
+      issuedAt: now,
+      userId: _alice.id,
+      sessionId: 'new-session',
+    );
+    fakes.tokenGateway.onExchange = (_) async => fresh;
+    final writing = Completer<void>();
+    final gate = Completer<void>();
+    fakes.secureStore.beforeWrite = (_) {
+      if (!writing.isCompleted) writing.complete();
+      return gate.future;
+    };
+
+    final signingIn = signIn.signIn(connection);
+    await writing.future;
+
+    Object? failure;
+    try {
+      await sessions.forAccount(accountId).validAccessToken();
+    } on Object catch (error) {
+      failure = error;
+    }
+    expect(failure, _noTokenYet);
+    expect(failedWithoutToken(failure), isTrue);
+    expect(
+      (await fakes.registry.find(accountId))!.account.needsReauth,
+      isFalse,
+    );
+
+    gate.complete();
+    await signingIn;
+
+    expect(
+      await sessions.forAccount(accountId).validAccessToken(),
+      fresh.accessToken,
+    );
+  });
 
   test(
     'an expired replaced session is refreshed in memory to log it out',
@@ -442,10 +497,8 @@ void main() {
       userId: _alice.id,
     );
     await fakes.seedAccount(connection, tokens: old);
-    expect(
-      await sessions.forAccount(accountId).validAccessToken(),
-      old.accessToken,
-    );
+    final before = sessions.forAccount(accountId);
+    expect(await before.validAccessToken(), old.accessToken);
     fakes.secureStore.beforeWrite = (_) async =>
         throw StateError('the key is gone');
     final failingStorage = BrowserSignIn(
@@ -464,12 +517,106 @@ void main() {
       throwsA(isA<StateError>()),
     );
 
+    await expectLater(before.validAccessToken(), throwsA(_noTokenYet));
+    expect(sessions.forAccount(accountId), isNot(same(before)));
     expect(
       await sessions.forAccount(accountId).validAccessToken(),
       old.accessToken,
     );
     final stored = (await fakes.registry.find(accountId))!;
     expect(stored.account.needsReauth, isFalse);
+  });
+
+  group('when the account cannot be registered (decision log: Sessions)', () {
+    late TokenSet fresh;
+
+    setUp(() {
+      fresh = issueTokens(issuedAt: now, userId: _alice.id);
+      fakes.tokenGateway.onExchange = (_) async => fresh;
+    });
+
+    test('a new account takes back its tokens, retires its manager and logs '
+        'the new session out', () async {
+      fakes.preferences.failWrites.add(AccountRegistry.storageKey);
+
+      await expectLater(signIn.signIn(connection), throwsA(isA<Exception>()));
+      await pumpEventQueue();
+
+      expect(fakes.secureStore.values, isEmpty);
+      expect(
+        fakes.preferences.values.keys,
+        everyElement(isNot(contains(accountId))),
+      );
+      expect((await fakes.registry.load()).accounts, isEmpty);
+      expect(fakes.accountGateway.logoutTokens, [fresh.accessToken]);
+      await expectLater(
+        sessions.forAccount(accountId).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+    });
+
+    test('an account already here keeps the new tokens and session', () async {
+      await fakes.seedAccount(
+        connection,
+        tokens: issueTokens(
+          issuedAt: now.subtract(const Duration(minutes: 3)),
+          userId: _alice.id,
+        ),
+      );
+      fakes.preferences.failWrites.add(AccountRegistry.storageKey);
+
+      await expectLater(signIn.signIn(connection), throwsA(isA<Exception>()));
+      await pumpEventQueue();
+
+      expect(
+        (await fakes.tokenStore.read(accountId))?.refreshToken,
+        fresh.refreshToken,
+      );
+      expect(
+        await sessions.forAccount(accountId).validAccessToken(),
+        fresh.accessToken,
+      );
+      expect(
+        fakes.accountGateway.logoutTokens,
+        isNot(contains(fresh.accessToken)),
+      );
+      expect(await fakes.registry.find(accountId), isNotNull);
+    });
+
+    test('tokens storage held for an account it does not list stay: an entry '
+        'this build cannot read may name them', () async {
+      await fakes.tokenStore.write(
+        accountId,
+        issueTokens(
+          issuedAt: now.subtract(const Duration(minutes: 3)),
+          userId: _alice.id,
+        ),
+      );
+      fakes.preferences.failWrites.add(AccountRegistry.storageKey);
+
+      await expectLater(signIn.signIn(connection), throwsA(isA<Exception>()));
+      await pumpEventQueue();
+
+      expect(
+        (await fakes.tokenStore.read(accountId))?.refreshToken,
+        fresh.refreshToken,
+      );
+      expect(
+        fakes.accountGateway.logoutTokens,
+        isNot(contains(fresh.accessToken)),
+      );
+    });
+
+    test('a registry that cannot be read before storing stores nothing and '
+        'logs the new session out', () async {
+      fakes.preferences.failNextRead.add(AccountRegistry.storageKey);
+
+      await expectLater(signIn.signIn(connection), throwsA(isA<Exception>()));
+      await pumpEventQueue();
+
+      expect(fakes.secureStore.values, isEmpty);
+      expect(fakes.accountGateway.logoutTokens, [fresh.accessToken]);
+    });
   });
 
   test('stores the server clock offset of the sign-in', () async {

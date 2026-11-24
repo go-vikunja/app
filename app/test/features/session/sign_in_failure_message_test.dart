@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
+import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/link_failure_message.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
@@ -165,6 +166,31 @@ void main() {
       expect(message.title, l10n.guestRemoveStillFinishingTitle);
       expect(message.explanation, l10n.guestRemoveStillFinishingExplanation);
       expect(message.suggestion, l10n.signOutStillFinishingSuggestion);
+    }
+  });
+
+  test('a shared link on a server below the support floor reads like the '
+      'server overview, in both languages', () {
+    for (final l10n in [en, de]) {
+      final tooOld = describeLinkFailure(
+        l10n,
+        const GuestServerUnsupported(ServerVersion(2, 2, 0)),
+        serverRoot: root,
+        platform: TargetPlatform.android,
+      );
+      final unknown = describeLinkFailure(
+        l10n,
+        const GuestServerUnsupported(null),
+        serverRoot: root,
+        platform: TargetPlatform.android,
+      );
+
+      expect(tooOld.title, l10n.unsupportedTitle);
+      expect(tooOld.explanation, l10n.unsupportedBody('2.3.0', '2.2.0'));
+      expect(tooOld.suggestion, l10n.unsupportedSuggestion);
+      expect(unknown.title, l10n.unsupportedUnknownVersionTitle);
+      expect(unknown.explanation, l10n.unsupportedUnknownVersionBody('2.3.0'));
+      expect(unknown.suggestion, l10n.unsupportedUnknownVersionSuggestion);
     }
   });
 

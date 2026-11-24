@@ -23,6 +23,12 @@ const _refused = SessionEnded(
   code: 16002,
 );
 
+final Matcher _noTokenYet = isA<NetworkFailure>().having(
+  (f) => f.cause,
+  'cause',
+  RefreshDeferred.signIn,
+);
+
 typedef _Call = Future<Object?> Function(SessionManager manager);
 
 final class _FlakySecureStore implements SecureStore {
@@ -1073,10 +1079,83 @@ void main() {
 
       await managers.signedIn(_accountId, signIn, receivedAt: now);
 
+      await expectLater(previous.validAccessToken(), throwsA(_noTokenYet));
+    });
+
+    test('an account a sign-in retired answers no token yet, sends no '
+        'refresh and writes nothing, until the sign-in stores its '
+        'session', () async {
+      final stored = await store(expiresIn: Duration.zero);
+      gateway.onRefresh = (_) async => issueTokens(issuedAt: now);
+      secureStore.operations.clear();
+      await managers.retireForSignIn(_accountId);
+
+      final waiting = managers.forAccount(_accountId);
+      await expectLater(waiting.validAccessToken(), throwsA(_noTokenYet));
       await expectLater(
-        previous.validAccessToken(),
-        throwsA(isA<SessionEnded>()),
+        waiting.refreshAfterRejection(stored.accessToken),
+        throwsA(_noTokenYet),
       );
+      await expectLater(waiting.refreshNow(), throwsA(_noTokenYet));
+      await waiting.settle();
+      expect(gateway.refreshedTokens, isEmpty);
+      expect(flagged, isEmpty);
+      expect(secureStore.operations, isEmpty);
+      expect(await storedRefreshToken(), stored.refreshToken);
+
+      final signIn = issueTokens(issuedAt: now, sessionId: 'session-2');
+      await tokenStore.write(_accountId, signIn);
+      await managers.signedIn(_accountId, signIn, receivedAt: now);
+
+      expect(
+        await managers.forAccount(_accountId).validAccessToken(),
+        signIn.accessToken,
+      );
+      expect(flagged, isEmpty);
+    });
+
+    test('a refresh on its way when a sign-in retires the manager answers no '
+        'token yet, also once the sign-in has stored its session', () async {
+      final stored = await store(expiresIn: Duration.zero);
+      final response = Completer<TokenSet>();
+      gateway.onRefresh = (_) => response.future;
+      final pending = expectLater(
+        managers.forAccount(_accountId).validAccessToken(),
+        throwsA(_noTokenYet),
+      );
+      await pumpEventQueue();
+      expect(gateway.refreshedTokens, [stored.refreshToken]);
+
+      await managers.retireForSignIn(_accountId);
+      final signIn = issueTokens(issuedAt: now, sessionId: 'session-2');
+      await tokenStore.write(_accountId, signIn);
+      await managers.signedIn(_accountId, signIn, receivedAt: now);
+      response.complete(issueTokens(issuedAt: now));
+
+      await pending;
+      expect(await storedRefreshToken(), signIn.refreshToken);
+      expect(
+        await managers.forAccount(_accountId).validAccessToken(),
+        signIn.accessToken,
+      );
+      expect(flagged, isEmpty);
+    });
+
+    test('a sign-in that gives up leaves the account to a manager over what '
+        'storage still holds, and a call the retired one answered is tried '
+        'there', () async {
+      final stored = await store(expiresIn: const Duration(minutes: 5));
+      await managers.retireForSignIn(_accountId);
+      final retired = managers.forAccount(_accountId);
+      await expectLater(retired.validAccessToken(), throwsA(_noTokenYet));
+
+      managers.replaceRetired(_accountId);
+
+      final replacement = managers.forAccount(_accountId);
+      expect(replacement, isNot(same(retired)));
+      expect(await replacement.validAccessToken(), stored.accessToken);
+      expect(gateway.refreshedTokens, isEmpty);
+      expect(flagged, isEmpty);
     });
 
     test('a retired manager is replaced by one that reads what storage still '
@@ -1397,6 +1476,10 @@ void main() {
         ),
         ('an expired session', (SessionEndCause.sessionExpired, null)),
         ('missing tokens', (SessionEndCause.missingTokens, null)),
+        (
+          'a sign-out that did not finish',
+          (SessionEndCause.signOutFailed, null),
+        ),
       ]) {
         test('does nothing for $what', () async {
           if (record case (final cause, final resolution)) {

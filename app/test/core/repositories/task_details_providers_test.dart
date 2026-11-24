@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
@@ -32,6 +33,7 @@ import '../../helpers/notification_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/widget_fakes.dart';
 
 void main() {
   final noon = DateTime.utc(2026, 10, 19, 12);
@@ -71,6 +73,7 @@ void main() {
         notificationGatewayProvider.overrideWithValue(
           FakeNotificationGateway(),
         ),
+        widgetHostProvider.overrideWithValue(FakeWidgetHost()),
       ],
     );
     addTearDown(container.dispose);

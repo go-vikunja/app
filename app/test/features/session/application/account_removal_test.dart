@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -21,6 +24,7 @@ import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dar
 import '../../../helpers/auth_fakes.dart';
 import '../../../helpers/fake_sync_client.dart';
 import '../../../helpers/fake_write_client.dart';
+import '../../../helpers/notification_fakes.dart';
 import '../../../helpers/recording_sync_engine.dart';
 import '../../../helpers/server_connections.dart';
 import '../../../helpers/sync_fakes.dart';
@@ -49,9 +53,10 @@ void main() {
     activate: activate,
   );
 
-  test('removing an inactive account stops its sender and engine and '
-      'deletes its database; the active account keeps its engine, sender, '
-      'database and screens, and its scheduler is back afterwards', () async {
+  test('removing an inactive account stops its sender and engine, deletes '
+      'its database and takes it off the list to delete; the active account '
+      'keeps its engine, sender, database and screens, and its scheduler is '
+      'back afterwards', () async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     addTearDown(
       () => driftRuntimeOptions.dontWarnAboutMultipleDatabases = false,
@@ -82,6 +87,12 @@ void main() {
         readClientProvider.overrideWith((ref, _) => FakeSyncClient()),
         trashPortProvider.overrideWith((ref, _) => FakeTrashPort()),
         clockProvider.overrideWithValue(() => now),
+        notificationGatewayProvider.overrideWithValue(
+          FakeNotificationGateway(),
+        ),
+        attachmentDownloadsProvider.overrideWithValue(
+          AttachmentDownloads(() async => Directory('/no-cache')),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -134,6 +145,7 @@ void main() {
     // Disposed: it no longer touches the closed database.
     await expectLater(bobSender.sendNow(), completion(isNull));
     expect(files.deleted, [bob.id]);
+    expect(await auth.registry.accountsToDelete(), isEmpty);
 
     // At rest while the sign-out ran, a new one for Alice afterwards.
     expect(scheduler.read(), isNotNull);

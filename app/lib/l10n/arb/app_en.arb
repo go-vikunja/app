@@ -215,7 +215,7 @@
   "unsupportedTitle": "This server is too old",
   "unsupportedBody": "This app needs Vikunja {minimum} or newer. This server runs {found}.",
   "@unsupportedBody": {
-    "description": "Body of the card on the server overview screen when the server's Vikunja is too old for the app; minimum is the oldest version the app supports, for example 2.3.0, and found is the server's version, for example 1.0.0.",
+    "description": "Body of the card on the server overview screen, and of the failure shown for a shared link, when the server's Vikunja is too old for the app; minimum is the oldest version the app supports, for example 2.3.0, and found is the server's version, for example 1.0.0.",
     "placeholders": {
       "minimum": {
         "type": "String",
@@ -230,11 +230,11 @@
   "unsupportedSuggestion": "Ask whoever runs the server to update Vikunja.",
   "unsupportedUnknownVersionTitle": "Server version not recognized",
   "@unsupportedUnknownVersionTitle": {
-    "description": "Title of the card on the server overview screen when the server reports a version the app cannot read."
+    "description": "Title of the card on the server overview screen, and of the failure shown for a shared link, when the server reports a version the app cannot read."
   },
   "unsupportedUnknownVersionBody": "This app needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.",
   "@unsupportedUnknownVersionBody": {
-    "description": "Body of the card on the server overview screen when the server reports a version the app cannot read; minimum is the oldest Vikunja version the app supports.",
+    "description": "Body of the card on the server overview screen, and of the failure shown for a shared link, when the server reports a version the app cannot read; minimum is the oldest Vikunja version the app supports.",
     "placeholders": {
       "minimum": {
         "type": "String",
@@ -1590,6 +1590,10 @@
   "sessionEndCauseSharePassword": "The shared link asked for its password again.",
   "@sessionEndCauseSharePassword": {
     "description": "Why a link-share guest's access ended: when the app signed in with the shared link again, the server asked for the link's password, which the app did not have or which was no longer right."
+  },
+  "sessionEndCauseSignOutFailed": "Signing out did not finish on this device.",
+  "@sessionEndCauseSignOutFailed": {
+    "description": "Why a session ended: signing out of the account (or removing a guest access) ended its sign-in on this device but could not remove the account, which stays until the user signs in again or signs out again."
   },
   "sessionEndCode": "Code {code}.",
   "@sessionEndCode": {

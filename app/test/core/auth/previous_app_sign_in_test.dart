@@ -64,6 +64,10 @@ void main() {
   Future<void> expectNothingStored() async {
     expect((await fakes.registry.load()).accounts, isEmpty);
     expect(fakes.secureStore.values, isEmpty);
+    expect(
+      fakes.preferences.values.keys,
+      everyElement(isNot(contains(accountId))),
+    );
   }
 
   test("exchanges the previous app's refresh token and registers the "
@@ -398,12 +402,36 @@ void main() {
       );
     });
 
-    test('a write that keeps failing logs the new session out and registers '
-        'nothing', () async {
+    test('a write that keeps failing logs the new session out, registers '
+        'nothing and leaves no manager of the account waiting', () async {
+      final before = sessions.forAccount(accountId);
       fakes.secureStore.beforeWrite = (_) async =>
           throw StateError('the Keystore failed');
 
       await expectLater(keep(), throwsA(isA<StateError>()));
+      await pumpEventQueue();
+
+      expect(fakes.accountGateway.logoutTokens, [tokens.accessToken]);
+      await expectNothingStored();
+      expect(sessions.forAccount(accountId), isNot(same(before)));
+    });
+
+    test('an account the registry cannot store is taken back and its new '
+        'session logged out', () async {
+      fakes.preferences.failWrites.add(AccountRegistry.storageKey);
+
+      await expectLater(keep(), throwsA(isA<Exception>()));
+      await pumpEventQueue();
+
+      expect(fakes.accountGateway.logoutTokens, [tokens.accessToken]);
+      await expectNothingStored();
+    });
+
+    test('a registry that cannot be read stores nothing and logs the new '
+        'session out', () async {
+      fakes.preferences.failNextRead.add(AccountRegistry.storageKey);
+
+      await expectLater(keep(), throwsA(isA<Exception>()));
       await pumpEventQueue();
 
       expect(fakes.accountGateway.logoutTokens, [tokens.accessToken]);
