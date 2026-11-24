@@ -30,6 +30,11 @@ SecureStore secureStore(Ref ref) => FlutterSecureStore();
 @Riverpod(keepAlive: true)
 PreferencesStore preferencesStore(Ref ref) => SharedPreferencesStore();
 
+/// [preferencesStoreProvider] for what is kept as one preference per entry.
+@Riverpod(keepAlive: true)
+PrefixedPreferencesStore prefixedPreferencesStore(Ref ref) =>
+    SharedPreferencesStore();
+
 @Riverpod(keepAlive: true)
 TokenStore tokenStore(Ref ref) => TokenStore(ref.watch(secureStoreProvider));
 

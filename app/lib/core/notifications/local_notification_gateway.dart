@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/notifications/notification_payload_records.dart';
 import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
@@ -55,6 +56,7 @@ final class LocalNotificationGateway implements NotificationGateway {
   new({
     required this._texts,
     required this._preferences,
+    required this._payloads,
     this._onResponse,
     this._onBackgroundResponse,
     FlutterLocalNotificationsPlugin? plugin,
@@ -85,6 +87,7 @@ final class LocalNotificationGateway implements NotificationGateway {
 
   LocalNotificationTexts _texts;
   final PreferencesStore _preferences;
+  final NotificationPayloadRecords _payloads;
   final NotificationResponseCallback? _onResponse;
   final DidReceiveBackgroundNotificationResponseCallback? _onBackgroundResponse;
   final FlutterLocalNotificationsPlugin _plugin;
@@ -358,11 +361,15 @@ final class LocalNotificationGateway implements NotificationGateway {
           : AndroidScheduleMode.inexactAllowWhileIdle,
       payload: notification.payload,
     );
+    await _keep(notification.osId, notification.payload);
   }
 
   @override
   Future<void> cancel(int osId) async {
     await initialize();
+    // Before the cancel: a payload another isolate keeps under the id
+    // meanwhile, for its own schedule, then stays.
+    await _forget([osId]);
     await _plugin.cancel(id: osId);
   }
 
@@ -389,16 +396,92 @@ final class LocalNotificationGateway implements NotificationGateway {
       notificationDetails: _details(privacy),
       payload: payload,
     );
+    await _keep(osId, payload);
   }
 
   @override
   Future<List<DeliveredNotification>> delivered() async {
     await initialize();
-    return [
+    // In this order: a payload kept by now belongs to a notification that
+    // is pending or shown unless it has gone since, and an alarm that fires
+    // meanwhile is in one of the two lists.
+    final kept = await _keptPayloads();
+    final pending = await _pendingPayloads();
+    final shown = {
       for (final notification in await _plugin.getActiveNotifications())
-        if (notification.id case final id?)
-          (osId: id, payload: notification.payload),
+        ?notification.id: notification.payload,
+    };
+    if (pending != null) {
+      // What the user dismissed or tapped leaves its payload behind, as
+      // Android reports neither.
+      await _forget([
+        for (final osId in kept.keys)
+          if (!shown.containsKey(osId) && !pending.containsKey(osId)) osId,
+      ]);
+      // Scheduled before payloads were kept, or its payload was forgotten
+      // by another isolate that looked just before the schedule.
+      for (final MapEntry(key: osId, value: payload) in pending.entries) {
+        if (payload != null && !kept.containsKey(osId)) {
+          await _keep(osId, payload);
+        }
+      }
+    }
+    return [
+      for (final MapEntry(key: osId, value: payload) in shown.entries)
+        (osId: osId, payload: payload ?? kept[osId]),
     ];
+  }
+
+  /// Android hands back the id of a notification it shows but not its
+  /// payload, so the payload given under each id is kept; iOS returns its
+  /// own. Never throws: a notification without one only stays in the tray.
+  Future<void> _keep(int osId, String payload) async {
+    if (_android == null) return;
+    try {
+      await _payloads.put(osId, payload);
+    } on Object catch (error) {
+      _log.info('Could not keep a notification payload: ${error.runtimeType}');
+    }
+  }
+
+  Future<void> _forget(Iterable<int> osIds) async {
+    if (_android == null) return;
+    try {
+      await _payloads.removeAll(osIds);
+    } on Object catch (error) {
+      _log.info(
+        'Could not forget a notification payload: ${error.runtimeType}',
+      );
+    }
+  }
+
+  Future<Map<int, String>> _keptPayloads() async {
+    if (_android == null) return const {};
+    try {
+      return await _payloads.all();
+    } on Object catch (error) {
+      _log.info(
+        'Could not read the notification payloads: ${error.runtimeType}',
+      );
+      return const {};
+    }
+  }
+
+  /// Null on iOS, and when the list cannot be read: nothing is forgotten
+  /// then.
+  Future<Map<int, String?>?> _pendingPayloads() async {
+    if (_android == null) return null;
+    try {
+      return {
+        for (final request in await _plugin.pendingNotificationRequests())
+          request.id: request.payload,
+      };
+    } on Object catch (error) {
+      _log.info(
+        'Could not list the pending notifications: ${error.runtimeType}',
+      );
+      return null;
+    }
   }
 
   @override
@@ -424,6 +507,7 @@ final class LocalNotificationGateway implements NotificationGateway {
       ),
       payload: payload,
     );
+    await _keep(osId, payload);
   }
 
   @override
@@ -456,6 +540,7 @@ final class LocalNotificationGateway implements NotificationGateway {
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: payload,
     );
+    await _keep(osId, payload);
   }
 
   NotificationDetails _activityDetails({

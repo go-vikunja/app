@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/files/link_share_actions.dart';
 import 'package:vikunja_mobile/core/files/platform_file_actions.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
+import 'package:vikunja_mobile/core/notifications/notification_payload_records.dart';
 import 'package:vikunja_mobile/core/platform/app_language_settings.dart';
 import 'package:vikunja_mobile/core/platform/device_channel.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
@@ -213,6 +214,7 @@ void main() {
     LocalNotificationGateway gateway() => LocalNotificationGateway(
       texts: localNotificationTexts(lookupAppLocalizations(const Locale('en'))),
       preferences: MemoryPreferencesStore(),
+      payloads: NotificationPayloadRecords(MemoryPreferencesStore()),
       excursions: excursions,
     );
 

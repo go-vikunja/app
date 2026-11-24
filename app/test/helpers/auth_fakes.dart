@@ -78,7 +78,7 @@ final class MemorySecureStore implements SecureStore {
   Future<void> flush() async => flushes++;
 }
 
-final class MemoryPreferencesStore implements PreferencesStore {
+final class MemoryPreferencesStore implements PrefixedPreferencesStore {
   final Map<String, String> values = {};
 
   /// Keys whose next read throws, once each.
@@ -95,6 +95,12 @@ final class MemoryPreferencesStore implements PreferencesStore {
 
   @override
   Future<void> remove(String key) async => values.remove(key);
+
+  @override
+  Future<Map<String, String>> stringsUnder(String prefix) async => {
+    for (final MapEntry(:key, :value) in values.entries)
+      if (key.startsWith(prefix)) key: value,
+  };
 }
 
 var _tokenCounter = 0;
@@ -328,6 +334,7 @@ final class AuthFakes {
   List<Override> get overrides => [
     secureStoreProvider.overrideWithValue(secureStore),
     preferencesStoreProvider.overrideWithValue(preferences),
+    prefixedPreferencesStoreProvider.overrideWithValue(preferences),
     draftStoreProvider.overrideWithValue(drafts),
     imageDiskCacheRootProvider.overrideWithValue(() => imageCacheRoot()),
     webAuthenticatorProvider.overrideWithValue(webAuthenticator),

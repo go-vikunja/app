@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/notifications/notification_payload_records.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
@@ -23,6 +24,9 @@ NotificationGateway notificationGateway(Ref ref) {
   final gateway = LocalNotificationGateway(
     texts: localNotificationTexts(ref.read(deviceAppLocalizationsProvider)),
     preferences: ref.watch(preferencesStoreProvider),
+    payloads: NotificationPayloadRecords(
+      ref.watch(prefixedPreferencesStoreProvider),
+    ),
     onResponse: ref.watch(notificationResponsesProvider).add,
     onBackgroundResponse: ref.watch(notificationBackgroundEntryPointProvider),
     excursions: ref.watch(appExcursionsProvider),

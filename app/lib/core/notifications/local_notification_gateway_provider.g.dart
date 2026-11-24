@@ -55,7 +55,7 @@ final class NotificationGatewayProvider
 }
 
 String _$notificationGatewayHash() =>
-    r'295c1a7ce19d50b21d9b4a05595a804c047e3852';
+    r'fc359bb8620a0d23110b5abe06e70ef333a63b5b';
 
 /// The top-level `@pragma('vm:entry-point')` function the plugin runs in its
 /// own engine for an action that shows no UI. Overridden in bootstrap with

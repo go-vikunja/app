@@ -96,6 +96,59 @@ final class PreferencesStoreProvider
 
 String _$preferencesStoreHash() => r'11d7007670f4f05e0118d39119fc5699a72e12e2';
 
+/// [preferencesStoreProvider] for what is kept as one preference per entry.
+
+@ProviderFor(prefixedPreferencesStore)
+final prefixedPreferencesStoreProvider = PrefixedPreferencesStoreProvider._();
+
+/// [preferencesStoreProvider] for what is kept as one preference per entry.
+
+final class PrefixedPreferencesStoreProvider
+    extends
+        $FunctionalProvider<
+          PrefixedPreferencesStore,
+          PrefixedPreferencesStore,
+          PrefixedPreferencesStore
+        >
+    with $Provider<PrefixedPreferencesStore> {
+  /// [preferencesStoreProvider] for what is kept as one preference per entry.
+  PrefixedPreferencesStoreProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'prefixedPreferencesStoreProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$prefixedPreferencesStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<PrefixedPreferencesStore> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  PrefixedPreferencesStore create(Ref ref) {
+    return prefixedPreferencesStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PrefixedPreferencesStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PrefixedPreferencesStore>(value),
+    );
+  }
+}
+
+String _$prefixedPreferencesStoreHash() =>
+    r'2e863334accdb00ca1c33faafe17fd454199215a';
+
 @ProviderFor(tokenStore)
 final tokenStoreProvider = TokenStoreProvider._();
 

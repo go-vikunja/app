@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dar
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/notifications/notification_payload_records.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
@@ -23,7 +24,7 @@ final AppLocalizations de = lookupAppLocalizations(const Locale('de'));
 @pragma('vm:entry-point')
 void _backgroundEntryPoint(NotificationResponse response) {}
 
-final class _MemoryPreferences implements PreferencesStore {
+final class _MemoryPreferences implements PrefixedPreferencesStore {
   final Map<String, String> values = {};
 
   @override
@@ -34,11 +35,17 @@ final class _MemoryPreferences implements PreferencesStore {
 
   @override
   Future<void> remove(String key) async => values.remove(key);
+
+  @override
+  Future<Map<String, String>> stringsUnder(String prefix) async => {
+    for (final MapEntry(:key, :value) in values.entries)
+      if (key.startsWith(prefix)) key: value,
+  };
 }
 
 /// A preferences file the platform cannot read or write, as a broken
 /// DataStore file on Android.
-final class _BrokenPreferences implements PreferencesStore {
+final class _BrokenPreferences implements PrefixedPreferencesStore {
   @override
   Future<String?> getString(String key) async =>
       throw Exception('Unable to parse preferences');
@@ -49,6 +56,10 @@ final class _BrokenPreferences implements PreferencesStore {
 
   @override
   Future<void> remove(String key) async =>
+      throw Exception('Unable to parse preferences');
+
+  @override
+  Future<Map<String, String>> stringsUnder(String prefix) async =>
       throw Exception('Unable to parse preferences');
 }
 
@@ -86,6 +97,7 @@ void main() {
   LocalNotificationGateway gateway({
     TargetPlatform platform = TargetPlatform.android,
     bool background = true,
+    PrefixedPreferencesStore? payloads,
   }) {
     debugDefaultTargetPlatformOverride = platform;
     switch (platform) {
@@ -97,6 +109,7 @@ void main() {
     return LocalNotificationGateway(
       texts: localNotificationTexts(en),
       preferences: preferences,
+      payloads: NotificationPayloadRecords(payloads ?? preferences),
       onResponse: responses.add,
       onBackgroundResponse: background ? _backgroundEntryPoint : null,
       clock: () => now,
@@ -574,6 +587,181 @@ void main() {
       platformSpecifics(call('show'))['channelId'],
       LocalNotificationGateway.channelId,
     );
+  });
+
+  group('delivered', () {
+    const payload = '{"account":"a","task":5,"key":"5:due"}';
+    const kept = 'notifications.payload.';
+
+    test('Android hands no payload back: a shown notification gets the one '
+        'it was scheduled or shown with', () async {
+      final gateway0 = gateway();
+      await gateway0.schedule(notification);
+      await gateway0.showNow(osId: 5, title: 't', body: 'b', payload: 'now');
+      await gateway0.showActivity(
+        osId: 6,
+        title: 't',
+        body: 'b',
+        payload: 'activity',
+      );
+      await gateway0.scheduleActivity(
+        osId: 7,
+        fireAt: DateTime.utc(2036, 10, 13, 9),
+        title: 't',
+        body: 'b',
+        payload: 'later',
+      );
+      answers['getActiveNotifications'] = [
+        for (final id in [77, 5, 6, 7, 8]) {'id': id, 'title': 't'},
+      ];
+      answers['pendingNotificationRequests'] = <Object?>[];
+
+      expect(await gateway0.delivered(), [
+        (osId: 77, payload: payload),
+        (osId: 5, payload: 'now'),
+        (osId: 6, payload: 'activity'),
+        (osId: 7, payload: 'later'),
+        (osId: 8, payload: null),
+      ]);
+    });
+
+    test("Android: another isolate's gateway reads what this one "
+        'kept', () async {
+      await gateway().schedule(notification);
+      answers['getActiveNotifications'] = [
+        {'id': 77},
+      ];
+      answers['pendingNotificationRequests'] = <Object?>[];
+
+      expect(await gateway().delivered(), [(osId: 77, payload: payload)]);
+    });
+
+    test('Android: a cancel forgets the payload, before the system is '
+        'asked', () async {
+      final gateway0 = gateway();
+      await gateway0.schedule(notification);
+      expect(preferences.values['${kept}77'], payload);
+      throwing = (call) {
+        if (call.method != 'cancel') return null;
+        expect(preferences.values, isNot(contains('${kept}77')));
+        return null;
+      };
+
+      await gateway0.cancel(77);
+
+      expect(calls.last.method, 'cancel');
+      expect(preferences.values, isNot(contains('${kept}77')));
+    });
+
+    test('Android: what the user dismissed is forgotten, what is still '
+        'pending or shown is not', () async {
+      final gateway0 = gateway();
+      for (final osId in [77, 78, 79]) {
+        await gateway0.showNow(
+          osId: osId,
+          title: 't',
+          body: 'b',
+          payload: 'p$osId',
+        );
+      }
+      answers['getActiveNotifications'] = [
+        {'id': 78},
+      ];
+      answers['pendingNotificationRequests'] = [
+        {'id': 79, 'title': 't', 'body': 'b', 'payload': 'p79'},
+      ];
+
+      expect(await gateway0.delivered(), [(osId: 78, payload: 'p78')]);
+      expect(preferences.values.keys.where((key) => key.startsWith(kept)), [
+        '${kept}78',
+        '${kept}79',
+      ]);
+    });
+
+    test('Android: a pending list that cannot be read forgets '
+        'nothing', () async {
+      final gateway0 = gateway();
+      await gateway0.schedule(notification);
+      answers['getActiveNotifications'] = <Object?>[];
+      throwing = (call) => call.method == 'pendingNotificationRequests'
+          ? PlatformException(code: 'error')
+          : null;
+
+      expect(await gateway0.delivered(), isEmpty);
+      expect(preferences.values['${kept}77'], payload);
+    });
+
+    test('Android: preferences that cannot be read or written stop neither '
+        'a schedule, a cancel nor the list of what is shown', () async {
+      final gateway0 = gateway(payloads: _BrokenPreferences());
+      await gateway0.schedule(notification);
+      await gateway0.cancel(77);
+      answers['getActiveNotifications'] = [
+        {'id': 77},
+      ];
+
+      expect(await gateway0.delivered(), [(osId: 77, payload: null)]);
+      expect(calls.map((call) => call.method), [
+        'initialize',
+        'createNotificationChannel',
+        'createNotificationChannel',
+        'zonedSchedule',
+        'cancel',
+        'pendingNotificationRequests',
+        'getActiveNotifications',
+      ]);
+    });
+
+    test('Android: a pending notification without a kept payload gets the '
+        'one the system holds for it, so it can be told once it '
+        'shows', () async {
+      final gateway0 = gateway();
+      answers['pendingNotificationRequests'] = [
+        {'id': 9, 'title': 't', 'body': 'b', 'payload': 'p9'},
+        {'id': 10, 'title': 't', 'body': 'b', 'payload': null},
+      ];
+      answers['getActiveNotifications'] = <Object?>[];
+      expect(await gateway0.delivered(), isEmpty);
+      expect(preferences.values, {'${kept}9': 'p9'});
+
+      answers['pendingNotificationRequests'] = <Object?>[];
+      answers['getActiveNotifications'] = [
+        {'id': 9},
+      ];
+      expect(await gateway0.delivered(), [(osId: 9, payload: 'p9')]);
+    });
+
+    test('Android: a kept payload is not replaced by the one of a pending '
+        'notification under its id, as the shown one may be the older '
+        'one', () async {
+      final gateway0 = gateway();
+      await gateway0.showNow(osId: 9, title: 't', body: 'b', payload: 'old');
+      answers['pendingNotificationRequests'] = [
+        {'id': 9, 'title': 't', 'body': 'b', 'payload': 'new'},
+      ];
+      answers['getActiveNotifications'] = [
+        {'id': 9},
+      ];
+
+      expect(await gateway0.delivered(), [(osId: 9, payload: 'old')]);
+      expect(preferences.values['${kept}9'], 'old');
+    });
+
+    test('iOS returns its own payloads, so nothing is kept', () async {
+      final gateway0 = gateway(platform: TargetPlatform.iOS);
+      await gateway0.schedule(notification);
+      await gateway0.showNow(osId: 5, title: 't', body: 'b', payload: 'now');
+      answers['getActiveNotifications'] = [
+        {'id': 77, 'title': 't', 'body': 'b', 'payload': payload},
+      ];
+
+      expect(await gateway0.delivered(), [(osId: 77, payload: payload)]);
+      expect(preferences.values, isEmpty);
+      expect(
+        calls.map((call) => call.method),
+        isNot(contains('pendingNotificationRequests')),
+      );
+    });
   });
 
   test('showNow follows the privacy it is given', () async {
