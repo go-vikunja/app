@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_account_settings_repository.dart';
+import 'package:vikunja_mobile/core/settings/current_user_store.dart';
 import 'package:vikunja_mobile/core/settings/user_profile_json.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
@@ -197,6 +198,97 @@ void main() {
         throwsA(isA<NetworkFailure>()),
       );
     });
+
+    test('counts as a change, so a sync that began reading the user before '
+        'it does not store its older answer over it', () async {
+      final old = server.stored;
+      final before = await accountSettingsChanges(db);
+
+      await repository.update(const UserSettingsChanges(weekStart: 3));
+
+      expect(
+        await storeCurrentUser(
+          db,
+          user: old.profile.user,
+          settings: old.settings,
+          profile: old.profile,
+          changesAtRead: before,
+        ),
+        isFalse,
+      );
+      expect((await storedSettings()).weekStart, 3);
+    });
+
+    Future<void> seedFromServer() => db.syncStateDao.write({
+      SyncStateKeys.userSettings: encodeUserSettings(server.settings),
+      SyncStateKeys.userProfile: encodeUserProfile(server.profile),
+    });
+
+    test('a read-back that fails still counts: the changes are stored at '
+        'once and the rest waits for the quiet sync', () async {
+      await seedFromServer();
+      server.readBackFails = true;
+
+      await repository.update(
+        const UserSettingsChanges(
+          discoverableByName: true,
+          dateDisplay: SettingChange.set(DateDisplay.yearMonthDayDashed),
+        ),
+      );
+      await pumpEventQueue();
+
+      final settings = await storedSettings();
+      expect(settings.discoverableByName, isTrue);
+      expect(settings.dateDisplay, DateDisplay.yearMonthDayDashed);
+      expect(settings.timezone, 'Europe/Berlin');
+      expect(settings.weekStart, 1);
+      expect((await storedProfile())?.updated, fakeProfileUpdated);
+      expect(names, isEmpty);
+      expect(avatarNotes, isEmpty);
+      expect(userReads, 0);
+      expect(sync.refreshAfterWriteCalls, 1);
+      expect(await accountSettingsChanges(db), 1);
+    });
+
+    test('a new name whose read-back fails still reaches the profile, the '
+        'known people and the account list, and the avatar goes', () async {
+      await seedFromServer();
+      server.readBackFails = true;
+
+      await repository.update(const UserSettingsChanges(name: 'Alice Renamed'));
+      await pumpEventQueue();
+
+      expect((await storedSettings()).name, 'Alice Renamed');
+      expect((await storedProfile())?.name, 'Alice Renamed');
+      expect((await storedProfile())?.updated, fakeProfileUpdated);
+      expect((await db.usersDao.find(7))?.name, 'Alice Renamed');
+      expect(names, ['Alice Renamed']);
+      expect(avatarNotes, [
+        ('alice', fakeProfileUpdated, OwnAvatarChange.changed),
+      ]);
+      expect(sync.refreshAfterWriteCalls, 1);
+      expect(await accountSettingsChanges(db), 1);
+    });
+
+    test('before the first sync, a read-back that fails still stores the '
+        "change and the account's name", () async {
+      server.readBackFails = true;
+
+      await repository.update(
+        const UserSettingsChanges(name: 'Alice Renamed', weekStart: 3),
+      );
+      await pumpEventQueue();
+
+      final settings = await storedSettings();
+      expect(settings.weekStart, 3);
+      expect(settings.name, 'Alice Renamed');
+      expect(await storedProfile(), isNull);
+      expect(await db.usersDao.find(7), isNull);
+      expect(names, ['Alice Renamed']);
+      expect(avatarNotes, isEmpty);
+      expect(sync.refreshAfterWriteCalls, 1);
+      expect(await accountSettingsChanges(db), 1);
+    });
   });
 
   test('changes go one at a time, in order', () async {
@@ -244,6 +336,7 @@ void main() {
       expect(avatarNotes, [('alice', bumped, OwnAvatarChange.changed)]);
       expect(names, ['Alice Example']);
       expect(sync.refreshAfterWriteCalls, 1);
+      expect(await accountSettingsChanges(db), 1);
       expect(
         (await repository.watch().first).avatarProvider,
         AvatarProvider.marble,
@@ -377,5 +470,6 @@ void main() {
     expect(avatarNotes, [('alice', bumped, OwnAvatarChange.unknown)]);
     expect(names, ['Alice Example']);
     expect(sync.refreshAfterWriteCalls, 0);
+    expect(await accountSettingsChanges(db), 0);
   });
 }

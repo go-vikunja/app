@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
@@ -13,6 +14,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/data_expor
 import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 
+import '../../helpers/account_security_fakes.dart';
 import '../../helpers/account_settings_fakes.dart';
 import '../../helpers/fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -26,6 +28,9 @@ void main() {
 
   Future<void> scrollTo(WidgetTester tester, Finder finder) =>
       scrollToIn(tester, AccountSettingsPage, finder);
+
+  String signInAs(AppLocalizations l10n, {String host = 'tasks.example.org'}) =>
+      l10n.accountDeletionSignInAs('alice', host);
 
   Future<void> tapRow(WidgetTester tester, String title) async {
     final row = find.widgetWithText(ListTile, title);
@@ -436,6 +441,109 @@ void main() {
     });
   });
 
+  group('the latest read wins', () {
+    testWidgets('a count still on its way when a token is deleted does not '
+        'bring the old count back', (tester) async {
+      harness.security.apiTokenList = [
+        fakeApiToken(expiresAt: harness.now.add(const Duration(days: 20))),
+      ];
+      final before = harness.security.apiTokenList;
+      final held = harness.holdNext('apiTokens');
+      await harness.pump(tester);
+
+      await tapRow(tester, en.accountSettingsApiTokens);
+      await tester.tap(find.text('Home Assistant'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, en.apiTokensDelete));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(en.apiTokensDelete),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await scrollTo(tester, find.text(en.accountSettingsApiTokens));
+      expect(find.text(en.accountSettingsApiTokensCount(0)), findsOneWidget);
+
+      // The held read answers as the server did before the delete.
+      harness.security.apiTokenList = before;
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.accountSettingsApiTokensCount(0)), findsOneWidget);
+      expect(find.text(en.accountSettingsApiTokensCount(1)), findsNothing);
+      expect(harness.callsOf('apiTokens'), 3);
+    });
+
+    testWidgets('a two-factor status still on its way when a later read '
+        'leaves it out is still shown', (tester) async {
+      harness.security.totp = TotpStatus.enabled;
+      final held = harness.holdNext('totpStatus');
+      await harness.pump(tester);
+
+      await tapRow(tester, en.accountSettingsSessions);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await scrollTo(tester, find.text(en.accountSettingsTotp));
+      expect(find.text(en.accountSettingsTotpChecking), findsOneWidget);
+
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.accountSettingsTotpOn), findsOneWidget);
+      expect(harness.callsOf('totpStatus'), 1);
+    });
+
+    testWidgets('a security part the latest read could not read is read '
+        'again on the next resume, even when an earlier read ends after it', (
+      tester,
+    ) async {
+      harness.clock = harness.now;
+      final held = harness.holdNext('apiTokens');
+      await harness.pump(tester);
+
+      harness.security.failures['sessions'] = const NetworkFailure(
+        NetworkProblem.unreachable,
+      );
+      await tapRow(tester, en.accountSettingsExport);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      held.complete();
+      await tester.pumpAndSettle();
+
+      harness.security.failures.clear();
+      final before = harness.callsOf('sessions');
+      resumeApp(tester);
+      await tester.pumpAndSettle();
+
+      expect(harness.callsOf('sessions'), before + 1);
+    });
+
+    testWidgets('a security part the latest read could not read is read '
+        'again on the next resume, also after an earlier read answered every '
+        'part', (tester) async {
+      harness.clock = harness.now;
+      await harness.pump(tester);
+
+      harness.security.failures['sessions'] = const NetworkFailure(
+        NetworkProblem.unreachable,
+      );
+      await tapRow(tester, en.accountSettingsExport);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      harness.security.failures.clear();
+      final before = harness.callsOf('sessions');
+      resumeApp(tester);
+      await tester.pumpAndSettle();
+
+      expect(harness.callsOf('sessions'), before + 1);
+    });
+  });
+
   group('deleting the account', () {
     testWidgets('explains what it means, then continues in the browser', (
       tester,
@@ -472,6 +580,43 @@ void main() {
       expect(harness.links.opened, [webPage('user/settings/deletion')]);
     });
 
+    testWidgets('names the user and the address the browser must be signed '
+        'in as, before the password', (tester) async {
+      await harness.pump(tester);
+
+      await tapRow(tester, en.accountSettingsDeleteAccount);
+
+      expect(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.textContaining(
+            '${signInAs(en)} ${en.accountSettingsWebAsksPassword}',
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('names the address of the web the server reports, where the '
+        'browser goes', (tester) async {
+      await harness.pump(
+        tester,
+        connection: securityServer(frontendUrl: 'https://web.example.org/'),
+      );
+
+      await tapRow(tester, en.accountSettingsDeleteAccount);
+      expect(
+        find.textContaining(signInAs(en, host: 'web.example.org')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text(en.accountDeletionContinue));
+      await tester.pumpAndSettle();
+      expect(harness.links.opened, [
+        Uri.parse('https://web.example.org/user/settings/deletion'),
+      ]);
+    });
+
     testWidgets('on 2.8.0 also says that ten wrong passwords lock the '
         'account', (tester) async {
       await harness.pump(tester, connection: securityServer(version: 'v2.8.0'));
@@ -491,9 +636,8 @@ void main() {
       );
     });
 
-    testWidgets('a sign-in provider account is not told about a password', (
-      tester,
-    ) async {
+    testWidgets('a sign-in provider account is told whom to sign in as, not '
+        'about a password', (tester) async {
       await harness.pump(
         tester,
         state: fakeAccountSettingsState(isLocalUser: false),
@@ -501,6 +645,7 @@ void main() {
 
       await tapRow(tester, en.accountSettingsDeleteAccount);
 
+      expect(find.textContaining(signInAs(en)), findsOneWidget);
       expect(
         find.textContaining(en.accountSettingsWebAsksPassword),
         findsNothing,
@@ -680,6 +825,15 @@ void main() {
         );
       });
 
+      testWidgets('names the user and the address on the page and the Account '
+          'tab, for an account of a sign-in provider too', (tester) async {
+        await showBothNotes(
+          tester,
+          () => expect(inNote(signInAs(en)), findsOneWidget),
+          isLocalUser: false,
+        );
+      });
+
       testWidgets('an account of a sign-in provider is told neither', (
         tester,
       ) async {
@@ -710,6 +864,7 @@ void main() {
           ),
         );
 
+        expect(inNote(signInAs(de)), findsOneWidget);
         expect(
           inNote(
             '${de.accountSettingsWebAsksPassword} '
@@ -776,6 +931,13 @@ void main() {
         expect(harness.links.opened, [webPage('user/settings/deletion')]);
       });
 
+      testWidgets('names the user and the address too, for an account of a '
+          'sign-in provider as well', (tester) async {
+        await showRow(tester, isLocalUser: false);
+
+        expect(inRow(signInAs(en)), findsOneWidget);
+      });
+
       testWidgets('not for an account of a sign-in provider', (tester) async {
         await showRow(
           tester,
@@ -800,6 +962,7 @@ void main() {
         await scrollTo(tester, find.text(en.accountSettingsDeleteAccount));
 
         expect(inRow(en.accountSettingsOpensWeb), findsOneWidget);
+        expect(inRow(signInAs(en)), findsNothing);
         expect(
           find.descendant(
             of: find.widgetWithText(ListTile, en.accountSettingsDeleteAccount),
@@ -820,9 +983,17 @@ void main() {
         );
         await scrollTo(tester, find.text(de.accountSettingsDeleteAccount));
 
+        final germanRow = find.widgetWithText(
+          ListTile,
+          de.accountSettingsDeleteAccount,
+        );
+        expect(
+          find.descendant(of: germanRow, matching: find.text(signInAs(de))),
+          findsOneWidget,
+        );
         expect(
           find.descendant(
-            of: find.widgetWithText(ListTile, de.accountSettingsDeleteAccount),
+            of: germanRow,
             matching: find.text(
               '${de.accountSettingsWebAsksPassword} '
               '${de.accountSettingsAccountLockout}',

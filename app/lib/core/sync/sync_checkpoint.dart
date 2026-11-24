@@ -55,6 +55,13 @@ abstract final class SyncStateKeys {
   /// until then.
   static const avatarProvider = 'avatar_provider';
 
+  /// How many account settings changes the server took were stored here,
+  /// counting up (`storeCurrentUser`). A run's `GET /user` stores its answer
+  /// only while this is what it was when the read began, so an answer the
+  /// server gave before a change does not bring the old values back, in any
+  /// isolate. Absent before the first change.
+  static const accountSettingsChanges = 'account_settings_changes';
+
   /// The saved filters the last project list named, see
   /// `encodeSavedFilters`; absent while it named none.
   static const savedFilters = 'saved_filters';

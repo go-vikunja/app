@@ -29,6 +29,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
@@ -66,7 +67,8 @@ class AccountSettingsPage extends ConsumerStatefulWidget {
       _AccountSettingsPageState();
 }
 
-class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
+class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage>
+    with LatestReads {
   final _name = TextEditingController();
   late final AppLifecycleListener _lifecycle;
   String? _storedName;
@@ -77,7 +79,11 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   /// Whether the server answered this page's last request; null before
   /// one, while the last sync run's outcome decides.
   bool? _reachable;
-  SecurityOverview _security = const SecurityOverview();
+  final _totp = LatestRead<TotpStatus>();
+  final _sessionCount = LatestRead<int>();
+  final _apiTokenCount = LatestRead<int>();
+  final _export = LatestRead<UserDataExport?>();
+  int _securityRuns = 0;
 
   // Up to 2.6 and during a setup, the two-factor status comes with its
   // secret, so it is read when the page opens and after its web page only.
@@ -87,8 +93,21 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   /// When the last read the server answered began.
   DateTime? _readAt;
 
-  /// When the last security read whose every part was answered began.
+  /// When the latest security read began, once it ended with every part it
+  /// read answered; null once it ended with one that failed.
   DateTime? _securityReadAt;
+
+  SecurityOverview get _security => SecurityOverview(
+    totp: _totp.value,
+    totpProblem: switch (_totp.failure) {
+      final failure? => SecurityOverview.problemOf(failure),
+      null => null,
+    },
+    sessionCount: _sessionCount.value,
+    apiTokenCount: _apiTokenCount.value,
+    export: _export.value,
+    exportRead: _export.hasValue,
+  );
 
   @override
   void initState() {
@@ -162,8 +181,9 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     }
   }
 
-  /// Each part on its own and never throwing: one that cannot be read
-  /// keeps what it showed. The two-factor status only with [totp].
+  /// Each part on its own and never throwing: the latest read of a part
+  /// wins, and one that cannot be read keeps what it showed. The two-factor
+  /// status only with [totp].
   Future<void> _refreshSecurity({bool totp = false}) async {
     final repository = ref.read(accountSecurityRepositoryProvider);
     final entry = ref.read(accountsProvider).value?.activeAccount;
@@ -177,56 +197,50 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       return;
     }
     if (!mounted) return;
-    Future<bool> read<T>(
-      String part,
-      Future<T> Function() load,
-      SecurityOverview Function(T value) apply, {
-      SecurityOverview Function(Object error)? onError,
-    }) async {
-      try {
-        final value = await load();
-        if (mounted) setState(() => _security = apply(value));
-        return true;
-      } on Object catch (error) {
-        _log.info('Reading the $part failed: ${error.runtimeType}');
-        if (mounted && onError != null) {
-          setState(() => _security = onError(error));
-        }
-        return false;
-      }
-    }
-
-    final answered = await [
-      if (totp &&
-          entry.connection.capabilities.has(Capability.totp) &&
-          (profile?.isLocalUser ?? true) &&
-          canReadTotpStatus(entry.connection))
-        read(
-          'two-factor status',
+    final run = ++_securityRuns;
+    final readsTotp =
+        totp &&
+        entry.connection.capabilities.has(Capability.totp) &&
+        (profile?.isLocalUser ?? true) &&
+        canReadTotpStatus(entry.connection);
+    await [
+      if (readsTotp)
+        readLatest(
+          _totp,
           repository.totpStatus,
-          (status) => _security.withTotp(status),
-          onError: (error) => _security.withTotp(
-            _security.totp,
-            SecurityOverview.problemOf(error),
-          ),
+          log: _log,
+          what: 'the two-factor status',
         ),
-      read(
-        'sessions',
-        repository.sessions,
-        (sessions) => _security.withSessionCount(sessions.length),
+      readLatest(
+        _sessionCount,
+        () async => (await repository.sessions()).length,
+        log: _log,
+        what: 'the sessions',
       ),
-      read(
-        'API tokens',
-        repository.apiTokens,
-        (tokens) => _security.withApiTokenCount(tokens.length),
+      readLatest(
+        _apiTokenCount,
+        () async => (await repository.apiTokens()).length,
+        log: _log,
+        what: 'the API tokens',
       ),
-      read(
-        'data export',
+      readLatest(
+        _export,
         repository.dataExport,
-        (export) => _security.withExport(export),
+        log: _log,
+        what: 'the data export',
       ),
     ].wait;
-    if (answered.every((ok) => ok)) _securityReadAt = startedAt;
+    final parts = <LatestRead<Object?>>[
+      if (readsTotp) _totp,
+      _sessionCount,
+      _apiTokenCount,
+      _export,
+    ];
+    if (run == _securityRuns) {
+      _securityReadAt = parts.every((part) => part.failure == null)
+          ? startedAt
+          : null;
+    }
   }
 
   Future<void> _openPage(String location, {Object? extra}) async {
@@ -243,10 +257,8 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       }
       final confirmed = await confirmAccountDeletion(
         context,
+        entry: entry,
         isLocalUser: profile?.isLocalUser ?? true,
-        accountLockout: entry.connection.capabilities.has(
-          Capability.accountLockout,
-        ),
       );
       if (!confirmed || !mounted) return;
     }
@@ -577,7 +589,7 @@ class _Settings extends ConsumerWidget {
         l10n: l10n,
         theme: theme,
         formatter: formatter,
-        connection: entry.connection,
+        entry: entry,
         profile: profile,
         now: now,
         onDelete: onDeleteAccount,

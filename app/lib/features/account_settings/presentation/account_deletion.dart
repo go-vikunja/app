@@ -4,7 +4,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/account_settings/application/web_settings_pages.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
@@ -33,13 +36,25 @@ Future<void> explainAccountDeletionNotAllowed(BuildContext context) {
   );
 }
 
+/// The web's page acts on whatever account the browser is signed in to,
+/// which can be another one of the same server: the app's own sign-in
+/// leaves the browser signed out (decision log: Accounts and sign-in).
+String deletionSignInNote(AppLocalizations l10n, RegisteredAccount entry) =>
+    l10n.accountDeletionSignInAs(
+      entry.account.username,
+      displayHost(
+        webSettingsPageUri(entry.connection, WebSettingsPage.deletion),
+      ),
+    );
+
 /// What deleting the account means, before the web's page takes over; true
 /// for Continue in the browser. [isLocalUser] adds that the web asks for
-/// the password, and [accountLockout] that ten wrong ones lock the account.
+/// the password and, where [entry]'s server locks accounts, that ten wrong
+/// ones do.
 Future<bool> confirmAccountDeletion(
   BuildContext context, {
+  required RegisteredAccount entry,
   required bool isLocalUser,
-  required bool accountLockout,
 }) async {
   final l10n = context.l10n;
   final confirmed = await showAdaptiveDialog<bool>(
@@ -52,8 +67,16 @@ Future<bool> confirmAccountDeletion(
           l10n.accountDeletionDialogPermanent,
           l10n.accountDeletionDialogEmail,
           l10n.accountDeletionDialogNoEmail,
-          if (isLocalUser)
-            webAsksPasswordNote(l10n, accountLockout: accountLockout),
+          [
+            deletionSignInNote(l10n, entry),
+            if (isLocalUser)
+              webAsksPasswordNote(
+                l10n,
+                accountLockout: entry.connection.capabilities.has(
+                  Capability.accountLockout,
+                ),
+              ),
+          ].join(' '),
         ].join('\n\n'),
       ),
       actions: [
@@ -83,21 +106,21 @@ String deletionDate(MomentFormatter formatter, DateTime moment) =>
 /// The account is scheduled for deletion: an emphasized note with the date
 /// and the way to cancel it on the web. A date that has passed does not
 /// mean the account is gone: the server's hourly deletion can fail.
-/// [isLocalUser] adds that the web asks for the password, and
-/// [accountLockout] that ten wrong ones lock the account.
+/// [isLocalUser] adds that the web asks for the password and, where
+/// [entry]'s server locks accounts, that ten wrong ones do.
 class DeletionScheduledNote extends ConsumerWidget {
   const new({
     required this.scheduledAt,
+    required this.entry,
     required this.isLocalUser,
-    required this.accountLockout,
     required this.onCancel,
     this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 8),
     super.key,
   });
 
   final DateTime scheduledAt;
+  final RegisteredAccount entry;
   final bool isLocalUser;
-  final bool accountLockout;
   final VoidCallback onCancel;
   final EdgeInsetsGeometry padding;
 
@@ -143,12 +166,20 @@ class DeletionScheduledNote extends ConsumerWidget {
                               color: colors.onErrorContainer,
                             ),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            deletionSignInNote(l10n, entry),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colors.onErrorContainer,
+                            ),
+                          ),
                           if (isLocalUser) ...[
                             const SizedBox(height: 4),
                             Text(
                               webAsksPasswordNote(
                                 l10n,
-                                accountLockout: accountLockout,
+                                accountLockout: entry.connection.capabilities
+                                    .has(Capability.accountLockout),
                               ),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: colors.onErrorContainer,

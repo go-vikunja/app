@@ -11,6 +11,7 @@ const _stored = UserSettings(
   minimumPriority: 3,
   dateDisplay: DateDisplay.dayMonthYear,
   timeFormat: TimeFormat.twelveHour,
+  colorSchema: ColorSchema.dark,
   defaultViewKind: ProjectViewKind.kanban,
 );
 
@@ -29,7 +30,7 @@ void main() {
       expect(const UserSettingsChanges().applyTo(_stored), _stored);
     });
 
-    test('sets every field', () {
+    test('sets every field and keeps the color scheme the web chose', () {
       const changes = UserSettingsChanges(
         name: 'Boots',
         emailRemindersEnabled: true,
@@ -48,7 +49,6 @@ void main() {
         commentSortOrder: CommentSortOrder.newestFirst,
         dateDisplay: SettingChange.set(DateDisplay.relative),
         timeFormat: SettingChange.set(TimeFormat.twentyFourHour),
-        colorSchema: ColorSchema.light,
         defaultViewKind: SettingChange.set(ProjectViewKind.list),
       );
 
@@ -72,7 +72,7 @@ void main() {
           commentSortOrder: CommentSortOrder.newestFirst,
           dateDisplay: DateDisplay.relative,
           timeFormat: TimeFormat.twentyFourHour,
-          colorSchema: ColorSchema.light,
+          colorSchema: ColorSchema.dark,
           defaultViewKind: ProjectViewKind.list,
         ),
       );

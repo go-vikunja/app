@@ -49,6 +49,12 @@ class _CaldavPageState extends ConsumerState<CaldavPage> with LatestReads {
   final _tokens = LatestRead<List<CaldavToken>>();
   TotpStatus? _totp;
   bool _creating = false;
+
+  /// From New token until the server's answer: the server has made the
+  /// token by then, and only this page can show its value, once. It ends
+  /// before [_creating], which lasts until the value's page closes, so a
+  /// tap from outside that closes that page can close this one right after.
+  bool _awaitingToken = false;
   int? _busyTokenId;
   String? _copiedValue;
   Timer? _copiedReset;
@@ -149,11 +155,17 @@ class _CaldavPageState extends ConsumerState<CaldavPage> with LatestReads {
     if (repository == null || _creating) return;
     final l10n = context.l10n;
     final navigator = Navigator.of(context);
-    setState(() => _creating = true);
+    setState(() {
+      _creating = true;
+      _awaitingToken = true;
+    });
     try {
       final created = await repository.createCaldavToken();
       if (!mounted) return;
-      setState(() => _tokens.value = [...?_tokens.value, created.token]);
+      setState(() {
+        _awaitingToken = false;
+        _tokens.value = [...?_tokens.value, created.token];
+      });
       if (_tokens.loading) unawaited(_load());
       unawaited(HapticFeedback.selectionClick());
       await navigator.push<void>(
@@ -172,7 +184,12 @@ class _CaldavPageState extends ConsumerState<CaldavPage> with LatestReads {
       unawaited(HapticFeedback.heavyImpact());
       if (mounted) _showSnackBar(accountSecurityFailureText(l10n, error));
     } finally {
-      if (mounted) setState(() => _creating = false);
+      if (mounted) {
+        setState(() {
+          _creating = false;
+          _awaitingToken = false;
+        });
+      }
     }
   }
 
@@ -255,135 +272,143 @@ class _CaldavPageState extends ConsumerState<CaldavPage> with LatestReads {
           ),
         );
 
-    return Scaffold(
-      appBar: ReadableAppBar(
-        maxWidth: ReadableWidth.form,
-        title: ScreenTitle(l10n.caldavTitle),
-        actions: [
-          RefreshButton(
-            onPressed: _tokens.loading ? null : () => unawaited(_load()),
-          ),
-        ],
-      ),
-      body: SecurityListBody(
-        loading: _tokens.loading && tokens == null,
-        loadingLabel: l10n.caldavTokensLoading,
-        failure: _tokens.failure,
-        hasData: tokens != null,
-        onRefresh: _load,
-        header: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(l10n.caldavIntro, style: mutedStyle),
-            ),
-            copyRow(
-              Icons.link,
-              l10n.caldavAddress,
-              address,
-              l10n.caldavCopyAddress,
-            ),
-            copyRow(
-              Icons.person_outline,
-              l10n.caldavUsername,
-              username,
-              l10n.caldavCopyUsername,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text(password, style: theme.textTheme.bodyMedium),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text(l10n.caldavApiTokenHint, style: mutedStyle),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => unawaited(
-                      GoRouter.of(context).push(AppRoutes.accountApiTokens),
-                    ),
-                    icon: const Icon(Icons.key_outlined),
-                    label: Text(l10n.accountSettingsApiTokens),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => unawaited(
-                      openExternalOrSay(context, ref, caldavDocsUri),
-                    ),
-                    icon: const Icon(Icons.open_in_new),
-                    label: Text(l10n.caldavDocs),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            ListSectionHeader(
-              title: l10n.caldavTokens,
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+    return PopScope(
+      canPop: !_awaitingToken,
+      child: Scaffold(
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
+          title: ScreenTitle(l10n.caldavTitle),
+          actions: [
+            RefreshButton(
+              onPressed: _tokens.loading ? null : () => unawaited(_load()),
             ),
           ],
         ),
-        empty: tokens != null && tokens.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(l10n.caldavTokensEmpty, style: mutedStyle),
-              )
-            : null,
-        footer: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FilledButton.tonalIcon(
-              onPressed: _creating ? null : () => unawaited(_create(username)),
-              style: inlineFilledButtonStyle(context),
-              icon: _creating
-                  ? SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        semanticsLabel: l10n.accountSecurityWorking,
+        body: SecurityListBody(
+          loading: _tokens.loading && tokens == null,
+          loadingLabel: l10n.caldavTokensLoading,
+          failure: _tokens.failure,
+          hasData: tokens != null,
+          onRefresh: _load,
+          header: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text(l10n.caldavIntro, style: mutedStyle),
+              ),
+              copyRow(
+                Icons.link,
+                l10n.caldavAddress,
+                address,
+                l10n.caldavCopyAddress,
+              ),
+              copyRow(
+                Icons.person_outline,
+                l10n.caldavUsername,
+                username,
+                l10n.caldavCopyUsername,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Text(password, style: theme.textTheme.bodyMedium),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Text(l10n.caldavApiTokenHint, style: mutedStyle),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => unawaited(
+                        GoRouter.of(context).push(AppRoutes.accountApiTokens),
                       ),
-                    )
-                  : const Icon(Icons.add),
-              label: Text(l10n.caldavNewToken),
+                      icon: const Icon(Icons.key_outlined),
+                      label: Text(l10n.accountSettingsApiTokens),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => unawaited(
+                        openExternalOrSay(context, ref, caldavDocsUri),
+                      ),
+                      icon: const Icon(Icons.open_in_new),
+                      label: Text(l10n.caldavDocs),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+              ListSectionHeader(
+                title: l10n.caldavTokens,
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+              ),
+            ],
+          ),
+          empty: tokens != null && tokens.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(l10n.caldavTokensEmpty, style: mutedStyle),
+                )
+              : null,
+          footer: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FilledButton.tonalIcon(
+                onPressed: _creating
+                    ? null
+                    : () => unawaited(_create(username)),
+                style: inlineFilledButtonStyle(context),
+                icon: _creating
+                    ? SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          semanticsLabel: l10n.accountSecurityWorking,
+                        ),
+                      )
+                    : const Icon(Icons.add),
+                label: Text(l10n.caldavNewToken),
+              ),
             ),
           ),
-        ),
-        children: [
-          for (final token in tokens ?? const <CaldavToken>[])
-            ListTile(
-              key: ValueKey(token.id),
-              enabled: _busyTokenId == null,
-              leading: Icon(Icons.key_outlined, color: colors.onSurfaceVariant),
-              title: Text(l10n.caldavTokenName(token.id)),
-              subtitle: switch (token.created) {
-                final created? => Text(
-                  l10n.accountSecurityCreated(formatter.absolute(created)),
+          children: [
+            for (final token in tokens ?? const <CaldavToken>[])
+              ListTile(
+                key: ValueKey(token.id),
+                enabled: _busyTokenId == null,
+                leading: Icon(
+                  Icons.key_outlined,
+                  color: colors.onSurfaceVariant,
                 ),
-                null => null,
-              },
-              trailing: _busyTokenId == token.id
-                  ? SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        semanticsLabel: l10n.accountSecurityWorking,
+                title: Text(l10n.caldavTokenName(token.id)),
+                subtitle: switch (token.created) {
+                  final created? => Text(
+                    l10n.accountSecurityCreated(formatter.absolute(created)),
+                  ),
+                  null => null,
+                },
+                trailing: _busyTokenId == token.id
+                    ? SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          semanticsLabel: l10n.accountSecurityWorking,
+                        ),
+                      )
+                    : IconButton(
+                        onPressed: _busyTokenId == null
+                            ? () => unawaited(_delete(token))
+                            : null,
+                        tooltip: l10n.caldavDeleteToken(token.id),
+                        icon: Icon(Icons.delete_outline, color: colors.error),
                       ),
-                    )
-                  : IconButton(
-                      onPressed: _busyTokenId == null
-                          ? () => unawaited(_delete(token))
-                          : null,
-                      tooltip: l10n.caldavDeleteToken(token.id),
-                      icon: Icon(Icons.delete_outline, color: colors.error),
-                    ),
-            ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
   }

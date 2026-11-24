@@ -168,7 +168,9 @@ final class FakeAccountSettingsRepository implements AccountSettingsRepository {
 /// `avatarProvider`, `setAvatarProvider marble`,
 /// `uploadAvatar <file name> <length>`; [failure], or the entry of
 /// [failures] for the method name, is thrown instead while set, and nothing
-/// changes. [beforeRequest] can hold one.
+/// changes. [beforeRequest] can hold one. With [readBackFails] [update]
+/// takes the changes but answers null, as the real port does when reading
+/// them back fails.
 final class FakeUserSettingsWritePort implements UserSettingsWritePort {
   new({UserProfile? profile, this.settings = const UserSettings()})
     : profile =
@@ -190,15 +192,17 @@ final class FakeUserSettingsWritePort implements UserSettingsWritePort {
   Exception? failure;
   final Map<String, Exception> failures = {};
   Future<void> Function(String request)? beforeRequest;
+  bool readBackFails = false;
 
   UserSettingsWriteResult get stored => (profile: profile, settings: settings);
 
   @override
-  Future<UserSettingsWriteResult> update(UserSettingsChanges changes) async {
+  Future<UserSettingsWriteResult?> update(UserSettingsChanges changes) async {
     await _request('update', '$changes');
     if (!changes.isEmpty) {
       settings = changes.applyTo(settings);
       _bump(name: settings.name);
+      if (readBackFails) return null;
     }
     return stored;
   }

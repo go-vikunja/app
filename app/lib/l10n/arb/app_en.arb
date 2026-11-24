@@ -5162,6 +5162,10 @@
   "accountSettingsOverviewFilterNone": "All open tasks",
   "accountSettingsOverviewFilterUnknown": "A saved filter not on this device",
   "accountSettingsWeekStart": "First day of the week",
+  "accountSettingsWeekStartHelp": "With Sunday, the server's default, the app starts the week on the usual first day for your device's language and region.",
+  "@accountSettingsWeekStartHelp": {
+    "description": "Help line under the First day of the week row in Account settings. The server stores Sunday as 0, which is also its default and cannot be told from a week start never set, so with Sunday the app's calendars start on the usual first day of the week of the device's language and region (a first day set apart from it in the device's settings is not seen); any other day replaces it. The web shows the same setting as Sunday."
+  },
   "accountSettingsTimeAndLanguage": "Time and language",
   "accountSettingsTimezone": "Time zone",
   "accountSettingsTimezoneServerDefault": "The server's default",
@@ -5355,7 +5359,7 @@
   "accountSettingsDeleteAccount": "Delete account",
   "accountSettingsWebAsksPassword": "The web asks for your password.",
   "@accountSettingsWebAsksPassword": {
-    "description": "For accounts with a password: in the account deletion dialog, on the data export page and in the note of a scheduled deletion (on the Account tab and the Account settings page), whose Cancel deletion opens the web's page, and under the Delete account row of a scheduled deletion; on Vikunja 2.8.0 and newer also in a note under Change password and Change email address. On those servers accountSettingsAccountLockout follows it, joined with a space."
+    "description": "For accounts with a password: in the account deletion dialog, on the data export page and in the note of a scheduled deletion (on the Account tab and the Account settings page), whose Cancel deletion opens the web's page, and under the Delete account row of a scheduled deletion; on Vikunja 2.8.0 and newer also in a note under Change password and Change email address. On those servers accountSettingsAccountLockout follows it, joined with a space. In the account deletion dialog it follows accountDeletionSignInAs, joined with a space."
   },
   "accountSettingsAccountLockout": "Ten wrong passwords sign you out on every device and lock your account until you reset your password.",
   "@accountSettingsAccountLockout": {
@@ -5408,6 +5412,20 @@
   "accountDeletionDialogNoEmail": "If your server does not send emails, ask whoever runs it to delete your account.",
   "@accountDeletionDialogNoEmail": {
     "description": "Paragraph of the account deletion dialog, after accountDeletionDialogEmail: the deletion needs the confirmation link the server emails."
+  },
+  "accountDeletionSignInAs": "In the browser, sign in as @{username} on {host}.",
+  "@accountDeletionSignInAs": {
+    "description": "Before the web's account deletion page opens in the browser, which acts on whatever account the browser is signed in to: in the account deletion dialog, in the note of a scheduled deletion (on the Account tab and the Account settings page) and under the Delete account row of a scheduled deletion. username is the account's username after an @, for example alice, and host is the address of the web the browser opens, for example tasks.example.org. In the dialog, accountSettingsWebAsksPassword follows it for accounts with a password, joined with a space.",
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "alice"
+      },
+      "host": {
+        "type": "String",
+        "example": "tasks.example.org"
+      }
+    }
   },
   "accountDeletionContinue": "Continue in the browser",
   "accountDeletionNotAllowedRow": "Not allowed by this server",

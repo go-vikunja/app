@@ -78,10 +78,8 @@ List<Widget> accountSettingsNotes({
   if (profile?.deletionScheduledAt case final scheduledAt?)
     DeletionScheduledNote(
       scheduledAt: scheduledAt,
+      entry: entry,
       isLocalUser: isLocalUser,
-      accountLockout: entry.connection.capabilities.has(
-        Capability.accountLockout,
-      ),
       onCancel: () => onOpenWeb(WebSettingsPage.deletion),
     ),
   SettingsNote(
@@ -380,6 +378,7 @@ Widget defaultsSection({
         leading: const Icon(Icons.date_range_outlined),
         title: l10n.accountSettingsWeekStart,
         value: weekdayName(settings.weekStart.clamp(0, 6)),
+        help: l10n.accountSettingsWeekStartHelp,
         error: errors[AccountSettingsField.weekStart],
         onTap: editing.whenChangeable(
           () => onChoose<int>(

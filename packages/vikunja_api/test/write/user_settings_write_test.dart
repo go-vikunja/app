@@ -109,7 +109,7 @@ void main() {
         '$_v2/user': _captured('v2_user_after_patch'),
       });
 
-      final result = await _port(dio).update(_patched);
+      final result = (await _port(dio).update(_patched))!;
 
       expect(_calls(dio), [
         'PATCH $_v2/user/settings/general',
@@ -182,7 +182,7 @@ void main() {
         '$_v2/user': _captured('v2_user_after_patch'),
       });
 
-      final result = await _port(dio).update(_patched);
+      final result = (await _port(dio).update(_patched))!;
 
       expect(result.settings.name, 'Dora');
       expect(_calls(dio).last, 'GET $_v2/user');
@@ -201,7 +201,7 @@ void main() {
         ]),
       });
 
-      final result = await _port(dio).update(_put);
+      final result = (await _port(dio).update(_put))!;
 
       expect(_calls(dio), [
         'PATCH $_v2/user/settings/general',
@@ -216,11 +216,34 @@ void main() {
     test('empty changes only read', () async {
       final dio = fakeDio({'$_v2/user': _captured('v2_user')});
 
-      final result = await _port(dio).update(const UserSettingsChanges());
+      final result = (await _port(dio).update(const UserSettingsChanges()))!;
 
       expect(_calls(dio), ['GET $_v2/user']);
       expect(result.settings.dateDisplay, DateDisplay.yearMonthDayDashed);
     });
+
+    for (final (name, readBack) in [
+      ('no connection', refused),
+      ('a 500', json({'message': 'Internal Server Error'}, status: 500)),
+      (
+        'an answer that is not a user',
+        json({'message': 'Sign in at the proxy first'}),
+      ),
+    ]) {
+      test('a read-back that fails after the patch ($name) answers null: the '
+          'change is made', () async {
+        final dio = fakeDio({
+          '$_v2/user/settings/general': _captured('v2_patch'),
+          '$_v2/user': readBack,
+        });
+
+        expect(await _port(dio).update(_patched), isNull);
+        expect(_calls(dio), [
+          'PATCH $_v2/user/settings/general',
+          'GET $_v2/user',
+        ]);
+      });
+    }
 
     test('every field has its wire name and value', () async {
       final dio = fakeDio({
@@ -247,7 +270,6 @@ void main() {
           commentSortOrder: CommentSortOrder.newestFirst,
           dateDisplay: SettingChange.set(DateDisplay.weekdayDayMonthYear),
           timeFormat: SettingChange.set(TimeFormat.twentyFourHour),
-          colorSchema: ColorSchema.light,
           defaultViewKind: SettingChange.set(ProjectViewKind.table),
         ),
       );
@@ -274,7 +296,6 @@ void main() {
           'comment_sort_order': 'desc',
           'date_display': 'weekdayDayMonthYear',
           'time_format': '24h',
-          'color_schema': 'light',
           'default_view': 'table',
         },
       });
@@ -320,7 +341,7 @@ void main() {
         ]),
       });
 
-      final result = await _port(dio, version: '2.6.0').update(_put);
+      final result = (await _port(dio, version: '2.6.0').update(_put))!;
 
       expect(_calls(dio), [
         'GET $_v2/user',
@@ -335,6 +356,23 @@ void main() {
       expect(result.profile.updated, DateTime.utc(2026, 10, 20, 21, 56, 6));
     });
 
+    test(
+      '2.4 to 2.6: a read-back that fails after the PUT answers null',
+      () async {
+        final dio = fakeDio({
+          '$_v2/user/settings/general': _captured('v2_put'),
+          '$_v2/user': sequence([_captured('v2_user_before_put'), refused]),
+        });
+
+        expect(await _port(dio, version: '2.6.0').update(_put), isNull);
+        expect(_calls(dio), [
+          'GET $_v2/user',
+          'PUT $_v2/user/settings/general',
+          'GET $_v2/user',
+        ]);
+      },
+    );
+
     test('2.3: the same over v1 GET and POST', () async {
       final dio = fakeDio({
         '$_v1/user/settings/general': _captured('v1_post'),
@@ -344,7 +382,7 @@ void main() {
         ]),
       });
 
-      final result = await _port(dio, version: 'v1').update(_posted);
+      final result = (await _port(dio, version: 'v1').update(_posted))!;
 
       expect(_calls(dio), [
         'GET $_v1/user',
@@ -362,8 +400,8 @@ void main() {
     for (final version in ['2.6.0', 'v1']) {
       final base = version == 'v1' ? _v1 : _v2;
 
-      test('$version: unknown frontend keys and unmodelled settings '
-          'survive', () async {
+      test("$version: unknown frontend keys, the web's color scheme and "
+          'unmodelled settings survive', () async {
         final dio = fakeDio({
           '$base/user/settings/general': _captured('v2_put'),
           '$base/user': sequence([
@@ -375,7 +413,7 @@ void main() {
         await _port(
           dio,
           version: version,
-        ).update(const UserSettingsChanges(colorSchema: ColorSchema.light));
+        ).update(const UserSettingsChanges(minimumPriority: 3));
 
         final stored = _storedSettings('v2_user');
         final sent = _body(dio, 1);
@@ -386,10 +424,11 @@ void main() {
             if (key != 'extra_settings_links') key: value,
           'frontend_settings': {
             ...stored['frontend_settings']! as Map<String, Object?>,
-            'color_schema': 'light',
+            'minimum_priority': 3,
           },
         });
         expect(sent['frontend_settings'], containsPair('sidebar_width', 320));
+        expect(sent['frontend_settings'], containsPair('color_schema', 'dark'));
       });
 
       test('$version: a cleared frontend key is removed, the default '
@@ -513,6 +552,15 @@ void main() {
         throwsA(isA<UnexpectedResponse>()),
       );
       expect(_calls(dio), ['GET $_v2/user']);
+    });
+
+    test('empty changes only read, so a read that fails is thrown', () async {
+      final dio = fakeDio({'$_v2/user': refused});
+
+      await expectLater(
+        _port(dio).update(const UserSettingsChanges()),
+        throwsA(isA<NetworkFailure>()),
+      );
     });
   });
 

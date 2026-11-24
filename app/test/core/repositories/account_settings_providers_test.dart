@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -145,6 +146,60 @@ void main() {
 
       expect(cache.generationOf('alice'), 1);
       expect(cache.peek('alice', 64), isNull);
+    });
+
+    test('leaves a name change saved while it reads the user: its older '
+        'answer reaches neither the stored profile, the account list nor the '
+        'avatar cache', () async {
+      final alice = await seedAlice();
+      serveFromServer();
+      final gateway = auth.accountGateway..settings = server.settings;
+      final engine = container.read(syncEngineProvider(alice.id));
+      await engine.ensureInitialSync();
+      final cache = container.read(accountAvatarCacheProvider(alice.id));
+      await cache.load('alice', 64);
+      final old = server.profile.user;
+      final answers = [Completer<void>(), Completer<void>()];
+      var calls = 0;
+      gateway.onCurrentUser = (_) async {
+        final call = calls++;
+        if (call < answers.length) await answers[call].future;
+        if (call == 0) return old;
+        gateway
+          ..profile = server.profile
+          ..settings = server.settings;
+        return server.profile.user;
+      };
+      final repository = container.read(
+        accountSettingsRepositoryForProvider(alice.id),
+      );
+
+      Future<void> expectRenamed() async {
+        final stored = await repository.watch().first;
+        expect(displayName(alice.id), 'Alice Renamed');
+        expect(stored.profile?.name, 'Alice Renamed');
+        expect(stored.settings.name, 'Alice Renamed');
+        expect(cache.generationOf('alice'), 1);
+      }
+
+      final running = engine.refresh();
+      while (calls < 1) {
+        await pumpEventQueue();
+      }
+      await repository.update(const UserSettingsChanges(name: 'Alice Renamed'));
+      answers[0].complete();
+      await running;
+      await pumpEventQueue();
+
+      await expectRenamed();
+
+      while (calls < 2) {
+        await pumpEventQueue();
+      }
+      answers[1].complete();
+      await engine.refresh();
+
+      await expectRenamed();
     });
   });
 

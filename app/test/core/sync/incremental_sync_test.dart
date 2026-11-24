@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/settings/current_user_store.dart';
+import 'package:vikunja_mobile/core/settings/user_profile_json.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
@@ -330,6 +334,92 @@ void main() {
         const SyncRunning(phase: SyncPhase.account, done: 0, initial: false),
       );
     });
+
+    for (final headless in [false, true]) {
+      test('keeps a settings change stored while it reads the user '
+          "${headless ? 'in a background run' : 'in the app'}: the older "
+          'answer is neither stored nor heard, and the next run reads the '
+          'user again', () async {
+        var profile = const UserProfile(
+          id: 7,
+          username: 'alice',
+          name: 'Alice',
+        );
+        var user = me;
+        final heard = <UserProfile>[];
+        var hold = false;
+        var reading = false;
+        final release = Completer<void>();
+        final sync = DefaultSyncEngine(
+          db: db,
+          client: client,
+          perPage: 50,
+          headless: headless,
+          currentUserWithProfile: () async {
+            final answer = (user: user, profile: profile, settings: settings);
+            if (hold) {
+              reading = true;
+              await release.future;
+            }
+            return answer;
+          },
+          onCurrentUserStored: (p) async => heard.add(p),
+          now: () => now,
+        );
+        addTearDown(sync.dispose);
+        await sync.ensureInitialSync();
+        final initial = profile;
+        now = DateTime.utc(2026, 10, 10, 13);
+        hold = true;
+
+        final running = sync.refresh();
+        while (!reading) {
+          await pumpEventQueue();
+        }
+        const renamed = UserProfile(
+          id: 7,
+          username: 'alice',
+          name: 'Alice Renamed',
+        );
+        final changed = settings.copyWith(name: 'Alice Renamed', weekStart: 3);
+        await storeCurrentUser(
+          db,
+          user: renamed.user,
+          settings: changed,
+          profile: renamed,
+          countsAsChange: true,
+        );
+        settings = changed;
+        profile = renamed;
+        user = renamed.user;
+        release.complete();
+        await running;
+
+        Future<Map<String, String>> stored() => db.syncStateDao.readAll();
+        expect(
+          decodeUserSettings((await stored())[SyncStateKeys.userSettings]),
+          changed,
+        );
+        expect(
+          decodeUserProfile((await stored())[SyncStateKeys.userProfile]),
+          renamed,
+        );
+        expect(heard, [initial]);
+        expect(
+          sync.currentStatus,
+          SyncIdle(lastSyncedAt: DateTime.utc(2026, 10, 10, 13)),
+        );
+
+        hold = false;
+        await sync.refresh();
+
+        expect(
+          decodeUserSettings((await stored())[SyncStateKeys.userSettings]),
+          changed,
+        );
+        expect(heard, [initial, renamed]);
+      });
+    }
 
     test('a failing user read fails the refresh before the projects', () async {
       final sync = DefaultSyncEngine(

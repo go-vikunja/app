@@ -7,8 +7,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// [Capability.trash] every call throws `NotFound` without a code (route
 /// absent) before any request. The server deletes an item for good 30 days
 /// after it was moved there. Link shares get `Forbidden` code 1 from the
-/// lists, counts and empties. Lists read every page, at most 20, in the
-/// server's order: newest deletion first.
+/// lists, counts and empties. Lists read every page up to the shared cap
+/// of 200 pages (`maxListPages`), in the server's order: newest deletion
+/// first.
 abstract interface class TrashPort {
   /// `GET /tasks/deleted`: trashed tasks of the projects the user may write
   /// to. Tasks whose project is archived or in the trash are left out; a

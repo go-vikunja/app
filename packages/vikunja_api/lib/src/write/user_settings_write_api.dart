@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:logging/logging.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/dto/user_profile_codec.dart';
@@ -13,6 +14,8 @@ const _methodNotAllowed = 405;
 const _contentTooLarge = 413;
 const _uploadTooLarge = 4035;
 const _blankFileName = 'avatar';
+
+final _log = Logger('VikunjaApi');
 
 /// Read-only on the server; v2 would refuse a key its schema lacks.
 const _notWritten = {r'$schema', 'extra_settings_links'};
@@ -30,15 +33,19 @@ final class UserSettingsWriteApi implements UserSettingsWritePort {
   bool get _v2 => _transport.version == ApiVersion.v2;
 
   @override
-  Future<UserSettingsWriteResult> update(UserSettingsChanges changes) async {
-    if (!changes.isEmpty) {
-      final topLevel = _topLevel(changes);
-      final frontend = _frontend(changes);
-      if (!_mergePatch || !await _patch(topLevel, frontend)) {
-        await _replace(topLevel, frontend);
-      }
+  Future<UserSettingsWriteResult?> update(UserSettingsChanges changes) async {
+    if (changes.isEmpty) return await _read();
+    final topLevel = _topLevel(changes);
+    final frontend = _frontend(changes);
+    if (!_mergePatch || !await _patch(topLevel, frontend)) {
+      await _replace(topLevel, frontend);
     }
-    return await _read();
+    try {
+      return await _read();
+    } on VikunjaFailure catch (failure) {
+      _log.info('Reading back a settings change failed: $failure');
+      return null;
+    }
   }
 
   /// False when the server has no merge-patch after all.
@@ -229,7 +236,6 @@ final class UserSettingsWriteApi implements UserSettingsWritePort {
       'date_display': change.value?.wireName,
     if (changes.timeFormat case final change?)
       'time_format': change.value?.wireName,
-    'color_schema': ?changes.colorSchema?.wireName,
     if (changes.defaultViewKind case final change?)
       'default_view': change.value?.wireName,
   };

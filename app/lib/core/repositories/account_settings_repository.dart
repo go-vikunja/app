@@ -38,9 +38,10 @@ final class AccountSettingsState {
 /// work offline; every change goes straight to the server, one at a time,
 /// and is never queued: it throws the server's `VikunjaFailure` (offline a
 /// `NetworkFailure`) with nothing changed here. On success the stored
-/// settings and profile take the server's answer at once, the account's
-/// name follows in the account list, the user's cached avatars go when the
-/// avatar or the name changed, and a sync runs quietly.
+/// settings and profile take the server's answer at once, or the change
+/// itself when reading the answer back failed, the account's name follows
+/// in the account list, the user's cached avatars go when the avatar or the
+/// name changed, and a sync runs quietly.
 abstract interface class AccountSettingsRepository {
   /// The stored state now, then every change.
   Stream<AccountSettingsState> watch();

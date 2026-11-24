@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/features/account_settings/application/totp_status_reading.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
@@ -20,8 +21,8 @@ enum TotpProblem {
 }
 
 /// What the Account settings page shows of the account's security and
-/// integrations, each part read on its own when the page opens and on
-/// resume; a part that could not be read stays null.
+/// integrations, each part read on its own when the page opens, on resume
+/// and back from its pages; a part without an answer yet is null.
 @immutable
 final class SecurityOverview {
   const new({
@@ -41,43 +42,6 @@ final class SecurityOverview {
 
   /// Whether [export] was read; null then means there is none.
   final bool exportRead;
-
-  SecurityOverview withTotp(TotpStatus? totp, [TotpProblem? problem]) =>
-      SecurityOverview(
-        totp: totp,
-        totpProblem: problem,
-        sessionCount: sessionCount,
-        apiTokenCount: apiTokenCount,
-        export: export,
-        exportRead: exportRead,
-      );
-
-  SecurityOverview withSessionCount(int count) => SecurityOverview(
-    totp: totp,
-    totpProblem: totpProblem,
-    sessionCount: count,
-    apiTokenCount: apiTokenCount,
-    export: export,
-    exportRead: exportRead,
-  );
-
-  SecurityOverview withApiTokenCount(int count) => SecurityOverview(
-    totp: totp,
-    totpProblem: totpProblem,
-    sessionCount: sessionCount,
-    apiTokenCount: count,
-    export: export,
-    exportRead: exportRead,
-  );
-
-  SecurityOverview withExport(UserDataExport? export) => SecurityOverview(
-    totp: totp,
-    totpProblem: totpProblem,
-    sessionCount: sessionCount,
-    apiTokenCount: apiTokenCount,
-    export: export,
-    exportRead: true,
-  );
 
   static TotpProblem problemOf(Object error) => switch (error) {
     NotFound(routeAbsent: true) => TotpProblem.notOffered,
@@ -220,17 +184,18 @@ Widget yourDataSection({
 }
 
 /// Deleting the account, last and in the error colour; once scheduled, the
-/// row names the date and, for a local account, that the web's page to
-/// cancel it asks for the password.
+/// row names the date, the user the browser must be signed in as and, for a
+/// local account, that the web's page to cancel it asks for the password.
 List<Widget> deleteAccountSection({
   required AppLocalizations l10n,
   required ThemeData theme,
   required MomentFormatter formatter,
-  required ServerConnection connection,
+  required RegisteredAccount entry,
   required UserProfile? profile,
   required DateTime now,
   required VoidCallback onDelete,
 }) {
+  final connection = entry.connection;
   final scheduled = profile?.deletionScheduledAt;
   final allowed = scheduled != null || allowsAccountDeletion(connection);
   final error = theme.colorScheme.error;
@@ -245,6 +210,18 @@ List<Widget> deleteAccountSection({
     null when !allowed => l10n.accountDeletionNotAllowedRow,
     null => l10n.accountSettingsOpensWeb,
   });
+  final notes = [
+    if (scheduled != null) ...[
+      deletionSignInNote(l10n, entry),
+      if (profile?.isLocalUser ?? false)
+        webAsksPasswordNote(
+          l10n,
+          accountLockout: connection.capabilities.has(
+            Capability.accountLockout,
+          ),
+        ),
+    ],
+  ];
   return [
     const SizedBox(height: 16),
     SectionCard(
@@ -256,25 +233,19 @@ List<Widget> deleteAccountSection({
             style: TextStyle(color: error),
           ),
           // Without a scheduled deletion, the dialog before the web says it.
-          subtitle: scheduled != null && (profile?.isLocalUser ?? false)
-              ? Column(
+          subtitle: notes.isEmpty
+              ? status
+              : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     status,
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: SettingHelpText(
-                        webAsksPasswordNote(
-                          l10n,
-                          accountLockout: connection.capabilities.has(
-                            Capability.accountLockout,
-                          ),
-                        ),
+                    for (final note in notes)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: SettingHelpText(note),
                       ),
-                    ),
                   ],
-                )
-              : status,
+                ),
           trailing: Icon(
             allowed ? Icons.open_in_new : Icons.info_outline,
             color: error,

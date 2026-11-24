@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
@@ -168,10 +167,8 @@ class AccountTab extends ConsumerWidget {
               if (deletionScheduledAt != null)
                 DeletionScheduledNote(
                   scheduledAt: deletionScheduledAt,
+                  entry: entry,
                   isLocalUser: isLocalUser,
-                  accountLockout: connection.capabilities.has(
-                    Capability.accountLockout,
-                  ),
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   // Cancelling needs the password, so the web's page does it.
                   onCancel: () => unawaited(

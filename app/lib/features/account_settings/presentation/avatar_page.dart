@@ -135,8 +135,11 @@ class _AvatarPageState extends ConsumerState<AvatarPage> {
       _show(messenger, l10n.avatarPickFailed);
       return;
     }
+    // After readPicked, so leaving during the pick still deletes the picker's
+    // copy.
+    if (!mounted) return;
     final repository = ref.read(accountSettingsRepositoryProvider);
-    if (!mounted || repository == null) return;
+    if (repository == null) return;
     final uploaded = await navigator.push<bool>(
       MaterialPageRoute(
         fullscreenDialog: true,

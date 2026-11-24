@@ -334,11 +334,15 @@ SyncEngine syncEngine(Ref ref, String accountId) {
               throw StateError('Account $accountId is not registered');
             }
             final session = sessions.forAccount(accountId);
-            final current = await endingSessionOfDeletedAccount(
+            return await endingSessionOfDeletedAccount(
               session,
               () => gateway.currentUserWithProfile(entry.connection, session),
             );
-            final UserProfile(:username, :name, :updated) = current.profile;
+          },
+    onCurrentUserStored: isGuest
+        ? null
+        : (profile) async {
+            final UserProfile(:username, :name, :updated) = profile;
             if (updated != null &&
                 ref.mounted &&
                 ref.exists(accountAvatarCacheProvider(accountId))) {
@@ -347,7 +351,6 @@ SyncEngine syncEngine(Ref ref, String accountId) {
                   .noteUpdated(username, updated);
             }
             await registry.updateDisplayName(accountId, name);
-            return current;
           },
   );
   ref.onDispose(() => unawaited(engine.dispose()));

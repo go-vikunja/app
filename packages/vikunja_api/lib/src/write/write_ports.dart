@@ -469,7 +469,10 @@ typedef UserSettingsWriteResult = ({
 /// The signed-in user's general settings and avatar. The server keeps no
 /// order between overlapping writes, so callers send one at a time.
 abstract interface class UserSettingsWritePort {
-  /// Writes only what [changes] set and returns the stored state.
+  /// Writes only what [changes] set and returns the stored state, read back
+  /// from `GET /user`; null when the server took the write but that read
+  /// failed, as the change is made all the same. Empty [changes] only read,
+  /// and a failed read throws.
   ///
   /// With [Capability.userSettingsMergePatch] (2.7.0+) a v2 merge-patch of
   /// the changed fields, the `frontend_settings` keys inside it, which the
@@ -485,7 +488,7 @@ abstract interface class UserSettingsWritePort {
   /// 3017; a week start outside 0–6 or a reminder time the server cannot
   /// parse a `ValidationFailed` (code 2002, or none for v2's own schema
   /// check) naming the field.
-  Future<UserSettingsWriteResult> update(UserSettingsChanges changes);
+  Future<UserSettingsWriteResult?> update(UserSettingsChanges changes);
 
   /// v2 `GET /user/settings/avatar/provider`, v1 `GET
   /// /user/settings/avatar`; null for a value this client does not know.

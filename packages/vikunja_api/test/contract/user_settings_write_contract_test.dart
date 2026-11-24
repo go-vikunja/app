@@ -13,12 +13,13 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'helpers.dart';
 
 // One throwaway user whose frontend settings carry keys other clients
-// wrote. The port writes every field and clears the nullable ones on each
-// of its three paths: the v2 merge-patch (2.7.0), the v2 full PUT (as on
-// 2.4 to 2.6) and the v1 full POST (as on 2.3); the server's raw settings
-// change only where the port changed them. Refusals leave them as they
-// were. The avatar provider is read and set, and an image uploaded, on both
-// versions.
+// wrote, the web's color scheme among them, which the app never writes
+// (decision log: Look and layout). The port writes every field and clears
+// the nullable ones on each of its three paths: the v2 merge-patch (2.7.0),
+// the v2 full PUT (as on 2.4 to 2.6) and the v1 full POST (as on 2.3); the
+// server's raw settings change only where the port changed them. Refusals
+// leave them as they were. The avatar provider is read and set, and an
+// image uploaded, on both versions.
 const _pace = Duration(milliseconds: 500);
 const _writtenFrontendKeys = {
   'quick_add_magic_mode',
@@ -28,10 +29,10 @@ const _writtenFrontendKeys = {
   'comment_sort_order',
   'date_display',
   'time_format',
-  'color_schema',
   'default_view',
 };
 const Map<String, Object?> _foreignKeys = {
+  'color_schema': 'dark',
   'play_sound_when_done': false,
   'sidebar_width': 280,
   'vikunja_app_unknown_key': {
@@ -245,13 +246,12 @@ void main() {
                       ? TimeFormat.twelveHour
                       : TimeFormat.twentyFourHour,
                 ),
-                colorSchema: ColorSchema.values[index],
                 defaultViewKind: SettingChange.set(
                   ProjectViewKind.values[index],
                 ),
               );
 
-              final result = await paced(() => port.update(changes));
+              final result = (await paced(() => port.update(changes)))!;
 
               final reread = await patiently(
                 () => AccountApi(
@@ -302,7 +302,7 @@ void main() {
               final port = portOver(path.connection);
               final before = await rawSettings();
 
-              final result = await paced(
+              final result = (await paced(
                 () => port.update(
                   const UserSettingsChanges(
                     defaultProjectId: SettingChange.clear(),
@@ -312,7 +312,7 @@ void main() {
                     defaultViewKind: SettingChange.clear(),
                   ),
                 ),
-              );
+              ))!;
 
               expect(result.settings.defaultProjectId, isNull);
               expect(result.settings.filterIdUsedOnOverview, isNull);
@@ -405,11 +405,11 @@ void main() {
         }
 
         test('an empty timezone stores the server default', () async {
-          final result = await paced(
+          final result = (await paced(
             () =>
                 portOver(connection)
                     .update(const UserSettingsChanges(timezone: '')),
-          );
+          ))!;
 
           expect(result.settings.timezone, isNotEmpty);
         });

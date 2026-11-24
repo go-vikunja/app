@@ -204,6 +204,28 @@ void main() {
     }
   });
 
+  testWidgets(
+    "explains at the week start that Sunday, the server's default, keeps "
+    "the device's first day",
+    (tester) async {
+      await pumpPage(tester);
+      final row = find.widgetWithText(ListTile, en.accountSettingsWeekStart);
+      await scrollTo(tester, row);
+
+      expect(
+        find.descendant(of: row, matching: find.text('Sunday')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.text(en.accountSettingsWeekStartHelp),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('leaves the theme to the Account tab', (tester) async {
     await pumpPage(tester);
 
@@ -430,6 +452,13 @@ void main() {
             option: () => 'Monday',
             changes: const UserSettingsChanges(weekStart: 1),
             settings: const UserSettings(),
+          ),
+          (
+            name: "week start back to Sunday, the server's default",
+            row: () => en.accountSettingsWeekStart,
+            option: () => 'Sunday',
+            changes: const UserSettingsChanges(weekStart: 0),
+            settings: const UserSettings(weekStart: 1),
           ),
           (
             name: 'date display',

@@ -27,6 +27,8 @@ final class SettingChange<T extends Object> {
 
 /// The settings of one edit. Every null field is left as it is on the
 /// server, together with everything [UserSettings] does not model.
+/// The web's color scheme is never among them: the app's theme is the
+/// device's (decision log: Look and layout).
 @immutable
 final class UserSettingsChanges {
   const new({
@@ -47,7 +49,6 @@ final class UserSettingsChanges {
     this.commentSortOrder,
     this.dateDisplay,
     this.timeFormat,
-    this.colorSchema,
     this.defaultViewKind,
   });
 
@@ -84,7 +85,6 @@ final class UserSettingsChanges {
   final CommentSortOrder? commentSortOrder;
   final SettingChange<DateDisplay>? dateDisplay;
   final SettingChange<TimeFormat>? timeFormat;
-  final ColorSchema? colorSchema;
   final SettingChange<ProjectViewKind>? defaultViewKind;
 
   bool get isEmpty => this == const UserSettingsChanges();
@@ -121,7 +121,6 @@ final class UserSettingsChanges {
       null => settings.timeFormat,
       final change => change.value,
     },
-    colorSchema: colorSchema,
     defaultViewKind: switch (defaultViewKind) {
       null => settings.defaultViewKind,
       final change => change.value,
@@ -148,7 +147,6 @@ final class UserSettingsChanges {
       other.commentSortOrder == commentSortOrder &&
       other.dateDisplay == dateDisplay &&
       other.timeFormat == timeFormat &&
-      other.colorSchema == colorSchema &&
       other.defaultViewKind == defaultViewKind;
 
   @override
@@ -173,7 +171,6 @@ final class UserSettingsChanges {
     commentSortOrder,
     dateDisplay,
     timeFormat,
-    colorSchema,
     defaultViewKind,
   ]);
 
@@ -213,7 +210,6 @@ final class UserSettingsChanges {
       if (commentSortOrder != null) 'commentSortOrder: $commentSortOrder',
       if (dateDisplay != null) 'dateDisplay: $dateDisplay',
       if (timeFormat != null) 'timeFormat: $timeFormat',
-      if (colorSchema != null) 'colorSchema: $colorSchema',
       if (defaultViewKind != null) 'defaultViewKind: $defaultViewKind',
     ];
     return 'UserSettingsChanges(${fields.join(', ')})';

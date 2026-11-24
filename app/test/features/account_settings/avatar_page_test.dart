@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_crop_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/avatar_page.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 
 import '../../helpers/account_settings_fakes.dart';
@@ -314,6 +315,31 @@ void main() {
     await pickAndCrop(tester, en.avatarChoosePhoto);
 
     expect(find.text(en.avatarPickFailed), findsOneWidget);
+  });
+
+  testWidgets('a photo that arrives after the page was left is dropped '
+      'without an error', (tester) async {
+    picker.photosHeld = Completer<void>();
+    await pumpAvatarPage(tester);
+
+    await tester.tap(tile(en.avatarProviderUpload));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.avatarChoosePhoto));
+    await tester.pumpAndSettle();
+    expect(picker.calls, ['photos images single']);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(AvatarPage), findsNothing);
+
+    picker.photosHeld!.complete();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(files.readPaths, ['/picked/IMG_1.png']);
+    expect(find.byType(AvatarCropPage), findsNothing);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(repository().calls, ['refresh']);
   });
 
   testWidgets('a picture this device cannot read is never uploaded', (

@@ -17,18 +17,20 @@ import '../../helpers/pump_app.dart';
 import '../../helpers/sync_fakes.dart';
 
 /// A 2.7.0 server at `https://tasks.example.org/vikunja` (http with
-/// [insecure]) that reports no frontend address, with password sign-in and
-/// the given features.
+/// [insecure]) that reports [frontendUrl] as its web, none by default, with
+/// password sign-in and the given features.
 ServerConnection securityServer({
   bool totp = true,
   bool caldav = true,
   bool userDeletion = true,
   bool insecure = false,
   String version = 'v2.7.0',
+  String? frontendUrl,
 }) {
   final info = ServerInfo(
     version: ServerVersion.tryParse(version),
     rawVersion: version,
+    frontendUrl: frontendUrl == null ? null : Uri.parse(frontendUrl),
     totpEnabled: totp,
     caldavEnabled: caldav,
     userDeletionEnabled: userDeletion,

@@ -93,7 +93,12 @@ final class LocalAccountSettingsRepository
     if (changes.isEmpty) return;
     await _serialized(() async {
       final before = await _storedProfile();
-      final (:profile, :settings) = await _write.update(changes);
+      final answer = await _write.update(changes);
+      if (answer == null) {
+        await _storeWithoutReadBack(changes);
+        return;
+      }
+      final (:profile, :settings) = answer;
       // The answer's `updated` also covers changes made elsewhere since the
       // caches last heard one, e.g. what a background sync stored.
       if (changes.name == null && before != null) {
@@ -105,6 +110,7 @@ final class LocalAccountSettingsRepository
         changes.name == null
             ? OwnAvatarChange.unchanged
             : OwnAvatarChange.changed,
+        countsAsChange: true,
       );
     });
     _settle('Updated settings: $changes');
@@ -148,6 +154,7 @@ final class LocalAccountSettingsRepository
         settings,
         OwnAvatarChange.changed,
         avatarProvider: provider,
+        countsAsChange: true,
       );
     } on VikunjaFailure catch (failure) {
       _log.info('Reading back the avatar change failed: $failure');
@@ -159,17 +166,50 @@ final class LocalAccountSettingsRepository
     }
   }
 
+  /// The server took [changes], so a read-back that fails is no failure:
+  /// they are applied to what is stored, and the quiet sync stores the
+  /// server's own copy.
+  Future<void> _storeWithoutReadBack(UserSettingsChanges changes) async {
+    final name = changes.name;
+    await _db.transaction(() async {
+      final stored = await _db.syncStateDao.readAll();
+      final settings = changes.applyTo(
+        decodeUserSettings(stored[SyncStateKeys.userSettings]),
+      );
+      final profile = switch (decodeUserProfile(
+        stored[SyncStateKeys.userProfile],
+      )) {
+        final profile? when name != null => _renamed(profile, name),
+        final profile => profile,
+      };
+      if (profile != null && name != null) {
+        _noteAvatar(profile, OwnAvatarChange.changed);
+      }
+      await storeCurrentUser(
+        _db,
+        user: profile?.user,
+        settings: settings,
+        profile: profile,
+        countsAsChange: true,
+      );
+    });
+    if (name != null) await _onName(name);
+  }
+
   Future<UserProfile?> _storedProfile() async => decodeUserProfile(
     (await _db.syncStateDao.readAll())[SyncStateKeys.userProfile],
   );
 
   /// The caches hear of the change before the profile is stored, which
-  /// they also watch, so they evict once.
+  /// they also watch, so they evict once. The answer to a change counts as
+  /// one, so a sync that began reading the user before it, here or in a
+  /// background run, does not store its older answer over this one.
   Future<void> _store(
     UserProfile profile,
     UserSettings settings,
     OwnAvatarChange change, {
     AvatarProvider? avatarProvider,
+    bool countsAsChange = false,
   }) async {
     _noteAvatar(profile, change);
     await storeCurrentUser(
@@ -178,6 +218,7 @@ final class LocalAccountSettingsRepository
       settings: settings,
       profile: profile,
       avatarProvider: avatarProvider,
+      countsAsChange: countsAsChange,
     );
     await _onName(profile.name);
   }
@@ -195,3 +236,14 @@ final class LocalAccountSettingsRepository
     );
   }
 }
+
+UserProfile _renamed(UserProfile profile, String name) => UserProfile(
+  id: profile.id,
+  username: profile.username,
+  name: name,
+  isLocalUser: profile.isLocalUser,
+  authProvider: profile.authProvider,
+  pendingEmail: profile.pendingEmail,
+  updated: profile.updated,
+  deletionScheduledAt: profile.deletionScheduledAt,
+);

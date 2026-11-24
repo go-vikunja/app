@@ -28,6 +28,10 @@ typedef CurrentUserSource = Future<UserWithSettings> Function();
 /// The same read with the profile, which a run then stores too.
 typedef CurrentProfileSource = Future<UserWithProfile> Function();
 
+/// Hears the profile of a `GET /user` answer a run stored, for what the app
+/// keeps of it outside the database.
+typedef CurrentUserStored = Future<void> Function(UserProfile profile);
+
 typedef _CurrentUser = ({
   User user,
   UserProfile? profile,
@@ -35,17 +39,17 @@ typedef _CurrentUser = ({
 });
 
 /// The sync of one account. Every run first stores the current user, their
-/// settings and profile (`GET /user`). A full run goes account → projects →
-/// labels → tasks → archived projects' tasks → finishing: tasks are pulled
-/// keyset by id (`id > lastId`, sorted by id, one page per request), open
-/// ones first, every page is checkpointed in `sync_state` so a killed app
-/// resumes where it stopped, and tasks the run did not return are purged at
-/// the end, after the Overview's saved filter is downloaded
-/// (`downloadOverviewFilter`). A refresh is an [IncrementalRun] from the
-/// stored watermark, unless no full run completed within
-/// [fullResyncInterval]. Runs are serialized: a call joins the run in
-/// progress, except that a full run asked for during an incremental one
-/// follows it, and so does a refresh after a write.
+/// settings and profile (`GET /user`), unless an account settings change was
+/// stored while it read them. A full run goes account → projects → labels →
+/// tasks → archived projects' tasks → finishing: tasks are pulled keyset by
+/// id (`id > lastId`, sorted by id, one page per request), open ones first,
+/// every page is checkpointed in `sync_state` so a killed app resumes where
+/// it stopped, and tasks the run did not return are purged at the end, after
+/// the Overview's saved filter is downloaded (`downloadOverviewFilter`). A
+/// refresh is an [IncrementalRun] from the stored watermark, unless no full
+/// run completed within [fullResyncInterval]. Runs are serialized: a call
+/// joins the run in progress, except that a full run asked for during an
+/// incremental one follows it, and so does a refresh after a write.
 ///
 /// Engines of the same account in other isolates (a background run, a
 /// notification action) share the database, so a run first takes the
@@ -69,6 +73,7 @@ final class DefaultSyncEngine implements SyncEngine {
     required int perPage,
     CurrentUserSource? currentUser,
     CurrentProfileSource? currentUserWithProfile,
+    this._onCurrentUserStored,
     DateTime Function()? now,
     this.headless = false,
     Future<void> Function(Duration duration)? delay,
@@ -86,6 +91,7 @@ final class DefaultSyncEngine implements SyncEngine {
   final VikunjaReadClient _client;
   final int _perPage;
   final Future<_CurrentUser> Function()? _currentUser;
+  final CurrentUserStored? _onCurrentUserStored;
   final DateTime Function() _now;
   final Future<void> Function(Duration duration) _delay;
   final int _process;
@@ -563,18 +569,31 @@ final class DefaultSyncEngine implements SyncEngine {
   /// The user joins the known people, so `@me` resolves offline; the
   /// settings and the profile change on the web at any time, so every run
   /// reads them. What is unchanged is not written, so the lists on screen
-  /// are not reloaded.
+  /// are not reloaded. An answer is neither stored nor passed on once an
+  /// account settings change was stored while it was read, here or in
+  /// another isolate: the server may have given it before the change, and
+  /// the change's own refresh reads the user again.
   Future<void> _storeCurrentUser() async {
     final currentUser = _currentUser;
     if (currentUser == null) return;
+    final changes = await accountSettingsChanges(_db);
     final (:user, :profile, :settings) = await currentUser();
     _checkDisposed();
-    await storeCurrentUser(
+    final stored = await storeCurrentUser(
       _db,
       user: user,
       settings: settings,
       profile: profile,
+      changesAtRead: changes,
     );
+    if (!stored) {
+      _log.info(
+        'Sync run $_runId kept an account settings change made while it '
+        'read the user',
+      );
+      return;
+    }
+    if (profile != null) await _onCurrentUserStored?.call(profile);
   }
 
   /// All pages, archived projects included, in one list; the pseudo projects

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/api_tokens_page.dart';
@@ -306,6 +309,97 @@ void main() {
     expect(find.text(en.caldavTokenName(1)), findsOneWidget);
   });
 
+  group('while a new token is on its way', () {
+    // The button's spinner turns until the held create answers, so only
+    // pump, never pumpAndSettle, before that.
+    Future<Completer<void>> askForToken(WidgetTester tester) async {
+      await pumpPage(tester);
+      final held = harness.holdNext('createCaldavToken');
+      await scrollTo(tester, find.text(en.caldavNewToken));
+      await tester.tap(find.text(en.caldavNewToken));
+      await tester.pump();
+      return held;
+    }
+
+    testWidgets('Back waits for the answer, and the token then shows once', (
+      tester,
+    ) async {
+      final held = await askForToken(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pageBack();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(CaldavPage), findsOneWidget);
+
+      held.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(OneTimeSecretPage), findsOneWidget);
+      expect(find.text(fakeCaldavTokenSecret(1)), findsOneWidget);
+
+      await tester.tap(find.text(en.oneTimeSecretCopy));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.oneTimeSecretDone));
+      await tester.pumpAndSettle();
+      await scrollTo(tester, find.text(en.caldavTokenName(1)));
+      expect(find.text(en.caldavTokenName(1)), findsOneWidget);
+    });
+
+    testWidgets(
+      'so does the edge swipe on iOS',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final held = await askForToken(tester);
+
+        await tester.timedDragFrom(
+          const Offset(5, 300),
+          const Offset(500, 0),
+          const Duration(milliseconds: 300),
+        );
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byType(CaldavPage), findsOneWidget);
+
+        held.complete();
+        await tester.pumpAndSettle();
+        expect(find.text(fakeCaldavTokenSecret(1)), findsOneWidget);
+      },
+    );
+
+    testWidgets('a notification, widget or link tap from outside cannot close '
+        'the page', (tester) async {
+      final held = await askForToken(tester);
+
+      final leaving = popPagesOverShell(
+        containerOf(tester).read(appRouterProvider),
+      );
+      await tester.pump();
+      expect(await leaving, LeaveOutcome.stayed);
+      expect(find.byType(CaldavPage), findsOneWidget);
+
+      held.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(fakeCaldavTokenSecret(1)), findsOneWidget);
+    });
+
+    testWidgets('once the token shows, a tap from outside leaves as before', (
+      tester,
+    ) async {
+      final held = await askForToken(tester);
+      held.complete();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.oneTimeSecretCopy));
+      await tester.pumpAndSettle();
+
+      final leaving = popPagesOverShell(
+        containerOf(tester).read(appRouterProvider),
+      );
+      await tester.pumpAndSettle();
+      expect(await leaving, LeaveOutcome.left);
+      expect(find.byType(OneTimeSecretPage), findsNothing);
+      expect(find.byType(CaldavPage), findsNothing);
+    });
+  });
+
   group('the new value selected', () {
     Future<String> selectSecret(WidgetTester tester) async {
       await pumpPage(tester);
@@ -555,7 +649,9 @@ void main() {
     });
   });
 
-  testWidgets('a token that cannot be made says why', (tester) async {
+  testWidgets('a token that cannot be made says why, and Back leaves again', (
+    tester,
+  ) async {
     harness.security.failures['createCaldavToken'] = const NetworkFailure(
       NetworkProblem.unreachable,
     );
@@ -567,6 +663,9 @@ void main() {
 
     expect(find.text(en.accountSecurityNeedsConnection), findsOneWidget);
     expect(find.byType(OneTimeSecretPage), findsNothing);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(CaldavPage), findsNothing);
   });
 
   testWidgets('offline the address still shows, the tokens offer a retry', (
