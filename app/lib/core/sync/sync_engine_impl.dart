@@ -1,13 +1,15 @@
 import 'dart:async';
+import 'dart:io' show pid;
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/chunks.dart';
 import 'package:vikunja_mobile/core/settings/current_user_store.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
+import 'package:vikunja_mobile/core/sync/gone_projects.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
 import 'package:vikunja_mobile/core/sync/newest_updated.dart';
@@ -52,8 +54,9 @@ typedef _CurrentUser = ({
 /// another run marked meanwhile. The lease names the run, so a task that
 /// another write (a create's answer, a duplicate, a restore) stores while
 /// it goes is not purged by it either. The app's engine waits for a lease
-/// another isolate holds, a [headless] one ends its run without syncing;
-/// the winner adopts the stored state the other run left. A run that finds
+/// another isolate of this process holds, a [headless] one ends its run
+/// without syncing; a lease another process left is taken over at once.
+/// The winner adopts the stored state the other run left. A run that finds
 /// its lease no longer its own (it stalled past [leaseDuration]) stops
 /// quietly, and purges nothing. [dispose] lets go of the lease.
 ///
@@ -69,10 +72,12 @@ final class DefaultSyncEngine implements SyncEngine {
     DateTime Function()? now,
     this.headless = false,
     Future<void> Function(Duration duration)? delay,
+    int? processId,
   }) : _perPage = perPage,
        _currentUser = _currentUserOf(currentUserWithProfile, currentUser),
        _now = now ?? DateTime.now,
-       _delay = delay ?? Future<void>.delayed {
+       _delay = delay ?? Future<void>.delayed,
+       _process = processId ?? pid {
     if (perPage < 1) throw ArgumentError.value(perPage, 'perPage');
     _ready = _restore();
   }
@@ -83,6 +88,7 @@ final class DefaultSyncEngine implements SyncEngine {
   final Future<_CurrentUser> Function()? _currentUser;
   final DateTime Function() _now;
   final Future<void> Function(Duration duration) _delay;
+  final int _process;
 
   /// In a container the OS started without the app: a refresh is always
   /// incremental once a run has completed, because a background run has
@@ -253,7 +259,11 @@ final class DefaultSyncEngine implements SyncEngine {
       _checkDisposed();
       final taken = await _db.transaction(() async {
         final state = await _db.syncStateDao.readAll();
-        if (_heldElsewhere(state)) return false;
+        final lease = SyncLease.parse(state[SyncStateKeys.syncLease]);
+        if (_heldElsewhere(lease)) return false;
+        if (lease != null && _leftByEndedProcess(lease)) {
+          _log.info('Taking over the sync lease an ended process left');
+        }
         await _db.syncStateDao.write(_leaseState());
         _adopt(state);
         return true;
@@ -308,19 +318,29 @@ final class DefaultSyncEngine implements SyncEngine {
 
   /// A lease further ahead than one [leaseDuration] was written by a clock
   /// that has gone back since, and counts as run out.
-  bool _heldElsewhere(Map<String, String> state) {
-    final lease = SyncLease.parse(state[SyncStateKeys.syncLease]);
-    if (lease == null || lease.owner == _leaseOwner) return false;
+  bool _heldElsewhere(SyncLease? lease) {
+    if (lease == null ||
+        lease.owner == _leaseOwner ||
+        _leftByEndedProcess(lease)) {
+      return false;
+    }
     final now = _now().toUtc();
     return lease.until.isAfter(now) &&
         !lease.until.isAfter(now.add(leaseDuration));
   }
+
+  /// Every isolate of the app runs in one process, so a lease another
+  /// process wrote was left by one that has ended; one an older version
+  /// wrote names no process and only runs out (decision log: Sync).
+  bool _leftByEndedProcess(SyncLease lease) =>
+      lease.process != null && lease.process != _process;
 
   Map<String, String> _leaseState() => {
     SyncStateKeys.syncLease: SyncLease(
       owner: _leaseOwner,
       until: _now().toUtc().add(leaseDuration),
       run: _runId,
+      process: _process,
     ).encode(),
   };
 
@@ -563,6 +583,9 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<SyncCheckpoint> _syncProjects(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
     final pseudo = <Project>[];
+    final stored = [
+      for (final project in await _db.projectsDao.loadAll()) project.id,
+    ];
     final byId = await collectPages<Project>(
       fetch: (page) => _renewingLease(() {
         // A walk that starts over starts at page 1.
@@ -582,9 +605,11 @@ final class DefaultSyncEngine implements SyncEngine {
         current = current.copyWith(done: collected.length, total: page.total);
         _report(current);
       },
+      stored: stored,
     );
     _checkDisposed();
     await _db.transaction(() async {
+      await _holdLease();
       await _db.projectsDao.upsertAll(byId.values);
       await _db.projectsDao.purgeNotIn(byId.keys);
       await _db.kanbanDao.removeGoneViews();
@@ -604,6 +629,10 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<SyncCheckpoint> _syncLabels(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
     final remappedBefore = await _db.labelsDao.remappedServerIds();
+    final stored = [
+      for (final label in await _db.labelsDao.loadAll())
+        if (label.id > 0) label.id,
+    ];
     final byId = await collectPages<Label>(
       fetch: (page) => _renewingLease(
         () => _client.labels.list(page: page, perPage: _perPage),
@@ -613,9 +642,11 @@ final class DefaultSyncEngine implements SyncEngine {
         current = current.copyWith(done: collected.length, total: page.total);
         _report(current);
       },
+      stored: stored,
     );
     _checkDisposed();
     await _db.transaction(() async {
+      await _holdLease();
       await _db.labelsDao.upsertAll(byId.values);
       await _db.labelsDao.purgeNotIn(byId.keys, remappedBefore: remappedBefore);
     });
@@ -627,7 +658,7 @@ final class DefaultSyncEngine implements SyncEngine {
     var current = checkpoint;
     if (current.total == null) {
       current = current.copyWith(
-        total: await _countTasks(),
+        total: await _countTasks() ?? SyncCheckpoint.unknownTotal,
         newestUpdatedAtStart: await _newestUpdated(),
       );
       await _save(current);
@@ -643,6 +674,9 @@ final class DefaultSyncEngine implements SyncEngine {
 
   /// `GET /tasks` leaves out the tasks of archived projects, so those come
   /// through their project, including the children of an archived parent.
+  /// The projects are the stored ones, also in a resumed run, so one gone
+  /// since the project phase goes with its tasks instead of failing the run
+  /// at it on every resume.
   Future<SyncCheckpoint> _syncArchivedTasks(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
     final archived = archivedProjectIds(await _db.projectsDao.loadAll());
@@ -656,10 +690,20 @@ final class DefaultSyncEngine implements SyncEngine {
         );
         await _save(current);
       }
-      current = await _pullBothFilters(
-        current,
-        (query) => _client.tasks.listInProject(projectId, query),
-      );
+      try {
+        current = await _pullBothFilters(
+          current,
+          (query) => _client.tasks.listInProject(projectId, query),
+        );
+      } on VikunjaFailure catch (failure) {
+        if (!meansProjectGone(failure)) rethrow;
+        await purgeGoneProject(
+          _db,
+          projectId,
+          runId: current.runId,
+          holdLease: _holdLease,
+        );
+      }
     }
     _log.info('Sync run ${current.runId}: ${current.done} archived tasks');
     return await _advance(current, SyncPhase.finishing);
@@ -675,7 +719,8 @@ final class DefaultSyncEngine implements SyncEngine {
   /// walks by id, so a later page can lie above an edit to an id it has
   /// passed, or one made before a resumed pass started. A resumed run keeps
   /// the watermark of the incremental runs completed since it began, which
-  /// read every change below it.
+  /// read every change below it, and at the purge the tasks a run begun
+  /// since stored, which it does not read again.
   Future<void> _finish(
     SyncCheckpoint checkpoint, {
     required bool resumed,
@@ -709,7 +754,10 @@ final class DefaultSyncEngine implements SyncEngine {
     final finishedAt = _now().toUtc();
     final purged = await _db.transaction(() async {
       await _holdLease();
-      final purged = await _db.tasksDao.purgeNotInRun(caughtUp.runId);
+      final purged = await _db.tasksDao.purgeNotInRun(
+        caughtUp.runId,
+        keepLaterRuns: resumed,
+      );
       await _writeCompletion(
         finishedAt,
         full: true,
@@ -762,7 +810,7 @@ final class DefaultSyncEngine implements SyncEngine {
     await _db.syncStateDao.write({
       // An incremental run leaves a stopped full run's checkpoint, which
       // the next full run continues from (see _resumable), unless it found
-      // a project newly live (IncrementalRun).
+      // a project to pull whole or newly live (IncrementalRun).
       if (full) ...SyncCheckpoint.cleared,
       if (!markedSince) SyncStateKeys.pendingWholePull: null,
       SyncStateKeys.lastSyncedAt: finishedAt.toIso8601String(),
@@ -792,10 +840,13 @@ final class DefaultSyncEngine implements SyncEngine {
     return current;
   }
 
-  /// One page per request, `id > lastId` sorted by id, until a page is short
-  /// and the server reports no more. The page size is the server's, which
-  /// caps `per_page` silently. With [changedSince] the filter is `updated`
-  /// from then on instead of the done flag.
+  /// One page per request, `id > lastId` sorted by id, until a page ends the
+  /// walk (`endsKeysetWalk`). The page size is the server's, which caps
+  /// `per_page` silently. A page is stored and checkpointed in slices of
+  /// [sqlChunkSize] tasks: its size is the server's, and storing binds one
+  /// SQL variable per task, which SQLite caps at 32,766 per statement
+  /// (decision log: Sync). With [changedSince] the filter is `updated` from
+  /// then on instead of the done flag.
   Future<SyncCheckpoint> _pullKeyset(
     SyncCheckpoint checkpoint,
     Future<Page<Task>> Function(TaskQuery query) fetch, {
@@ -832,14 +883,16 @@ final class DefaultSyncEngine implements SyncEngine {
         }
         previousId = item.id;
       }
-      await _db.tasksDao.upsertRunPage(items, syncRunId: current.runId);
-      current = current.copyWith(
-        lastId: previousId,
-        done: current.done + items.length,
-      );
-      await _save(current);
-      if (report) _report(current);
-      if (items.length < page.perPage && !page.hasMore) return current;
+      for (final slice in chunksOf(items)) {
+        await _db.tasksDao.upsertRunPage(slice, syncRunId: current.runId);
+        current = current.copyWith(
+          lastId: slice.last.id,
+          done: current.done + slice.length,
+        );
+        await _save(current);
+        if (report) _report(current);
+      }
+      if (endsKeysetWalk(page)) return current;
     }
   }
 
@@ -861,15 +914,17 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   /// One request per filter with `per_page=1`, whose page count is the item
-  /// count on both API versions.
-  Future<int> _countTasks() async {
+  /// count on both API versions; null when the server reported none.
+  Future<int?> _countTasks() async {
     var total = 0;
     for (final filter in DoneFilter.values) {
       _checkDisposed();
       final page = await _client.tasks.list(
         TaskQuery(filter: filter.filter, perPage: 1),
       );
-      total += page.total ?? page.totalPages;
+      final count = page.total ?? page.totalPages;
+      if (count == null) return null;
+      total += count;
     }
     return total;
   }
@@ -899,7 +954,7 @@ final class DefaultSyncEngine implements SyncEngine {
     SyncRunning(
       phase: checkpoint.phase,
       done: checkpoint.done,
-      total: checkpoint.total,
+      total: checkpoint.shownTotal,
       initial: _lastSyncedAt == null,
     ),
   );
@@ -926,14 +981,6 @@ final class DefaultSyncEngine implements SyncEngine {
     final nonce = _random.nextInt(1 << 32).toRadixString(36);
     return '$time-$nonce';
   }
-}
-
-/// When the run named [runId] began, from the time the id starts with.
-@visibleForTesting
-DateTime? runStartedAt(String? runId) {
-  final millis = int.tryParse(runId?.split('-').first ?? '', radix: 36);
-  if (millis == null) return null;
-  return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
 }
 
 /// Ends a run quietly after `dispose()`.

@@ -178,8 +178,8 @@ void main() {
 
           // What the web does meanwhile. The server refuses edits in an
           // archived project (3008), so the edit comes before the archive;
-          // archiving bumps the project's `updated`, which routes the
-          // delta through the project.
+          // the project archived since the last sync is read whole through
+          // the project.
           final liveIds = seed.liveTaskIds;
           final createdIds = [
             await seeder.create('/projects/${seed.liveId}/tasks', {
@@ -357,9 +357,9 @@ void main() {
                     test(uri.queryParameters['filter']),
               );
           expect(
-            asked(seed.soonArchivedId, (f) => f!.startsWith("updated >= '")),
+            asked(seed.soonArchivedId, (f) => f == 'id > 0'),
             isTrue,
-            reason: 'the archived project gets its delta through the project',
+            reason: 'a project archived since the last sync is pulled whole',
           );
           expect(
             asked(freshId, (f) => f == 'id > 0'),

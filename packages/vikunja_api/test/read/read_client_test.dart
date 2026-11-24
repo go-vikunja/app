@@ -214,16 +214,62 @@ void main() {
       expect(page.perPage, 25);
     });
 
-    test('v1 list without the total-pages header is a single page', () async {
-      final dio = fakeDio({
+    test('v1 list without the total-pages header has no page count, and only '
+        'a full page has more', () async {
+      final short = fakeDio({
         '$_v1/projects?page=1&expand=permissions': _v1List([_project(1)]),
       });
 
-      final page = await _client(dio, hasV2: false).projects.list();
+      final shortPage = await _client(
+        short,
+        hasV2: false,
+        maxItemsPerPage: 25,
+      ).projects.list();
 
-      expect(page.totalPages, 1);
-      expect(page.hasMore, isFalse);
+      expect(shortPage.totalPages, isNull);
+      expect(shortPage.hasMore, isFalse);
+
+      final full = fakeDio({
+        '$_v1/projects?page=1&expand=permissions': _v1List([
+          _project(1),
+          _project(2),
+        ]),
+      });
+
+      final fullPage = await _client(
+        full,
+        hasV2: false,
+        maxItemsPerPage: 2,
+      ).projects.list();
+
+      expect(fullPage.totalPages, isNull);
+      expect(fullPage.hasMore, isTrue);
     });
+
+    test(
+      'v1 listAll without the total-pages header reads on while pages are full',
+      () async {
+        final dio = fakeDio({
+          '$_v1/projects?page=1&expand=permissions': _v1List([
+            _project(1),
+            _project(2),
+          ]),
+          '$_v1/projects?page=2&expand=permissions': _v1List([_project(3)]),
+        });
+
+        final projects = await _client(
+          dio,
+          hasV2: false,
+          maxItemsPerPage: 2,
+        ).projects.listAll();
+
+        expect(projects.map((p) => p.id), [1, 2, 3]);
+        expect(adapterOf(dio).requestedUrls, [
+          '$_v1/projects?page=1&expand=permissions',
+          '$_v1/projects?page=2&expand=permissions',
+        ]);
+      },
+    );
 
     test('v1 empty list', () async {
       final dio = fakeDio({

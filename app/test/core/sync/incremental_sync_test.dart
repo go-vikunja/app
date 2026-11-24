@@ -591,6 +591,34 @@ void main() {
       expect(await state(), isNot(contains(SyncStateKeys.pendingWholePull)));
     });
 
+    test('a project archived elsewhere and left behind by a failed run is '
+        'pulled whole by the next one', () async {
+      final sync = await synced();
+      replaceProject(2, archived: true);
+      client.beforeRequest = (request) async {
+        if (request.startsWith('tasks')) {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
+      expect((await state())[SyncStateKeys.pendingWholePull], '2');
+      expect(
+        (await db.projectsDao.loadAll()).singleWhere((p) => p.id == 2),
+        isA<Project>().having((p) => p.isArchived, 'isArchived', isTrue),
+      );
+      client
+        ..beforeRequest = null
+        ..requests.clear();
+
+      await sync.refresh();
+
+      expect(requestsFor('project 2 tasks'), [
+        'project 2 tasks id > 0 per_page=50 page=1',
+      ]);
+      expect(await db.tasksDao.countInProject(2), 15);
+      expect(await state(), isNot(contains(SyncStateKeys.pendingWholePull)));
+    });
+
     test(
       'an archived project that changed gets its delta through the project',
       () async {
@@ -612,10 +640,11 @@ void main() {
     );
 
     test('a task edited and its project archived inside the second the last '
-        'sync saw it get the delta through the project', () async {
+        'sync saw are read whole through the project', () async {
       // Project 2 was live and last touched in the watermark's second; the
       // edit and the archive follow inside that second, after the list was
-      // fetched, so its `updated` stays.
+      // fetched, so its `updated` stays. Newly archived, it is read whole
+      // all the same.
       replaceProject(2, updated: newest);
       final sync = await synced();
       replaceTask(2, title: 'Edited late', updated: newest);
@@ -625,11 +654,11 @@ void main() {
 
       expect((await db.tasksDao.find(2))!.title, 'Edited late');
       expect(requestsFor('project 2 tasks'), [
-        'project 2 tasks $since per_page=50 page=1',
+        'project 2 tasks id > 0 per_page=50 page=1',
       ]);
     });
 
-    test('archiving a parent takes its children along: they get the delta '
+    test('archiving a parent takes its children along: they are pulled whole '
         'too', () async {
       // Project 4 is the child of 3; both become live, then 3 is archived
       // again after an edit in 4.
@@ -641,8 +670,11 @@ void main() {
       await sync.refresh();
 
       expect((await db.tasksDao.find(301))!.title, 'Child edited');
+      expect(requestsFor('project 3 tasks'), [
+        'project 3 tasks id > 0 per_page=50 page=1',
+      ]);
       expect(requestsFor('project 4 tasks'), [
-        'project 4 tasks $since per_page=50 page=1',
+        'project 4 tasks id > 0 per_page=50 page=1',
       ]);
     });
 
@@ -652,7 +684,7 @@ void main() {
       replaceProject(2, archived: true);
       await sync.refresh();
       expect(requestsFor('project 2 tasks'), [
-        'project 2 tasks $since per_page=50 page=1',
+        'project 2 tasks id > 0 per_page=50 page=1',
       ]);
       client.requests.clear();
 
@@ -823,8 +855,9 @@ void main() {
     test('a difference no project shows is walked for once, not on every '
         'run, until the totals change or a full resync', () async {
       // A favourite counts in GET /tasks wherever it is, so one deleted
-      // right before its project was archived stays here and in the local
-      // total, where no walk over the live projects finds it.
+      // right before the app archived its project stays here and in the
+      // local total: the run takes that project's delta, which cannot see
+      // the delete, and no walk over the live projects finds it.
       client.allTasks = [
         for (final t in tasks())
           if (t.id == 2) t.copyWith(isFavorite: true) else t,
@@ -832,6 +865,7 @@ void main() {
       final sync = await synced();
       client.allTasks.removeWhere((t) => t.id == 2);
       replaceProject(2, archived: true);
+      await db.projectsDao.setArchived(2, archived: true);
       const walk = 'project 1 tasks (all) per_page=1 page=1';
 
       await sync.refresh();
@@ -923,6 +957,40 @@ void main() {
       expect((await db.projectsDao.loadAll()).map((p) => p.id), [1, 3, 4]);
       expect(await db.tasksDao.countInProject(2), 0);
       expect(sync.currentStatus, SyncIdle(lastSyncedAt: now));
+    });
+
+    test('a project trashed since the list answers not found with 3018 and is '
+        'purged the same way', () async {
+      final sync = await synced();
+      client.allTasks.removeWhere((t) => t.id == 10);
+      client.beforeRequest = (request) async {
+        if (request.startsWith('project 2 tasks')) {
+          replaceProject(2, remove: true);
+          throw const NotFound(code: 3018);
+        }
+      };
+
+      await sync.refresh();
+
+      expect((await db.projectsDao.loadAll()).map((p) => p.id), [1, 3, 4]);
+      expect(await db.tasksDao.countInProject(2), 0);
+      expect(sync.currentStatus, SyncIdle(lastSyncedAt: now));
+    });
+
+    test('a project whose task route is missing, not found without a code, '
+        'fails the run and is kept', () async {
+      final sync = await synced();
+      final watermark = (await state())[SyncStateKeys.watermark];
+      client.allTasks.removeWhere((t) => t.id == 10);
+      client.beforeRequest = (request) async {
+        if (request.startsWith('project 2 tasks')) throw const NotFound();
+      };
+
+      await expectLater(sync.refresh(), throwsA(isA<NotFound>()));
+
+      expect((await db.projectsDao.loadAll()).map((p) => p.id), [1, 2, 3, 4]);
+      expect(await db.tasksDao.countInProject(2), 15);
+      expect((await state())[SyncStateKeys.watermark], watermark);
     });
 
     test('a project deleted between two pages of the list makes the walk '
@@ -1578,6 +1646,27 @@ void main() {
       });
     });
 
+    test('a delta of more tasks than one statement takes variables is stored '
+        'in slices', () async {
+      client = FakeSyncClient(maxPerPage: 40000)
+        ..allProjects = projects()
+        ..pseudoProjects = [
+          const Project(id: Project.favoritesId, title: 'Favorites'),
+        ]
+        ..allLabels = [urgent, later]
+        ..allTasks = tasks();
+      final sync = await synced(perPage: 40000);
+      client.allTasks.addAll([
+        for (var id = 1001; id <= 33767; id++)
+          task(id: id, title: 'Task $id', updated: edited),
+      ]);
+
+      await sync.refresh();
+
+      expect(sync.currentStatus, SyncIdle(lastSyncedAt: now));
+      expect(await db.tasksDao.count(), taskCount + 32767);
+    });
+
     test('dispose ends an incremental run quietly', () async {
       final sync = await synced();
       final gate = RequestGate()..pattern = 'labels';
@@ -1633,6 +1722,118 @@ void main() {
 
       expect(client.requests, quietRun);
       expect(await db.tasksDao.count(), taskCount);
+    });
+  });
+
+  group('without a page count from the server (v1 behind a proxy)', () {
+    setUp(() {
+      client = FakeSyncClient(reportsTotal: false, reportsPageCount: false)
+        ..allProjects = [
+          ...projects(),
+          for (var id = 5; id <= 60; id++) project(id: id, title: 'P$id'),
+        ]
+        ..pseudoProjects = [
+          const Project(id: Project.favoritesId, title: 'Favorites'),
+        ]
+        ..allLabels = [
+          urgent,
+          later,
+          for (var id = 10; id <= 67; id++) Label(id: id, title: 'L$id'),
+        ]
+        ..allTasks = [
+          ...tasks(),
+          task(id: 551, title: 'Late 551', projectId: 55),
+          task(id: 552, title: 'Late 552', projectId: 55),
+        ];
+    });
+
+    test('projects and labels past the first page stay, with their '
+        'tasks', () async {
+      final sync = await synced();
+
+      await sync.refresh();
+
+      expect(await db.projectsDao.loadAll(), hasLength(60));
+      expect(await db.labelsDao.loadAll(), hasLength(60));
+      expect(await db.tasksDao.countInProject(55), 2);
+    });
+
+    test('a project removed past the first page still goes with its '
+        'tasks', () async {
+      final sync = await synced();
+      replaceProject(55, remove: true);
+      client.allTasks.removeWhere((t) => t.projectId == 55);
+
+      await sync.refresh();
+
+      final ids = (await db.projectsDao.loadAll()).map((p) => p.id).toSet();
+      expect(ids, hasLength(59));
+      expect(ids, isNot(contains(55)));
+      expect(await db.tasksDao.countInProject(55), 0);
+      expect(await db.tasksDao.findAll([551, 552]), isEmpty);
+    });
+
+    test('projects deleted on the web between two pages leave the ones that '
+        'move up into the first page alone, with their tasks', () async {
+      final sync = await synced();
+      // Five projects of the first page go while the second is asked for,
+      // so 51 to 55 move up into the page already read.
+      client.beforeRequest = (request) async {
+        if (request == 'projects page 2 archived=true' &&
+            client.allProjects.any((p) => p.id == 5)) {
+          client.allProjects = [
+            for (final p in client.allProjects)
+              if (p.id < 5 || p.id > 9) p,
+          ];
+        }
+      };
+
+      await sync.refresh();
+
+      final ids = (await db.projectsDao.loadAll()).map((p) => p.id).toSet();
+      expect(ids, containsAll([for (var id = 51; id <= 55; id++) id]));
+      expect(await db.tasksDao.countInProject(55), 2);
+
+      await sync.refresh();
+
+      final after = (await db.projectsDao.loadAll()).map((p) => p.id).toSet();
+      expect(after, hasLength(55));
+      expect(after, isNot(contains(5)));
+      expect(await db.tasksDao.countInProject(55), 2);
+    });
+
+    test('a deleted task is still found: a count the server did not report '
+        'counts as a mismatch', () async {
+      final sync = await synced();
+      client.allTasks.removeWhere((t) => t.id == 9);
+
+      await sync.refresh();
+
+      expect(await db.tasksDao.find(9), isNull);
+    });
+
+    test('a count the server did not report is never remembered: every run '
+        'walks the live projects', () async {
+      final sync = await synced();
+
+      await sync.refresh();
+
+      expect(
+        (await state()).containsKey(SyncStateKeys.unexplainedTotals),
+        isFalse,
+      );
+      client.requests.clear();
+
+      await sync.refresh();
+
+      expect(
+        (await state()).containsKey(SyncStateKeys.unexplainedTotals),
+        isFalse,
+      );
+      expect(
+        client.requests,
+        contains('project 1 tasks (all) per_page=1 page=1'),
+      );
     });
   });
 

@@ -64,4 +64,39 @@ void main() {
     expect(SyncCheckpoint.cleared.keys, SyncStateKeys.checkpoint);
     expect(SyncCheckpoint.cleared.values, everyElement(isNull));
   });
+
+  test('a lease round trips with its process; one an older version wrote '
+      'names none', () {
+    final until = DateTime.utc(2026, 10, 10, 12, 3);
+    final back = SyncLease.parse(
+      SyncLease(owner: 'a', until: until, run: 'r', process: 7).encode(),
+    );
+
+    expect(
+      (back?.owner, back?.until, back?.run, back?.process),
+      ('a', until, 'r', 7),
+    );
+    for (final raw in [
+      '{"owner":"a","until":"${until.toIso8601String()}"}',
+      '{"owner":"a","until":"${until.toIso8601String()}","process":"x"}',
+    ]) {
+      expect(
+        SyncLease.parse(raw),
+        isA<SyncLease>()
+            .having((lease) => lease.owner, 'owner', 'a')
+            .having((lease) => lease.process, 'process', isNull),
+      );
+    }
+  });
+
+  test('runStartedAt reads the time a run id or its write mark starts with, '
+      'and nothing else', () {
+    final at = DateTime.utc(2026, 11, 19, 8, 30);
+    final id = '${at.millisecondsSinceEpoch.toRadixString(36)}-k3j9';
+    expect(runStartedAt(id), at);
+    expect(runStartedAt('$id+'), at);
+    expect(runStartedAt('not an id'), isNull);
+    expect(runStartedAt(null), isNull);
+    expect(runStartedAt('zzzzzzzzzzzz-k3j9'), isNull);
+  });
 }

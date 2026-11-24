@@ -28,6 +28,48 @@ void main() {
         isFalse,
       );
     });
+
+    test('without a page count, while the page is full', () {
+      expect(
+        const Page<int>(
+          items: [1, 2],
+          page: 1,
+          perPage: 2,
+          totalPages: null,
+        ).hasMore,
+        isTrue,
+      );
+    });
+
+    test('without a page count, not on a short or an empty page', () {
+      expect(
+        const Page<int>(
+          items: [1],
+          page: 1,
+          perPage: 2,
+          totalPages: null,
+        ).hasMore,
+        isFalse,
+      );
+      expect(
+        const Page<int>(
+          items: [],
+          page: 1,
+          perPage: 50,
+          totalPages: null,
+        ).hasMore,
+        isFalse,
+      );
+      expect(
+        const Page<int>(
+          items: [],
+          page: 1,
+          perPage: 0,
+          totalPages: null,
+        ).hasMore,
+        isFalse,
+      );
+    });
   });
 
   test('map converts the items and keeps the paging', () {
@@ -47,6 +89,16 @@ void main() {
     expect(mapped.totalPages, 4);
     expect(mapped.total, 7);
     expect(mapped.hasMore, isTrue);
+
+    final unknown = const Page<int>(
+      items: [1, 2],
+      page: 1,
+      perPage: 2,
+      totalPages: null,
+    ).map((item) => 'n$item');
+
+    expect(unknown.totalPages, isNull);
+    expect(unknown.hasMore, isTrue);
   });
 
   test('total is null when the server did not report one', () {

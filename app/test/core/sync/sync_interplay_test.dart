@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 
 import '../../helpers/fake_sync_client.dart';
@@ -260,6 +261,77 @@ void main() {
       expect(await db.outboxDao.count(), 1);
     },
   );
+
+  Iterable<String> projectRequests() =>
+      client.requests.where((r) => r.startsWith('project '));
+
+  Future<String?> unexplainedTotals() async =>
+      (await db.syncStateDao.readAll())[SyncStateKeys.unexplainedTotals];
+
+  void dropOnServer(int id) => client.allTasks = [
+    for (final task in client.allTasks)
+      if (task.id != id) task,
+  ];
+
+  test('an edit refused because the web deleted its task makes one walk, not '
+      'one per run; a later deletion is still found', () async {
+    await queue(3, done);
+    await db.outboxDao.markFailed(
+      (await db.outboxDao.all()).single.id,
+      const NotFound(code: 4002),
+    );
+    dropOnServer(3);
+    client.requests.clear();
+
+    await engine().refresh();
+
+    expect(projectRequests(), [
+      'project 1 tasks (all) per_page=1 page=1',
+      'project 1 tasks id > 0 per_page=50 page=1',
+      'project 2 tasks (all) per_page=1 page=1',
+    ]);
+    expect((await db.tasksDao.find(3))!.done, isTrue);
+    expect(await db.outboxDao.loadProblems(), hasLength(1));
+    expect(await unexplainedTotals(), '3,4');
+    client.requests.clear();
+
+    await engine().refresh();
+
+    expect(projectRequests(), isEmpty);
+    dropOnServer(1);
+
+    await engine().refresh();
+
+    expect(await db.tasksDao.find(1), isNull);
+    expect(await db.tasksDao.find(3), isNotNull);
+  });
+
+  test('a task another write stored while its project was walked, deleted '
+      "on the web, survives that reconcile and goes with the next run's "
+      'walk', () async {
+    final three = serverTask(3);
+    dropOnServer(3);
+    var stored = false;
+    client.beforeRequest = (request) async {
+      if (stored || !request.startsWith('project 1 tasks id >')) return;
+      stored = true;
+      await db.tasksDao.upsertAll([three]);
+    };
+
+    await engine().refresh();
+
+    expect(await db.tasksDao.find(3), isNotNull);
+    expect(await unexplainedTotals(), isNull);
+
+    await engine().refresh();
+
+    expect(await db.tasksDao.find(3), isNull);
+    client.requests.clear();
+
+    await engine().refresh();
+
+    expect(projectRequests(), isEmpty);
+  });
 
   test(
     'the full pull keeps a row with a queued op the server did not return',

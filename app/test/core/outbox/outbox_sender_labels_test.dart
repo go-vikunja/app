@@ -274,6 +274,34 @@ void main() {
     expect(await db.labelsDao.resolveId(-1), 900);
   });
 
+  test('without a page count the search ends at a page that repeats the last '
+      'one, and the create goes again', () async {
+    read = FakeSyncClient(
+      maxPerPage: 2,
+      reportsTotal: false,
+      reportsPageCount: false,
+      repeatsLastPage: true,
+    );
+    final outbox = sender(userId: me.id);
+    await queueLabel('Errand');
+    final create = (await db.labelOpsDao.createOf(-1))!;
+    await db.labelOpsDao.markCreatePosted(create.id, at: now);
+    await db.outboxDao.markUncertain(create.id, sentAt: now);
+    read.allLabels = [
+      Label(id: 31, title: 'Errand', createdBy: ana, created: now),
+      Label(id: 32, title: 'errand', createdBy: ana, created: now),
+    ];
+
+    await outbox.drain();
+
+    expect(read.requests, [
+      'labels page 1 search Errand',
+      'labels page 2 search Errand',
+    ]);
+    expect(write.requests, ['create label Errand']);
+    expect(await db.labelsDao.resolveId(-1), 900);
+  });
+
   test('from findOrCreate a label the server has under that title, ignoring '
       'case, is taken without a create; the same case first', () async {
     read.allLabels = [

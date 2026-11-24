@@ -2614,6 +2614,42 @@ void main() {
         expect(await db.outboxDao.count(), 0);
       });
 
+      test('without a page count the lookup ends at a page that repeats the '
+          'last one, and the create goes again', () async {
+        read = FakeSyncClient(
+          maxPerPage: 2,
+          reportsTotal: false,
+          reportsPageCount: false,
+          repeatsLastPage: true,
+        )..allProjects = [sampleProject(id: 7, title: 'Work')];
+        final id = await create();
+        write.beforeRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+        final outbox = sender(userId: me.id);
+        await outbox.drain();
+        for (final taskId in [60, 61]) {
+          write.serverTasks[taskId] = sampleTask(
+            id: taskId,
+            title: 'Buy milk',
+            projectId: 7,
+            created: now,
+            createdBy: ana,
+          );
+        }
+        mirrorServer();
+
+        write.beforeRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk', 'create Buy milk']);
+        const window =
+            "project 7 tasks created >= '2026-10-10T11:00:00Z' "
+            'sort=created desc per_page=null';
+        expect(read.requests, ['$window page=1', '$window page=2']);
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(await db.outboxDao.count(), 0);
+      });
+
       test("a guest's create is matched by the share's pseudo user", () async {
         const guest = User(
           id: -12,

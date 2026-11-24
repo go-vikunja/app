@@ -899,7 +899,9 @@ final class _ReadTransport {
 
   /// v2 answers with an envelope, v1 with a bare array and pagination
   /// headers. Nothing on v1 reports the total or the page size the server
-  /// applied, so the latter is the request's, capped like the server does.
+  /// applied, so the latter is the request's, capped like the server does;
+  /// without its page-count header (a proxy dropped it) the page count is
+  /// null.
   Page<T> page<T>(
     Response<Object?> response, {
     required int page,
@@ -927,14 +929,13 @@ final class _ReadTransport {
       case ApiVersion.v1:
         if (data is List<Object?>) {
           final maxPerPage = _connection.info.maxItemsPerPage;
-          final totalPages = int.tryParse(
-            response.headers.value('x-pagination-total-pages') ?? '',
-          );
           return Page(
             items: decode(response, (_) => _parseAll(data, parse)),
             page: page,
             perPage: min(perPage ?? maxPerPage, maxPerPage),
-            totalPages: totalPages ?? page,
+            totalPages: int.tryParse(
+              response.headers.value('x-pagination-total-pages') ?? '',
+            ),
           );
         }
     }
@@ -948,7 +949,10 @@ final class _ReadTransport {
   }) => collectAllPages(
     (page) async {
       final current = await fetch(page);
-      return (items: current.items, totalPages: current.totalPages);
+      return (
+        items: current.items,
+        totalPages: current.totalPages ?? (current.hasMore ? page + 1 : page),
+      );
     },
     idOf: idOf,
     what: what,

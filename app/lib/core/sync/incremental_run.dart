@@ -3,7 +3,9 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/chunks.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
+import 'package:vikunja_mobile/core/sync/gone_projects.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
 import 'package:vikunja_mobile/core/sync/newest_updated.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
@@ -17,12 +19,13 @@ final _log = Logger('SyncEngine');
 typedef SyncProgress = void Function(SyncPhase phase, {int done, int? total});
 
 /// Has the next incremental run pull the projects' tasks whole, as it does
-/// for projects new to this device or un-archived since its last run: for
-/// projects the app stored itself from a write's answer, which the run then
-/// finds unchanged. A completed run clears the mark, a full one pulls
-/// everything anyway, unless the mark was made after the run started, also
-/// in a resumed run's first part; a stopped full run starts over (see
-/// [IncrementalRun]), one under way saves its checkpoint again.
+/// for projects new to this device, or archived or un-archived elsewhere
+/// since its last run: for projects the app stored itself from a write's
+/// answer, which the run then finds unchanged. A completed run clears the
+/// mark, a full one pulls everything anyway, unless the mark was made after
+/// the run started, also in a resumed run's first part; a stopped full run
+/// starts over (see [IncrementalRun]), one under way saves its checkpoint
+/// again.
 Future<void> pullWholeOnNextRun(AppDatabase db, Set<int> projectIds) =>
     db.transaction(() async {
       final state = await db.syncStateDao.readAll();
@@ -49,16 +52,17 @@ typedef _ProjectDiff = ({
 /// (removed projects are purged with their tasks), labels are re-pulled,
 /// and the tasks changed since `since` come by keyset over `(updated, id)`
 /// from `GET /tasks`, plus `GET /projects/{id}/tasks` for archived projects
-/// that changed. New and un-archived projects are pulled whole. A deleted
-/// task leaves no trace, so the server's count of `GET /tasks` is compared
-/// with the local one of the same scope; only when they differ are the live
-/// projects counted one by one and the mismatching ones reconciled by id. A
-/// project's `updated` is not the trigger for that: it has second precision
-/// and misses a change within the second a sync last saw. A project's tasks
-/// are purged only once its ids are complete, so a failed run never
-/// deletes. Rows that equal the local ones are not written, so a run that
-/// finds nothing new leaves the database's watchers alone. Last comes the
-/// Overview's saved filter, see `downloadOverviewFilter`.
+/// that changed. New, un-archived and newly archived projects are pulled
+/// whole. A deleted task leaves no trace, so the server's count of
+/// `GET /tasks` is compared with the local one of the same scope; only when
+/// they differ are the live projects counted one by one and the mismatching
+/// ones reconciled by id. A project's `updated` is not the trigger for that:
+/// it has second precision and misses a change within the second a sync
+/// last saw. A project's tasks are purged only once its ids are complete, so
+/// a failed run never deletes. Rows that equal the local ones are not
+/// written, so a run that finds nothing new leaves the database's watchers
+/// alone. Last comes the Overview's saved filter, see
+/// `downloadOverviewFilter`.
 final class IncrementalRun {
   new({
     required this._db,
@@ -130,25 +134,29 @@ final class IncrementalRun {
       await _inProject(id, gone, () => _reconcile(id));
       _report(SyncPhase.reconcile, done: ++examined, total: whole.length);
     }
-    if (await _totalsToWalk(diff.archived) case final totals?) {
+    if (await _totalsToWalk(diff.archived) case (:final remember)) {
       final live = [
         for (final id in diff.all)
           if (!diff.archived.contains(id) && !pulledWhole.contains(id)) id,
       ];
       final total = whole.length + live.length;
       final goneBefore = gone.length;
-      var reconciled = 0;
+      var settled = true;
       for (final id in live) {
         await _inProject(id, gone, () async {
-          if (await _countDiffers(id)) {
-            reconciled++;
-            await _reconcile(id);
-          }
+          if (!await _countDiffers(id)) return;
+          final (:purged, :kept) = await _reconcile(id);
+          if (purged > 0 || kept > 0) settled = false;
         });
         _report(SyncPhase.reconcile, done: ++examined, total: total);
       }
-      if (reconciled == 0 && gone.length == goneBefore) {
-        await _db.syncStateDao.write({SyncStateKeys.unexplainedTotals: totals});
+      if (remember != null && settled && gone.length == goneBefore) {
+        await _db.transaction(() async {
+          await _keepLease();
+          await _db.syncStateDao.write({
+            SyncStateKeys.unexplainedTotals: remember,
+          });
+        });
       }
     }
     await downloadOverviewFilter(
@@ -164,17 +172,20 @@ final class IncrementalRun {
 
   /// All pages, archived projects included; pseudo projects repeat on every
   /// page and are skipped, only the saved filters' names are kept. One the
-  /// server no longer lists is gone with its tasks. Added and un-archived
-  /// projects are pulled whole, and so are the ones a failed run left
-  /// pending; an archived project whose `updated` differs, or that is newly
-  /// archived (itself or through a parent, which takes its tasks out of
-  /// `GET /tasks`), gets its delta through the project. Only rows that
-  /// differ from the local ones are written.
+  /// server no longer lists is gone with its tasks. Added, un-archived and
+  /// newly archived projects (itself or through a parent) are pulled whole,
+  /// and so are the ones a failed run left pending: archiving takes the
+  /// tasks out of `GET /tasks` without bumping their `updated`, so a full
+  /// run that read the project as live may have purged them or never stored
+  /// them (decision log: Sync). An archived project whose `updated` differs
+  /// gets its delta through the project. Only rows that differ from the
+  /// local ones are written.
   ///
-  /// A project new here or no longer archived (itself or through a parent)
-  /// clears a stopped full run's checkpoint with the project rows: that run
-  /// may have passed the project's tasks while they were out of its reach,
-  /// and continuing it would purge them.
+  /// A project pulled whole or no longer archived (itself or through a
+  /// parent) clears a stopped full run's checkpoint with the project rows:
+  /// that run may have passed the project's tasks while they were out of
+  /// its reach, or read it as live and passed it in its archived phase, and
+  /// continuing it would purge them.
   Future<_ProjectDiff> _syncProjects() async {
     final local = {for (final p in await _db.projectsDao.loadAll()) p.id: p};
     final pendingBefore = _parseIds(
@@ -203,6 +214,7 @@ final class IncrementalRun {
         done: collected.length,
         total: page.total,
       ),
+      stored: local.keys,
     );
     final removed = [
       for (final id in local.keys)
@@ -218,26 +230,26 @@ final class IncrementalRun {
     final changed = <Project>[];
     for (final project in remote.values) {
       final before = local[project.id];
-      if (before == null) {
+      final archivedNow = archived.contains(project.id);
+      if (before == null ||
+          (before.isArchived && !project.isArchived) ||
+          (archivedNow && !archivedBefore.contains(project.id))) {
         pulledWhole.add(project.id);
-      } else if (before.isArchived && !project.isArchived) {
-        pulledWhole.add(project.id);
-      } else if (archived.contains(project.id) &&
-          (!_sameMoment(before.updated, project.updated) ||
-              !archivedBefore.contains(project.id))) {
+      } else if (archivedNow && !_sameMoment(before.updated, project.updated)) {
         archivedChanged.add(project.id);
       }
       if (before == null || !_sameProject(before, project)) {
         changed.add(project);
       }
     }
-    final newlyLive =
+    final restartsFullRun =
         pulledWhole.isNotEmpty ||
         archivedBefore.any(
           (id) => remote.containsKey(id) && !archived.contains(id),
         );
     await _db.transaction(() async {
-      if (newlyLive) await _db.syncStateDao.write(SyncCheckpoint.cleared);
+      await _keepLease();
+      if (restartsFullRun) await _db.syncStateDao.write(SyncCheckpoint.cleared);
       if (changed.isNotEmpty) await _db.projectsDao.upsertAll(changed);
       await storeSavedFilters(_db, savedFiltersIn(pseudo));
       if (removed.isNotEmpty) {
@@ -281,12 +293,17 @@ final class IncrementalRun {
       idOf: (label) => label.id,
       onPage: (collected, page) =>
           _report(SyncPhase.labels, done: collected.length, total: page.total),
+      stored: [
+        for (final id in local.keys)
+          if (id > 0) id,
+      ],
     );
     final changed = [
       for (final label in byId.values)
         if (!_sameLabel(local[label.id], label)) label,
     ];
     await _db.transaction(() async {
+      await _keepLease();
       if (changed.isNotEmpty) await _db.labelsDao.upsertAll(changed);
       await _db.labelsDao.purgeNotIn(byId.keys, remappedBefore: remappedBefore);
     });
@@ -338,46 +355,54 @@ final class IncrementalRun {
       newest?.addTasks(items);
       count += items.length;
       _report(SyncPhase.delta, done: count);
-      if (items.length < page.perPage && !page.hasMore) return count;
+      if (endsKeysetWalk(page)) return count;
       filter = TaskFilters.updatedAfter(cursor!.$1, cursor.$2);
     }
   }
 
   /// The server's total of `GET /tasks` and the local one of that scope
   /// (`TasksDao.countAcrossProjects`), `remote,local`, when they differ and
-  /// the live projects are to be walked. Null when they match, or when such
-  /// a walk found no project that differed at these very totals: it cannot
-  /// locate a difference among an archived project's favourites (one
-  /// deleted on the server right before its project was archived, a toggle
-  /// the server refused there), so it is not repeated on every run. Other
-  /// totals forget them.
-  Future<String?> _totalsToWalk(Set<int> archived) async {
+  /// the live projects are to be walked; the walk keeps it (`remember`) when
+  /// it settled nothing. Null when they match, or when a walk at these very
+  /// totals purged nothing, found no project gone and kept no task for
+  /// another write of its run: walking again could not settle what it left,
+  /// so it is not walked on every run. Such are a favourite in an archived
+  /// project, which no walk reaches (deleted on the server right before its
+  /// project was archived, a toggle the server refused there), and a task
+  /// kept for its queued op, such as an edit refused because the web deleted
+  /// the task, until it is discarded. Other totals forget them. A count the
+  /// server did not report never matches and is never kept: only a walk can
+  /// find a delete then (decision log: Sync).
+  Future<({String? remember})?> _totalsToWalk(Set<int> archived) async {
     final page = await _request(
       () => _client.tasks.list(const TaskQuery(perPage: 1)),
     );
     final remote = page.total ?? page.totalPages;
     final local = await _db.tasksDao.countAcrossProjects(archived);
-    final totals = '$remote,$local';
+    final totals = remote == null ? null : '$remote,$local';
     final unexplained = (await _db.syncStateDao
         .readAll())[SyncStateKeys.unexplainedTotals];
     if (unexplained != null && unexplained != totals) {
       await _db.syncStateDao.write({SyncStateKeys.unexplainedTotals: null});
     }
     if (remote == local) return null;
-    final walked = unexplained == totals;
+    final walked = totals != null && unexplained == totals;
     _log.info(
-      'Sync run $runId: $remote tasks on the server and $local here'
+      'Sync run $runId: ${remote ?? 'an unreported number of'} tasks on the '
+      'server and $local here'
       '${walked ? ', which a walk over the projects did not explain' : ''}',
     );
-    return walked ? null : totals;
+    return walked ? null : (remember: totals);
   }
 
-  /// `per_page=1` reports the count: `total` on v2, the page count on v1.
+  /// `per_page=1` reports the count: `total` on v2, the page count on v1;
+  /// one the server did not report counts as differing.
   Future<bool> _countDiffers(int projectId) async {
     final page = await _request(
       () => _client.tasks.listInProject(projectId, const TaskQuery(perPage: 1)),
     );
     final remote = page.total ?? page.totalPages;
+    if (remote == null) return true;
     final local = await _db.tasksDao.countInProject(projectId);
     if (remote != local) {
       _log.info(
@@ -389,8 +414,9 @@ final class IncrementalRun {
   }
 
   /// Every task of the project by id, done ones included, upserted as they
-  /// arrive; the local tasks the server did not return go at the end.
-  Future<void> _reconcile(int projectId) async {
+  /// arrive; the local tasks the server did not return go at the end, except
+  /// those another write stored during the run, which it reports as kept.
+  Future<({int purged, int kept})> _reconcile(int projectId) async {
     final seen = <int>{};
     var lastId = 0;
     while (true) {
@@ -420,9 +446,9 @@ final class IncrementalRun {
       }
       await _upsertChanged(items);
       seen.addAll(items.map((task) => task.id));
-      if (items.length < page.perPage && !page.hasMore) break;
+      if (endsKeysetWalk(page)) break;
     }
-    final purged = await _db.transaction(() async {
+    final result = await _db.transaction(() async {
       await _keepLease();
       return await _db.tasksDao.purgeInProjectExcept(
         projectId,
@@ -432,8 +458,9 @@ final class IncrementalRun {
     });
     _log.info(
       'Sync run $runId: project $projectId reconciled, ${seen.length} tasks, '
-      '$purged purged',
+      '${result.purged} purged, ${result.kept} kept for another write',
     );
+    return result;
   }
 
   /// Every change bumps a task's `updated` (asynchronously for comments,
@@ -442,26 +469,29 @@ final class IncrementalRun {
   /// only the task it was made on; the upsert of that task corrects the
   /// inverse edges of the other one. Reminders are compared
   /// too: a date change can make the server merge reminders without a
-  /// newer `updated` than the answer the row took them from.
+  /// newer `updated` than the answer the row took them from. In slices of
+  /// [sqlChunkSize] tasks, as the full run stores a page (decision log:
+  /// Sync).
   Future<void> _upsertChanged(List<Task> items) async {
-    final local = await _db.tasksDao.findAll(items.map((task) => task.id));
-    final changed = [
-      for (final task in items)
-        if (!_unchanged(local[task.id], task)) task,
-    ];
-    if (changed.isNotEmpty) {
-      await _db.tasksDao.upsertAll(
-        changed,
-        syncRunId: runId,
-        withCommentState: true,
-      );
+    for (final slice in chunksOf(items)) {
+      _checkActive();
+      final local = await _db.tasksDao.findAll(slice.map((task) => task.id));
+      final changed = [
+        for (final task in slice)
+          if (!_unchanged(local[task.id], task)) task,
+      ];
+      if (changed.isNotEmpty) {
+        await _db.tasksDao.upsertAll(
+          changed,
+          syncRunId: runId,
+          withCommentState: true,
+        );
+      }
     }
   }
 
-  /// A project that answers "not found" (3001, or since 2.8.0 3018 from the
-  /// trash) was deleted or trashed since the project list, one that answers
-  /// "forbidden" (7003) was unshared; both go with their tasks. A missing
-  /// route is not that.
+  /// The project's task requests; a project found gone ([meansProjectGone])
+  /// goes with its tasks and is not asked again in this run.
   Future<void> _inProject(
     int projectId,
     Set<int> gone,
@@ -471,13 +501,14 @@ final class IncrementalRun {
     try {
       await body();
     } on VikunjaFailure catch (failure) {
-      if (!_projectGone(failure)) rethrow;
+      if (!meansProjectGone(failure)) rethrow;
       gone.add(projectId);
-      await _db.transaction(() async {
-        await _db.projectsDao.purge([projectId]);
-        await _db.tasksDao.purgeInProjects([projectId]);
-      });
-      _log.info('Sync run $runId: project $projectId is gone, purged');
+      await purgeGoneProject(
+        _db,
+        projectId,
+        runId: runId,
+        holdLease: _keepLease,
+      );
     }
   }
 
@@ -490,12 +521,6 @@ final class IncrementalRun {
     _checkActive();
     return response;
   }
-
-  static bool _projectGone(VikunjaFailure failure) => switch (failure) {
-    NotFound(routeAbsent: false) => true,
-    Forbidden(code: int()) => true,
-    _ => false,
-  };
 
   static bool _unchanged(Task? stored, Task incoming) =>
       stored != null &&

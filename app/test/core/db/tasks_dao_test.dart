@@ -279,6 +279,34 @@ void main() {
         expect(labelRows.map((r) => r.taskId), [2]);
       },
     );
+
+    test('a resumed run also keeps the tasks a run begun after it stored, and '
+        'a run that never stopped does not', () async {
+      String runAt(Duration offset) =>
+          '${monday.add(offset).millisecondsSinceEpoch.toRadixString(36)}-k3j9';
+      final thisRun = runAt(Duration.zero);
+      final laterRun = runAt(const Duration(minutes: 10));
+      final marks = [
+        runAt(const Duration(hours: -1)),
+        thisRun,
+        laterRun,
+        '$laterRun+',
+        'not a run',
+      ];
+      for (final (index, mark) in marks.indexed) {
+        await upsert([
+          Task(id: index + 1, title: 'Task ${index + 1}', projectId: 5),
+        ], run: mark);
+      }
+      Future<List<int>> left() async =>
+          [for (final row in await db.select(db.tasks).get()) row.id]..sort();
+
+      expect(await db.tasksDao.purgeNotInRun(thisRun, keepLaterRuns: true), 2);
+      expect(await left(), [2, 3, 4]);
+
+      expect(await db.tasksDao.purgeNotInRun(thisRun), 2);
+      expect(await left(), [2]);
+    });
   });
 
   group('per project', () {
@@ -390,7 +418,7 @@ void main() {
     test('purging except keeps the given ids and other projects', () async {
       expect(
         await db.tasksDao.purgeInProjectExcept(5, {1, 3, 4}, runId: 'run'),
-        1,
+        (purged: 1, kept: 0),
       );
       expect(
         [
@@ -399,10 +427,26 @@ void main() {
         ],
         [(5, 1), (5, 3), (6, 4)],
       );
+      expect(await db.tasksDao.purgeInProjectExcept(5, {1, 3}, runId: 'run'), (
+        purged: 0,
+        kept: 0,
+      ));
+    });
+
+    test('purging except leaves a task another write stored during the run '
+        'and counts it as kept; a later run purges it', () async {
+      await upsert([sampleTask(id: 2, title: 'B', projectId: 5)], run: 'run+');
+
+      expect(await db.tasksDao.purgeInProjectExcept(5, {1, 3}, runId: 'run'), (
+        purged: 0,
+        kept: 1,
+      ));
+      expect(await db.tasksDao.find(2), isNotNull);
       expect(
-        await db.tasksDao.purgeInProjectExcept(5, {1, 3}, runId: 'run'),
-        0,
+        await db.tasksDao.purgeInProjectExcept(5, {1, 3}, runId: 'later'),
+        (purged: 1, kept: 0),
       );
+      expect(await db.tasksDao.find(2), isNull);
     });
   });
 

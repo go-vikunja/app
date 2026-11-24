@@ -20,9 +20,11 @@ abstract final class SyncStateKeys {
   static const watermark = 'watermark';
 
   /// The server's and the local total of `GET /tasks`, comma separated, at
-  /// which the last walk over the live projects found none that differed:
-  /// incremental runs skip that walk while both stay the same. Other
-  /// totals and a completed full run clear it.
+  /// which the last walk over the live projects settled nothing: it purged
+  /// no task, found no project gone and kept none for another write of its
+  /// run. Incremental runs skip that walk while both stay the same; a total
+  /// the server did not report is never kept. Other totals and a completed
+  /// full run clear it.
   static const unexplainedTotals = 'unexplained_totals';
 
   /// Ids of the projects whose tasks still have to be pulled whole, comma
@@ -103,10 +105,11 @@ enum DoneFilter {
   final String filter;
 }
 
-/// Where a sync run is, written after every page so that a killed app
-/// continues where it stopped. [lastId] is the keyset cursor of the current
-/// task list; [archivedProjectId] the archived project whose tasks are being
-/// pulled; [newestUpdatedAtStart] is the newest task `updated` the server
+/// Where a sync run is, written after every page, and after every slice of
+/// a page stored in slices, so that a killed app continues where it
+/// stopped. [lastId] is the keyset cursor of the current task list;
+/// [archivedProjectId] the archived project whose tasks are being pulled;
+/// [newestUpdatedAtStart] is the newest task `updated` the server
 /// had when the task phase began, a server time that bounds the catch-up
 /// pass before the purge (null for an account without tasks).
 /// [wholePullMarks] is [SyncStateKeys.wholePullMarks] as the run started,
@@ -126,6 +129,12 @@ final class SyncCheckpoint {
     this.archivedProjectId = 0,
   });
 
+  /// The [total] of a task phase whose server reported no count. It must
+  /// not stay null: a null total means not counted yet, and a resumed run
+  /// would then probe the newest `updated` again, too late for its
+  /// catch-up.
+  static const unknownTotal = -1;
+
   final String runId;
   final DateTime? newestUpdatedAtStart;
   final int? wholePullMarks;
@@ -135,6 +144,9 @@ final class SyncCheckpoint {
   final int lastId;
   final DoneFilter doneFilter;
   final int archivedProjectId;
+
+  /// [total] as progress shows it, null while unknown.
+  int? get shownTotal => total == unknownTotal ? null : total;
 
   static SyncCheckpoint? fromState(Map<String, String> state) {
     final runId = state[SyncStateKeys.runId];
@@ -239,18 +251,31 @@ final class SyncCheckpoint {
       'whole pull marks: $wholePullMarks)';
 }
 
-/// The value of [SyncStateKeys.syncLease], `{"owner", "until", "run"}` with
-/// `until` ISO 8601 UTC. [run] is the id of the run that holds it, absent
-/// until the run has started: a task that a write other than the sync
-/// stores meanwhile is marked as stored during that run
-/// (`TasksDao.upsertAll`), and the run's purges leave it.
+/// When the run named [runId] began, from the time the id starts with; a
+/// task's mark of a write during that run (`<run id>+`) reads the same.
+/// Null for anything else.
+DateTime? runStartedAt(String? runId) {
+  final millis = int.tryParse(runId?.split('-').first ?? '', radix: 36);
+  // DateTime throws beyond 8.64e15 ms either side of the epoch.
+  if (millis == null || millis.abs() > 8640000000000000) return null;
+  return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+}
+
+/// The value of [SyncStateKeys.syncLease], `{"owner", "until", "run",
+/// "process"}` with `until` ISO 8601 UTC. [run] is the id of the run that
+/// holds it, absent until the run has started: a task that a write other
+/// than the sync stores meanwhile is marked as stored during that run
+/// (`TasksDao.upsertAll`), and the run's purges leave it. [process] is the
+/// id of the process whose engine holds the lease; a lease an older version
+/// wrote has none.
 @immutable
 final class SyncLease {
-  const new({required this.owner, required this.until, this.run});
+  const new({required this.owner, required this.until, this.run, this.process});
 
   final String owner;
   final DateTime until;
   final String? run;
+  final int? process;
 
   static SyncLease? parse(String? raw) {
     if (raw == null) return null;
@@ -267,6 +292,10 @@ final class SyncLease {
             final String run => run,
             _ => null,
           },
+          process: switch (json['process']) {
+            final int process => process,
+            _ => null,
+          },
         );
       }
     } on FormatException {
@@ -279,5 +308,6 @@ final class SyncLease {
     'owner': owner,
     'until': until.toIso8601String(),
     'run': ?run,
+    'process': ?process,
   });
 }

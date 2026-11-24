@@ -942,17 +942,33 @@ final class OutboxSender {
   }
 
   /// Every label on the server titled [title], ignoring case, from all
-  /// pages of a search for it.
+  /// pages of a search for it, to the last page or one without a new id
+  /// ([_bringsNewId]).
   Future<List<Label>> _labelsTitledOnServer(String title) async {
     final lower = title.toLowerCase();
+    final seen = <int>{};
     final matches = <Label>[];
     for (var page = 1; ; page++) {
       final current = await _read.labels.list(page: page, search: title);
+      if (!_bringsNewId(current.items.map((label) => label.id), seen)) {
+        return matches;
+      }
       matches.addAll(
         current.items.where((label) => label.title.toLowerCase() == lower),
       );
       if (!current.hasMore) return matches;
     }
+  }
+
+  /// Adds [ids] to [seen]; false when none was new. Without a page count
+  /// (a proxy dropped v1's header) every full page has more, and a page
+  /// past the end may repeat the last one, so a lookup ends there.
+  static bool _bringsNewId(Iterable<int> ids, Set<int> seen) {
+    var added = false;
+    for (final id in ids) {
+      if (seen.add(id)) added = true;
+    }
+    return added;
   }
 
   /// The create of [op] goes with the task's queued delete and its row,
@@ -1337,6 +1353,7 @@ final class OutboxSender {
     final title = withoutNul(newTask.title);
     final userId = _currentUserId();
     final adopted = await _db.tasksDao.remappedServerIds();
+    final seen = <int>{};
     Task? found;
     search:
     for (var number = 1; ; number++) {
@@ -1344,6 +1361,7 @@ final class OutboxSender {
         newTask.projectId,
         query.copyWith(page: number),
       );
+      if (!_bringsNewId(page.items.map((task) => task.id), seen)) break;
       for (final candidate in page.items) {
         if (found != null && candidate.created != found.created) break search;
         if (candidate.title != title ||

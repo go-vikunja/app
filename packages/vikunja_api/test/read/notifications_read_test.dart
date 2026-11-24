@@ -233,14 +233,15 @@ void main() {
       expect(page.hasMore, isFalse);
     });
 
-    test('v1 without the total-pages header is a single page', () async {
+    test('v1 without the total-pages header has no page count, and a short '
+        'page is the last', () async {
       final dio = fakeDio({
         '$_v1/notifications?page=1': _v1List([_notification(5)]),
       });
 
       final page = await _notifications(dio, hasV2: false).list();
 
-      expect(page.totalPages, 1);
+      expect(page.totalPages, isNull);
       expect(page.hasMore, isFalse);
     });
 

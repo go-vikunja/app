@@ -836,7 +836,10 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// The counts mirror the server, so they include the rows queued for
   /// deletion: the server holds those until the delete is sent, and the
   /// sync's probe must not see a mismatch on every run until then. Tasks
-  /// created here and not yet sent are left out for the same reason.
+  /// created here and not yet sent are left out for the same reason. Rows
+  /// with a queued or failed edit count too: left out, a failed edit of a
+  /// task the server still has, and every unsent one, would differ on every
+  /// run (decision log: Sync).
   Future<int> count() {
     final count = tasks.id.count();
     final query = selectOnly(tasks)
@@ -975,22 +978,31 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
             ),
           );
 
-  /// Removes the tasks of [projectId] whose id is not in [keep], except
-  /// those another write stored while [runId] went, see [upsertAll]. The
-  /// ids to delete are picked locally, so the statements stay small
-  /// whatever the size of [keep].
-  Future<int> purgeInProjectExcept(
+  /// Removes the tasks of [projectId] whose id is not in [keep]; `kept`
+  /// counts those it leaves because another write stored them while [runId]
+  /// went (see [upsertAll]). The ids are picked locally, so the statements
+  /// stay small whatever the size of [keep].
+  Future<({int purged, int kept})> purgeInProjectExcept(
     int projectId,
     Set<int> keep, {
     required String runId,
   }) => transaction(() async {
-    final candidates = await _ids(
-      tasks.projectId.equals(projectId) & _purgeable & _notStoredDuring(runId),
-    );
-    return await _purge([
-      for (final id in candidates)
-        if (!keep.contains(id)) id,
-    ]);
+    final storedDuring = _storedDuring(runId);
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id, tasks.syncRunId])
+      ..where(tasks.projectId.equals(projectId) & _purgeable);
+    final gone = <int>[];
+    var kept = 0;
+    for (final row in await query.get()) {
+      final id = row.read(tasks.id)!;
+      if (keep.contains(id)) continue;
+      if (row.read(tasks.syncRunId) == storedDuring) {
+        kept++;
+      } else {
+        gone.add(id);
+      }
+    }
+    return (purged: await _purge(gone), kept: kept);
   });
 
   /// Deletes the rows [gone], whose labels, assignees, reminders and
@@ -1028,7 +1040,9 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// stored under the label edits still queued; one whose delete is queued
   /// is left out, with its place on the tasks. One transaction, so that
   /// a change queued meanwhile is not overwritten with the queue as it was
-  /// read.
+  /// read. It binds one SQL variable per task, as [findAll] and
+  /// [upsertRunPage] do, so the sync passes a page in slices of
+  /// [sqlChunkSize] (decision log: Sync).
   Future<void> upsertAll(
     List<Task> all, {
     String? syncRunId,
@@ -1150,10 +1164,11 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     await _matchInverseRows(ids.toSet(), relationRows, queuedRelations);
   });
 
-  /// [upsertAll] for a page of a full sync run: a task that equals its
-  /// stored row and children and has no queued change only takes the run's
-  /// mark, without notifying the watchers, as none of them reads the mark.
-  /// So a page that brings nothing new leaves the lists on screen alone.
+  /// [upsertAll] for a slice of a full sync run's page: a task that equals
+  /// its stored row and children and has no queued change only takes the
+  /// run's mark, without notifying the watchers, as none of them reads the
+  /// mark. So a page that brings nothing new leaves the lists on screen
+  /// alone.
   Future<void> upsertRunPage(List<Task> all, {required String syncRunId}) =>
       transaction(() async {
         final ids = [for (final task in all) task.id];
@@ -1514,23 +1529,35 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Removes every task that [syncRunId] did not return and no other write
-  /// stored while it went (see [upsertAll]), see [_purge].
-  Future<int> purgeNotInRun(String syncRunId) => transaction(
-    () async => await _purge(
-      await _ids(
-        (tasks.syncRunId.isNull() |
-                tasks.syncRunId.isNotIn([
-                  syncRunId,
-                  _storedDuring(syncRunId),
-                ])) &
-            _purgeable,
-      ),
-    ),
-  );
-
-  Expression<bool> _notStoredDuring(String runId) =>
-      tasks.syncRunId.isNull() |
-      tasks.syncRunId.equals(_storedDuring(runId)).not();
+  /// stored while it went (see [upsertAll]), see [_purge]. With
+  /// [keepLaterRuns], for a run resumed from its checkpoint, a task that a
+  /// run begun after it stored stays as well: the resumed run does not read
+  /// again what it passed before it stopped, and that run read the task from
+  /// the server since (decision log: Sync). A run that never stopped held the
+  /// lease throughout, so no other run marked a row before its purge.
+  Future<int> purgeNotInRun(String syncRunId, {bool keepLaterRuns = false}) =>
+      transaction(() async {
+        final startedAt = keepLaterRuns ? runStartedAt(syncRunId) : null;
+        final query = selectOnly(tasks)
+          ..addColumns([tasks.id, tasks.syncRunId])
+          ..where(
+            (tasks.syncRunId.isNull() |
+                    tasks.syncRunId.isNotIn([
+                      syncRunId,
+                      _storedDuring(syncRunId),
+                    ])) &
+                _purgeable,
+          );
+        bool storedLater(String? mark) =>
+            switch ((startedAt, runStartedAt(mark))) {
+              (final start?, final marked?) => marked.isAfter(start),
+              _ => false,
+            };
+        return await _purge([
+          for (final row in await query.get())
+            if (!storedLater(row.read(tasks.syncRunId))) row.read(tasks.id)!,
+        ]);
+      });
 
   /// Apart from the run's own mark, so that a project reconcile still
   /// purges what the run's delta stored and the server deleted since.

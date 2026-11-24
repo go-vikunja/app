@@ -27,25 +27,33 @@ void main() {
     ..allProjects = [sampleProject(id: 1, title: 'Work')]
     ..allTasks = tasks;
 
-  DefaultSyncEngine engine(FakeSyncClient client, {bool headless = false}) {
+  DefaultSyncEngine engine(
+    FakeSyncClient client, {
+    bool headless = false,
+    int? processId,
+    Future<void> Function(Duration)? delay,
+  }) {
     final engine = DefaultSyncEngine(
       db: db,
       client: client,
       perPage: 2,
       now: () => now,
       headless: headless,
-      delay: (_) => pumpEventQueue(),
+      processId: processId,
+      delay: delay ?? (_) => pumpEventQueue(),
     );
     addTearDown(engine.dispose);
     return engine;
   }
 
-  Future<void> leaseTo(String owner, DateTime until) => db.syncStateDao.write({
-    SyncStateKeys.syncLease: jsonEncode({
-      'owner': owner,
-      'until': until.toIso8601String(),
-    }),
-  });
+  Future<void> leaseTo(String owner, DateTime until, {int? process}) =>
+      db.syncStateDao.write({
+        SyncStateKeys.syncLease: jsonEncode({
+          'owner': owner,
+          'until': until.toIso8601String(),
+          'process': ?process,
+        }),
+      });
 
   Future<Map<String, String>> state() => db.syncStateDao.readAll();
 
@@ -54,8 +62,8 @@ void main() {
     now = DateTime.utc(2026, 10, 10, 12);
   });
 
-  test('a run waits for the one another engine holds, and purges nothing '
-      'that one marked', () async {
+  test('a run waits for the one another engine of this process holds, and '
+      'purges nothing that one marked', () async {
     final first = server();
     final gate = RequestGate()..pattern = 'done = true';
     first.beforeRequest = gate.call;
@@ -79,17 +87,92 @@ void main() {
     expect((await state()).containsKey(SyncStateKeys.syncLease), isFalse);
   });
 
-  test('a headless engine gives way to a run in progress and syncs '
+  test('a sync that an ended process left under way resumes at once instead '
+      'of waiting for its lease, and the run it displaced purges '
       'nothing', () async {
+    final first = server();
+    final gate = RequestGate()..pattern = 'done = true';
+    first.beforeRequest = gate.call;
+    final running = engine(first, processId: 2).ensureInitialSync();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    expect(
+      jsonDecode((await state())[SyncStateKeys.syncLease]!),
+      containsPair('process', 2),
+    );
+
+    final second = server();
+    final resuming = engine(
+      second,
+      processId: 1,
+      delay: (_) => fail('waited for the lease'),
+    );
+    final seen = <SyncStatus>[];
+    final subscription = resuming.status.listen(seen.add);
+    addTearDown(subscription.cancel);
+    await resuming.ensureInitialSync();
+
+    expect(
+      seen,
+      contains(
+        isA<SyncRunning>().having((status) => status.initial, 'initial', true),
+      ),
+    );
+    expect(seen.last, isA<SyncIdle>());
+    expect(second.requests, isNot(contains(startsWith('projects page'))));
+    expect(await db.tasksDao.count(), 6);
+    expect((await state())[SyncStateKeys.lastSyncedAt], isNotNull);
+    expect((await state()).containsKey(SyncStateKeys.syncLease), isFalse);
+
+    gate
+      ..pattern = null
+      ..release();
+    await running;
+
+    expect(await db.tasksDao.count(), 6);
+  });
+
+  test('a lease another process left is taken over at once, also by a '
+      'headless engine', () async {
     await engine(server()).ensureInitialSync();
-    await leaseTo('elsewhere', now.add(const Duration(minutes: 1)));
-    final before = await state();
+    for (final headless in [false, true]) {
+      await leaseTo('ended', now.add(const Duration(minutes: 2)), process: 2);
+      final client = server();
+
+      final outcome = await engine(
+        client,
+        headless: headless,
+        processId: 1,
+        delay: (_) => fail('waited for the lease'),
+      ).refresh();
+
+      expect(outcome, SyncOutcome.synced);
+      expect(client.requests, isNotEmpty);
+      expect((await state()).containsKey(SyncStateKeys.syncLease), isFalse);
+    }
+  });
+
+  test('a headless engine gives way to a run in progress in this process, or '
+      'to a lease an older version wrote, and syncs nothing', () async {
+    await engine(server()).ensureInitialSync();
     final client = server();
+    for (final process in [1, null]) {
+      await leaseTo(
+        'elsewhere',
+        now.add(const Duration(minutes: 1)),
+        process: process,
+      );
+      final before = await state();
 
-    expect(await engine(client, headless: true).refresh(), SyncOutcome.skipped);
+      expect(
+        await engine(client, headless: true, processId: 1).refresh(),
+        SyncOutcome.skipped,
+      );
 
-    expect(client.requests, isEmpty);
-    expect(await state(), before);
+      expect(client.requests, isEmpty);
+      expect(await state(), before);
+    }
     await leaseTo('elsewhere', now.subtract(const Duration(minutes: 1)));
     expect(await engine(client, headless: true).refresh(), SyncOutcome.synced);
   });
@@ -223,6 +306,205 @@ void main() {
 
     expect(await running, SyncOutcome.skipped);
     expect(await db.tasksDao.findAll([6, 99]), hasLength(2));
+  });
+
+  test('a full run whose lease another run took purges no archived project '
+      'it finds gone', () async {
+    FakeSyncClient withOld() => FakeSyncClient()
+      ..allProjects = [
+        sampleProject(id: 1, title: 'Work'),
+        sampleProject(id: 2, title: 'Old', archived: true),
+      ]
+      ..allTasks = [
+        ...tasks,
+        sampleTask(id: 7, title: 'Old task', projectId: 2),
+      ];
+    await engine(withOld()).ensureInitialSync();
+    final lastFull = (await state())[SyncStateKeys.lastFullSyncAt];
+    now = now.add(const Duration(minutes: 5));
+    final client = withOld();
+    final gate = RequestGate()..pattern = 'project 2 tasks';
+    client.beforeRequest = gate.call;
+    final running = engine(client).fullResync();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    await leaseTo('elsewhere', now.add(const Duration(minutes: 1)));
+    client.forbiddenProjects.add(2);
+
+    gate
+      ..pattern = null
+      ..release();
+    await running;
+
+    expect(
+      (await db.projectsDao.loadAll()).map((project) => project.id),
+      contains(2),
+    );
+    expect(await db.tasksDao.find(7), isNotNull);
+    expect((await state())[SyncStateKeys.lastFullSyncAt], lastFull);
+    expect(
+      jsonDecode((await state())[SyncStateKeys.syncLease]!),
+      containsPair('owner', 'elsewhere'),
+    );
+  });
+
+  test('an incremental run whose lease another run took purges no project '
+      'it finds gone', () async {
+    final client = server();
+    final sync = engine(client);
+    await sync.ensureInitialSync();
+    now = now.add(const Duration(minutes: 5));
+    // Task 6 is gone on the server, so the projects are counted one by one.
+    client.allTasks = tasks.take(5).toList();
+    final gate = RequestGate()..pattern = 'project 1 tasks';
+    client.beforeRequest = gate.call;
+    final running = sync.refresh();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    await db.syncStateDao.write({SyncStateKeys.syncLease: null});
+    client.forbiddenProjects.add(1);
+
+    gate
+      ..pattern = null
+      ..release();
+
+    expect(await running, SyncOutcome.skipped);
+    expect((await db.projectsDao.loadAll()).map((project) => project.id), [1]);
+    expect(await db.tasksDao.findAll([1, 2, 3, 4, 5, 6]), hasLength(6));
+  });
+
+  test('an incremental run that loses its lease after its walk remembers no '
+      'totals', () async {
+    final client = FakeSyncClient()
+      ..allProjects = [
+        sampleProject(id: 1, title: 'Work'),
+        sampleProject(id: 2, title: 'Home'),
+      ]
+      ..allTasks = [
+        ...tasks,
+        sampleTask(id: 7, title: 'Home task', projectId: 2),
+      ];
+    await engine(client).ensureInitialSync();
+    now = now.add(const Duration(minutes: 5));
+    expect(
+      await db.outboxDao.queueUpdate(
+        6,
+        const TaskChanges(done: true),
+        now: now,
+      ),
+      isTrue,
+    );
+    await db.outboxDao.markFailed(
+      (await db.outboxDao.all()).single.id,
+      const NotFound(code: 4002),
+    );
+    client.allTasks = [
+      for (final task in client.allTasks)
+        if (task.id != 6) task,
+    ];
+    final gate = RequestGate()..pattern = 'project 2 tasks (all) per_page=1';
+    client.beforeRequest = gate.call;
+    final running = engine(client).refresh();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    await db.syncStateDao.write({SyncStateKeys.syncLease: null});
+    gate
+      ..pattern = null
+      ..release();
+
+    expect(await running, SyncOutcome.skipped);
+    expect(
+      (await state()).containsKey(SyncStateKeys.unexplainedTotals),
+      isFalse,
+    );
+    client.requests.clear();
+
+    await engine(client).refresh();
+
+    expect(
+      client.requests,
+      contains('project 1 tasks (all) per_page=1 page=1'),
+    );
+  });
+
+  group('a run whose lease another run took and let go again', () {
+    FakeSyncClient withHome() => server()
+      ..allProjects = [
+        ...server().allProjects,
+        sampleProject(id: 2, title: 'Home'),
+      ]
+      ..allTasks = [
+        ...tasks,
+        sampleTask(id: 7, title: 'Home task', projectId: 2),
+      ]
+      ..allLabels = [const Label(id: 1, title: 'urgent')];
+
+    Future<void> loseLeaseAt(
+      String pattern,
+      FakeSyncClient client,
+      Future<void> Function() run,
+    ) async {
+      final gate = RequestGate()..pattern = pattern;
+      client.beforeRequest = gate.call;
+      final running = run();
+      while (!gate.isHolding) {
+        await pumpEventQueue();
+      }
+      await db.syncStateDao.write({SyncStateKeys.syncLease: null});
+      gate
+        ..pattern = null
+        ..release();
+      await running;
+    }
+
+    test('keeps the projects the server no longer lists, incremental or '
+        'full', () async {
+      final client = withHome();
+      final sync = engine(client);
+      await sync.ensureInitialSync();
+      final lastFull = (await state())[SyncStateKeys.lastFullSyncAt];
+      now = now.add(const Duration(minutes: 5));
+      client
+        ..allProjects = server().allProjects
+        ..allTasks = tasks;
+
+      for (final run in <Future<void> Function()>[
+        sync.refresh,
+        sync.fullResync,
+      ]) {
+        await loseLeaseAt('projects page 1', client, run);
+
+        expect(
+          (await db.projectsDao.loadAll()).map((project) => project.id),
+          contains(2),
+        );
+        expect(await db.tasksDao.find(7), isNotNull);
+        expect((await state())[SyncStateKeys.lastFullSyncAt], lastFull);
+      }
+    });
+
+    test('keeps the labels the server no longer lists, incremental or '
+        'full', () async {
+      final client = withHome();
+      final sync = engine(client);
+      await sync.ensureInitialSync();
+      final lastFull = (await state())[SyncStateKeys.lastFullSyncAt];
+      now = now.add(const Duration(minutes: 5));
+      client.allLabels = [];
+
+      for (final run in <Future<void> Function()>[
+        sync.refresh,
+        sync.fullResync,
+      ]) {
+        await loseLeaseAt('labels page 1', client, run);
+
+        expect(await db.labelsDao.find(1), isNotNull);
+        expect((await state())[SyncStateKeys.lastFullSyncAt], lastFull);
+      }
+    });
   });
 
   test('dispose lets go of the lease of a run under way at once', () async {

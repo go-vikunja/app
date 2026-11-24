@@ -12,13 +12,25 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// unread flag only when the request expands them. Every request is logged;
 /// [beforeRequest] can fail or hold a request.
 final class FakeSyncClient implements VikunjaReadClient {
-  new({this.maxPerPage = 50, this.reportsTotal = true});
+  new({
+    this.maxPerPage = 50,
+    this.reportsTotal = true,
+    this.reportsPageCount = true,
+    this.repeatsLastPage = false,
+  });
 
   /// The server's `max_items_per_page`.
   final int maxPerPage;
 
   /// v2 envelopes carry `total`; v1 headers do not.
   final bool reportsTotal;
+
+  /// v1 behind a proxy that drops x-pagination-total-pages reports no page
+  /// count.
+  final bool reportsPageCount;
+
+  /// Like 2.7.0, a page past the end answers the last one again.
+  final bool repeatsLastPage;
 
   List<Project> allProjects = [];
   List<Project> pseudoProjects = [];
@@ -127,7 +139,10 @@ final class FakeSyncClient implements VikunjaReadClient {
     List<T> appendToEveryPage = const [],
   }) {
     final size = perPage == null || perPage > maxPerPage ? maxPerPage : perPage;
-    final start = (page - 1) * size;
+    var start = (page - 1) * size;
+    if (repeatsLastPage && all.isNotEmpty && start >= all.length) {
+      start = (all.length - 1) ~/ size * size;
+    }
     final items = start >= all.length
         ? <T>[]
         : all.sublist(start, (start + size).clamp(0, all.length));
@@ -135,7 +150,11 @@ final class FakeSyncClient implements VikunjaReadClient {
       items: [...items, ...appendToEveryPage],
       page: page,
       perPage: size,
-      totalPages: all.isEmpty ? 0 : (all.length / size).ceil(),
+      totalPages: !reportsPageCount
+          ? null
+          : all.isEmpty
+          ? 0
+          : (all.length / size).ceil(),
       total: reportsTotal ? all.length : null,
     );
   }
