@@ -10,14 +10,20 @@ part of 'sync_providers.dart';
 // ignore_for_file: type=lint, type=warning
 /// One account's sync status: loading until its engine has reported. Kept
 /// alive, so that once its engine has reported, an account that becomes
-/// active has its status at once.
+/// active has its status at once. It goes on when the engine is rebuilt
+/// over the same database, as for a changed server version: a status that
+/// started over would send the router to the first-sync screen, over
+/// whatever the user was editing.
 
 @ProviderFor(accountSyncStatus)
 final accountSyncStatusProvider = AccountSyncStatusFamily._();
 
 /// One account's sync status: loading until its engine has reported. Kept
 /// alive, so that once its engine has reported, an account that becomes
-/// active has its status at once.
+/// active has its status at once. It goes on when the engine is rebuilt
+/// over the same database, as for a changed server version: a status that
+/// started over would send the router to the first-sync screen, over
+/// whatever the user was editing.
 
 final class AccountSyncStatusProvider
     extends
@@ -29,7 +35,10 @@ final class AccountSyncStatusProvider
     with $FutureModifier<SyncStatus>, $StreamProvider<SyncStatus> {
   /// One account's sync status: loading until its engine has reported. Kept
   /// alive, so that once its engine has reported, an account that becomes
-  /// active has its status at once.
+  /// active has its status at once. It goes on when the engine is rebuilt
+  /// over the same database, as for a changed server version: a status that
+  /// started over would send the router to the first-sync screen, over
+  /// whatever the user was editing.
   AccountSyncStatusProvider._({
     required AccountSyncStatusFamily super.from,
     required String super.argument,
@@ -73,11 +82,14 @@ final class AccountSyncStatusProvider
   }
 }
 
-String _$accountSyncStatusHash() => r'5945a68d49c5b2b8364ab61455fcd6f6c2f6c0b8';
+String _$accountSyncStatusHash() => r'a61c817c79cf55b0dd8fa3b99aa7e09803c85d64';
 
 /// One account's sync status: loading until its engine has reported. Kept
 /// alive, so that once its engine has reported, an account that becomes
-/// active has its status at once.
+/// active has its status at once. It goes on when the engine is rebuilt
+/// over the same database, as for a changed server version: a status that
+/// started over would send the router to the first-sync screen, over
+/// whatever the user was editing.
 
 final class AccountSyncStatusFamily extends $Family
     with $FunctionalFamilyOverride<Stream<SyncStatus>, String> {
@@ -92,7 +104,10 @@ final class AccountSyncStatusFamily extends $Family
 
   /// One account's sync status: loading until its engine has reported. Kept
   /// alive, so that once its engine has reported, an account that becomes
-  /// active has its status at once.
+  /// active has its status at once. It goes on when the engine is rebuilt
+  /// over the same database, as for a changed server version: a status that
+  /// started over would send the router to the first-sync screen, over
+  /// whatever the user was editing.
 
   AccountSyncStatusProvider call(String accountId) =>
       AccountSyncStatusProvider._(argument: accountId, from: this);

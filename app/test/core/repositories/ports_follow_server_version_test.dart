@@ -5,13 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/sync/sync_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/server_connections.dart';
+import '../../helpers/test_database.dart';
 
 /// Answers every request with a trash count.
 final class _CountAdapter implements HttpClientAdapter {
@@ -176,5 +181,109 @@ void main() {
       const TrashCount(total: 2, byOthers: 1),
     );
     expect(adapter.requests.single.path, '/vikunja/api/v2/tasks/deleted/count');
+  });
+
+  group('the sync status', () {
+    late AuthFakes auth;
+    late RegisteredAccount alice;
+    late _CountAdapter adapter;
+    late ProviderContainer container;
+    late List<SyncStatus?> seen;
+
+    setUp(() async {
+      auth = AuthFakes();
+      alice = await auth.seedAccount(
+        _v2Only({}),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      auth.accountGateway.onCurrentUser = (_) async => User(
+        id: alice.account.userId,
+        username: alice.account.username,
+        name: alice.account.displayName,
+      );
+      final db = testDatabase();
+      final synced = DateTime.now().toUtc().toIso8601String();
+      await db.syncStateDao.write({
+        SyncStateKeys.lastSyncedAt: synced,
+        SyncStateKeys.lastFullSyncAt: synced,
+      });
+      adapter = _CountAdapter();
+      container = ProviderContainer(
+        overrides: [
+          ...auth.overrides,
+          dioProvider.overrideWithValue(
+            createDio(
+              userAgent: 'test',
+              httpClientAdapter: adapter,
+              logRequests: false,
+            ),
+          ),
+          appDatabaseProvider.overrideWith((ref, _) => db),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(accountsProvider.future);
+      // As the router reads it: without a value carried over a reload.
+      seen = [];
+      container.listen(
+        accountSyncStatusProvider(alice.id),
+        (_, next) => seen.add(next.unwrapPrevious().value),
+        fireImmediately: true,
+      );
+      await pumpEventQueue();
+      expect(seen.last, isA<SyncIdle>());
+      seen.clear();
+    });
+
+    test('goes on over the engine a stored server upgrade rebuilds, and '
+        'follows the new engine', () async {
+      final engine = container.read(syncEngineProvider(alice.id));
+
+      await container
+          .read(accountRegistryProvider)
+          .updateConnection(alice.id, (_) => _v2Only({'version': 'v2.7.1'}));
+      await pumpEventQueue();
+
+      final rebuilt = container.read(syncEngineProvider(alice.id));
+      expect(rebuilt, isNot(same(engine)));
+      // A status that started over would send the router to the first sync.
+      expect(seen, everyElement(isA<SyncIdle>()));
+      expect(
+        container
+            .read(accountSyncStatusProvider(alice.id))
+            .unwrapPrevious()
+            .value,
+        isA<SyncIdle>(),
+      );
+
+      await expectLater(rebuilt.refresh(), throwsA(isA<VikunjaFailure>()));
+      expect(adapter.requests, isNotEmpty);
+      expect(
+        container.read(accountSyncStatusProvider(alice.id)).value,
+        isA<SyncFailed>(),
+      );
+    });
+
+    test('starts over for an account that was removed and is signed in '
+        'again', () async {
+      await container.read(accountRegistryProvider).remove(alice.id);
+      await pumpEventQueue();
+      expect(
+        container.read(accountSyncStatusProvider(alice.id)).hasError,
+        isTrue,
+      );
+      seen.clear();
+
+      await auth.seedAccount(
+        _v2Only({}),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      container.invalidate(accountsProvider);
+      await container.read(accountsProvider.future);
+      await pumpEventQueue();
+
+      expect(seen.first, isNull);
+      expect(seen.last, isA<SyncIdle>());
+    });
   });
 }

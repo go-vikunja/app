@@ -1,5 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
@@ -9,10 +13,42 @@ final _log = Logger('SyncStatus');
 
 /// One account's sync status: loading until its engine has reported. Kept
 /// alive, so that once its engine has reported, an account that becomes
-/// active has its status at once.
+/// active has its status at once. It goes on when the engine is rebuilt
+/// over the same database, as for a changed server version: a status that
+/// started over would send the router to the first-sync screen, over
+/// whatever the user was editing.
 @Riverpod(keepAlive: true)
-Stream<SyncStatus> accountSyncStatus(Ref ref, String accountId) =>
-    ref.watch(syncEngineProvider(accountId)).status;
+Stream<SyncStatus> accountSyncStatus(Ref ref, String accountId) {
+  // Signed out and in again, the account has a new database, whose status
+  // does start over.
+  ref.watch(
+    accountsProvider.select(
+      (accounts) => accounts.value?.find(accountId) != null,
+    ),
+  );
+  // Synchronous like the engine's own stream, so a status has reached the
+  // listeners once the run's future resolves.
+  final statuses = StreamController<SyncStatus>(sync: true);
+  StreamSubscription<SyncStatus>? ofEngine;
+  ref
+    ..listen(
+      syncEngineProvider(accountId),
+      (_, engine) {
+        unawaited(ofEngine?.cancel());
+        ofEngine = engine.status.listen(
+          statuses.add,
+          onError: statuses.addError,
+        );
+      },
+      onError: statuses.addError,
+      fireImmediately: true,
+    )
+    ..onDispose(() {
+      unawaited(ofEngine?.cancel());
+      unawaited(statuses.close());
+    });
+  return statuses.stream;
+}
 
 /// The sync status of the active account: loading until its engine has
 /// reported, and forever while nobody is signed in. Never the previous
