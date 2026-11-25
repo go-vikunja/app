@@ -1155,6 +1155,86 @@ void main() {
         expect(labels.created.map((label) => label.title), ['neu']);
       });
 
+      test('a refusal is the server answering: a known person stays in the '
+          'title', () async {
+        for (final refusal in const [
+          Forbidden(code: 7003),
+          NotFound(code: 3001),
+        ]) {
+          tasks = FakeTaskRepository(FakeSyncEngine(clock: () => now));
+          users.searchFailure = refusal;
+
+          final result = await service().submit('a @alice');
+
+          expect(tasks.creates.single.title, 'a @alice', reason: '$refusal');
+          expect(tasks.updates, isEmpty, reason: '$refusal');
+          expect(result.unresolvedAssignees, ['alice'], reason: '$refusal');
+        }
+      });
+
+      test('an ended session counts as offline: the known people are '
+          'assigned and nothing more is asked of the server', () async {
+        users.searchFailure = const SessionEnded(SessionEndReason.expired);
+
+        final result = await service().submit(
+          'a @alice @dora\nb @alice @bob +Garage',
+        );
+
+        expect(users.searches, [(4, 'alice')]);
+        expect(tasks.creates.map((task) => task.title), ['a', 'b @bob']);
+        expect(tasks.updates.map((update) => update.$2.assignees), const [
+          IdSetChange(added: {20, 23}),
+          IdSetChange(added: {20}),
+        ]);
+        expect(result.unresolvedAssignees, ['bob']);
+      });
+
+      test('a search the server did not really answer counts as offline for '
+          'that name, which is asked once per submit', () async {
+        for (final failure in const [
+          ServerFailure(502),
+          RateLimited(),
+          TokenRejected(),
+          RefreshRaceLost(),
+          NotJsonResponse(200, message: 'text/html'),
+          UnexpectedResponse(200, message: 'not a user list'),
+          UnexpectedResponse(302),
+          NotFound(),
+        ]) {
+          tasks = FakeTaskRepository(FakeSyncEngine(clock: () => now));
+          users = FakeUserRepository(
+            projectUsers: {
+              4: const [alice],
+            },
+          )..searchFailure = failure;
+          final quickAdd = service();
+
+          final result = await quickAdd.submit('a @alice @bob\nb @Alice');
+
+          expect(users.searches, [
+            (4, 'alice'),
+            (4, 'bob'),
+          ], reason: '$failure');
+          expect(tasks.creates.map((task) => task.title), [
+            'a @bob',
+            'b',
+          ], reason: '$failure');
+          expect(tasks.updates.map((update) => update.$2.assignees), const [
+            IdSetChange(added: {20}),
+            IdSetChange(added: {20}),
+          ], reason: '$failure');
+          expect(result.unresolvedAssignees, ['bob'], reason: '$failure');
+
+          await quickAdd.submit('c @alice');
+
+          expect(users.searches, [
+            (4, 'alice'),
+            (4, 'bob'),
+            (4, 'alice'),
+          ], reason: '$failure');
+        }
+      });
+
       test('a link-share guest, whom the server refuses both, matches people '
           'only among the known ones and creates no label', () async {
         final result = await service(guest: true)

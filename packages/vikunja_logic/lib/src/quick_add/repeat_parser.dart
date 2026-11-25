@@ -1,16 +1,23 @@
 import 'package:vikunja_logic/src/quick_add/amounts.dart';
+import 'package:vikunja_logic/src/quick_add/date_parser.dart';
 import 'package:vikunja_logic/src/quick_add/parsed_task_text.dart';
+import 'package:vikunja_logic/src/quick_add/phrase_ends.dart';
 
-final _repeatPhrase = RegExp(
+RegExp _repeatPhrase(String end) => RegExp(
   '(^| )'
   '((?:every|each) '
   '(?:([0-9]+|$amountWordsPattern) )?'
   '(hour|day|week|month|year)s?'
   '|annually|biannually|semiannually|biennially'
   '|daily|hourly|monthly|weekly|yearly)'
-  r'(?:$| )',
+  '$end',
   caseSensitive: false,
 );
+
+final RegExp _repeatBeforeSpace = _repeatPhrase(quickAddSpaceEnd);
+
+// QA-6: tried only where the web's rule finds no repeat, as for a weekday.
+final RegExp _repeatBeforePunctuation = _repeatPhrase(quickAddPunctuationEnd);
 
 const _keywords = <String, QuickAddRepeat>{
   'hourly': QuickAddRepeat(amount: 1, unit: QuickAddRepeatUnit.hours),
@@ -37,13 +44,25 @@ const _units = <String, QuickAddRepeatUnit>{
 /// `Every Day` as hourly).
 ({String text, QuickAddRepeat? repeat, String? phrase}) parseRepeat(
   String text,
+) =>
+    _repeatIn(text, _repeatBeforeSpace) ??
+    _repeatIn(text, _repeatBeforePunctuation) ??
+    (text: text, repeat: null, phrase: null);
+
+({String text, QuickAddRepeat? repeat, String? phrase})? _repeatIn(
+  String text,
+  RegExp pattern,
 ) {
-  final match = _repeatPhrase.firstMatch(text);
-  if (match == null) return (text: text, repeat: null, phrase: null);
+  final match = pattern.firstMatch(text);
+  if (match == null) return null;
   final phrase = match[2]!;
   final repeat = _keywords[phrase.toLowerCase()] ?? _everyPhrase(match);
-  if (repeat == null) return (text: text, repeat: null, phrase: null);
-  final end = match.start + match[1]!.length + phrase.length;
+  if (repeat == null) return null;
+  final start = match.start + match[1]!.length;
+  var end = start + phrase.length;
+  if (text.substring(0, start).trim().isEmpty) {
+    end = endAtLineStart(text, end);
+  }
   return (
     text: text.replaceRange(match.start, end, ''),
     repeat: repeat,

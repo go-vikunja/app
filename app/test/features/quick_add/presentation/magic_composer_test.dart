@@ -383,6 +383,55 @@ void main() {
       expect(fieldFocused(tester), isTrue);
     });
 
+    testWidgets('a tap writes a token that reads back as exactly that label '
+        'or project: one whose title with its quotes, an apostrophe or a '
+        'space before a prefix cannot be written so goes by its identifier '
+        'if it is a project, and is not offered if it is a label', (
+      tester,
+    ) async {
+      for (final title in ["'90s", 'a *b', 'Say "hi" now']) {
+        await harness.labels.create(NewLabel(title: title));
+      }
+      harness.data.projects.all = [
+        ...harness.data.projects.all,
+        sampleProject(id: 7, title: 'Bob\'s "big" plan', identifier: 'BBP'),
+        sampleProject(id: 8, title: '"Later"'),
+        sampleProject(id: 9, title: 'Sale *now'),
+      ];
+      await harness.open(tester);
+
+      await typeLine(tester, 'Pack *9');
+      await tester.pump();
+      await tester.tap(suggestion("'90s"));
+      await tester.pump();
+      expect(composerText(tester), 'Pack *"\'90s" ');
+
+      await typeLine(tester, 'Pack *a');
+      await tester.pump();
+      expect(suggestion('a *b'), findsNothing);
+      await tester.ensureVisible(suggestion('Say "hi" now'));
+      await tester.pump();
+      await tester.tap(suggestion('Say "hi" now'));
+      await tester.pump();
+      expect(composerText(tester), 'Pack *\'Say "hi" now\' ');
+
+      await typeLine(tester, 'Plan +big');
+      await tester.tap(suggestion('Bob\'s "big" plan'));
+      await tester.pump();
+      expect(composerText(tester), 'Plan +BBP ');
+      expect(chip('Bob\'s "big" plan'), findsOneWidget);
+
+      await typeLine(tester, 'Plan +lat');
+      await tester.tap(suggestion('"Later"'));
+      await tester.pump();
+      expect(composerText(tester), 'Plan +\'"Later"\' ');
+      expect(chip('"Later"'), findsOneWidget);
+
+      await typeLine(tester, 'Plan +sale');
+      expect(suggestion('Garage Sale'), findsOneWidget);
+      expect(suggestion('Sale *now'), findsNothing);
+    });
+
     testWidgets('projects by title or identifier, never archived ones', (
       tester,
     ) async {
@@ -568,6 +617,37 @@ void main() {
       await tester.pump(MagicSuggestions.debounce);
 
       expect(harness.users.searches, [(1, 's')]);
+    });
+
+    testWidgets('of several lines, people search in the project of the line '
+        "being typed, as Add plans it: a subtask in its parent's", (
+      tester,
+    ) async {
+      await harness.open(tester);
+      await typeLine(tester, 'Plan +Work\nSell +"Garage Sale" @s');
+      await tester.pump(MagicSuggestions.debounce);
+      expect(harness.users.searches, [(3, 's')]);
+
+      await setComposerText(
+        tester,
+        'Plan +Work @a\nSell +"Garage Sale"',
+        caret: 13,
+      );
+      await tester.pump(MagicSuggestions.debounce);
+      expect(harness.users.searches.last, (1, 'a'));
+
+      await typeLine(tester, 'Plan +Work\nSell +"Garage Sale"\n  Ask @al');
+      await tester.pump(MagicSuggestions.debounce);
+      expect(harness.users.searches.last, (3, 'al'));
+
+      await setComposerText(
+        tester,
+        'Plan +Work\n  Ask @alex +Inbox',
+        caret: 22,
+      );
+      await tester.pump(MagicSuggestions.debounce);
+      expect(harness.users.searches.last, (2, 'alex'));
+      await tester.pump();
     });
 
     testWidgets('offline the people known here still show', (tester) async {
@@ -1059,6 +1139,31 @@ void main() {
 
       expect(find.text(en.newTaskLineCountOnly(3)), findsOneWidget);
       expect(find.text(en.newTaskLineCount(3)), findsNothing);
+    });
+
+    testWidgets('a pasted list of more than 500 lines is planned once: a '
+        'caret move plans nothing again, a keystroke only its line', (
+      tester,
+    ) async {
+      await harness.open(tester);
+      final text = [for (var i = 0; i < 600; i++) 'Item $i'].join('\n');
+      await setComposerText(tester, text);
+      await tester.pump();
+      final planned = harness.service.plans.length;
+      expect(planned, greaterThanOrEqualTo(600));
+
+      await setComposerText(tester, text, caret: 3);
+      await tester.pump();
+      await setComposerText(tester, text, caret: 30);
+      await tester.pump();
+      expect(harness.service.plans, hasLength(planned));
+
+      await setComposerText(tester, '${text}x');
+      await tester.pump();
+      expect(
+        harness.service.plans.skip(planned).map((plan) => plan.line).toSet(),
+        {'Item 599x'},
+      );
     });
 
     testWidgets('an add that fails partway keeps only the lines not added', (

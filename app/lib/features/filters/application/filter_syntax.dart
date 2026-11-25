@@ -367,15 +367,16 @@ FilterCompletionContext? filterCompletionContext(TextEditingValue value) {
     final item = rest.substring(itemStart);
     final leading = item.length - item.trimLeft().length;
     var partial = item.substring(leading);
-    var start = caret - rest.length + itemStart + leading;
-    if (partial.startsWith('"') || partial.startsWith("'")) {
-      partial = partial.substring(1);
-    }
-    final valueEnd = _valueEnd(text, caret, list: list);
-    if (partial.isEmpty) start = caret;
+    final start = caret - rest.length + itemStart + leading;
+    final quoted = partial.startsWith('"') || partial.startsWith("'");
+    if (quoted) partial = partial.substring(1);
     return ValueContext(
       start: start,
-      end: partial.isEmpty ? caret : valueEnd,
+      // A quote that opens the value goes with the rest of it, or a pick
+      // would leave its closing quote behind.
+      end: partial.isEmpty && !quoted
+          ? caret
+          : _valueEnd(text, caret, list: list),
       field: match[1]!,
       kind: kind,
       operator: operator,

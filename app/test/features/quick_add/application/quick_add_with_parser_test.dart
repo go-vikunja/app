@@ -118,6 +118,15 @@ void main() {
       expect(plan.unmatchedProject, 'Wrok');
     });
 
+    test('QA-20: a day number before the unmatched project is no date', () {
+      final plan = service().plan('Pay rent 5th +nowhere');
+
+      expect(plan.title, 'Pay rent 5th +nowhere');
+      expect(plan.dueDate, isNull);
+      expect(plan.parsed.datePhrases, isEmpty);
+      expect(plan.unmatchedProject, 'nowhere');
+    });
+
     test('an ordinal the project token kept from `at` is no date', () {
       final plan = service().plan('Call 1st +x at 10');
 
@@ -180,6 +189,13 @@ void main() {
     expect(magic.magicOnly, isTrue);
     expect(magic.title, '*wichtig +Garage');
     expect(magic.project, inbox);
+
+    for (final line in ['Mon:', 'Daily.', 'Today!']) {
+      final punctuated = service().plan(line);
+      expect(punctuated.magicOnly, isTrue, reason: line);
+      expect(punctuated.title, line, reason: line);
+      expect(punctuated.dueDate, isNull, reason: line);
+    }
 
     final quoted = service().plan('"*wichtig tomorrow"');
     expect(quoted.magicOnly, isFalse);

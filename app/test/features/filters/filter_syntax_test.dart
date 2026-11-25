@@ -186,6 +186,13 @@ void main() {
             .having((c) => c.partial, 'partial', 'Work T')
             .having((c) => c.start, 'start', 9),
       );
+      expect(
+        filterCompletionContext(at('labels = "')),
+        isA<ValueContext>()
+            .having((c) => c.partial, 'partial', '')
+            .having((c) => c.start, 'start', 9)
+            .having((c) => c.end, 'end', 10),
+      );
     });
 
     test('a value and a space can be joined', () {
@@ -266,6 +273,35 @@ void main() {
       expect(
         complete('labels = "Wo', filterValueText('Work', list: false)),
         at('labels = Work '),
+      );
+    });
+
+    test('a lone opening quote is replaced too, so the filter stays valid', () {
+      expect(complete('labels = "', 'Work'), at('labels = Work '));
+      expect(complete("labels = '", 'Work'), at('labels = Work '));
+      expect(
+        complete('labels in Work, "', 'Home'),
+        at('labels in Work, Home '),
+      );
+      expect(complete('labels in Work,"', 'Home'), at('labels in Work,Home '));
+      expect(
+        complete('project = "', filterValueText('A, B', list: false)),
+        at('project = "A, B" '),
+      );
+      expect(complete('assignees = "', 'anna'), at('assignees = anna '));
+      expect(complete('dueDate < "', 'now+7d'), at('dueDate < now+7d '));
+    });
+
+    test('a caret right after an opening quote replaces the whole value, '
+        'so the filter stays valid', () {
+      expect(
+        complete('labels = "Work" && done = false', 'Home', 10),
+        at('labels = Home && done = false', 14),
+      );
+      expect(complete('labels = ""', 'Home', 10), at('labels = Home '));
+      expect(
+        complete('labels in Work, "Old"', 'Home', 17),
+        at('labels in Work, Home '),
       );
     });
   });

@@ -37,4 +37,14 @@ void main() {
     expect(projectReference(upper, candidates), 'AB');
     expect(projectReference(home, candidates), 'Home');
   });
+
+  test('only a usable reference: the identifier where the title is not, '
+      'none where neither is', () {
+    bool notHome(String reference) => reference != 'Home';
+    expect(projectReference(home, candidates, usable: notHome), 'HOME');
+    expect(
+      projectReference(home, candidates, usable: (reference) => false),
+      isNull,
+    );
+  });
 }

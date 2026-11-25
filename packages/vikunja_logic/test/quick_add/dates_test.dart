@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 
 import 'parse_helpers.dart';
 
@@ -241,6 +242,36 @@ void main() {
       expect(parse('Call back . tomorrow', now: now).text, 'Call back .');
       expect(parse('Call back .', now: now).text, 'Call back .');
     });
+
+    test("at the line's start the punctuation after it and the spaces after "
+        'that go with it', () {
+      for (final (input, text, date) in [
+        ('Mon: standup', 'standup', '2021-6-28'),
+        ('Today: x', 'x', '2021-6-24'),
+        ('Tomorrow, call Bob', 'call Bob', '2021-6-25'),
+        ('Dec 17: agenda', 'agenda', '2021-12-17'),
+        ('5th may: x', 'x', '2022-5-5'),
+        ('In 2 days...  rest', 'rest', '2021-6-26'),
+        ('*work Fri. review', 'review', '2021-6-25'),
+      ]) {
+        final result = parse(input, now: now);
+        expect(result.text, text, reason: input);
+        expect(ymd(result.date), date, reason: input);
+      }
+    });
+
+    test('elsewhere, or before a letter, the punctuation stays', () {
+      expect(parse('x Mon: standup', now: now).text, 'x: standup');
+      expect(parse('Today.com launch', now: now).text, '.com launch');
+      expect(parse('Today:x', now: now).text, ':x');
+    });
+
+    test('a line that is only a phrase and its punctuation leaves no '
+        'text', () {
+      for (final input in ['Mon:', 'Today!', 'Daily.']) {
+        expect(parse(input, now: now).text, isEmpty, reason: input);
+      }
+    });
   });
 
   group('what the numbers make', () {
@@ -331,6 +362,28 @@ void main() {
       }
       expect(parse('Kapitel 3.2.2022').date, DateTime(2022, 2, 3, 12));
     });
+
+    test('QA-9: a number with a final dot after such a word is no day '
+        'either, unless a month is beside it', () {
+      for (final text in [
+        'Lies Kapitel 3.',
+        'Release 2.',
+        'Seite 12.',
+        'Nr. 4.',
+        'Install v 5.',
+      ]) {
+        final result = parse(text);
+        expect(result.date, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
+      final next = parse('Seite 12. bis 17.');
+      expect(next.text, 'Seite 12. bis');
+      expect(next.date, DateTime(2021, 7, 17, 12));
+      expect(parse('Kapitel 3. sep').date, DateTime(2021, 9, 3, 12));
+      expect(parse('Release 2nd').date, DateTime(2021, 7, 2, 12));
+      expect(parse('x 5.').date, DateTime(2021, 7, 5, 12));
+      expect(parse('x 1. sep').date, DateTime(2021, 9, 1, 12));
+    });
   });
 
   group('QA-13: German short dates', () {
@@ -370,6 +423,13 @@ void main() {
         expect(result.datePhrases, phrases);
       });
     }
+
+    test('a lone am before a bare dotted day stays in the title (owner)', () {
+      final result = parse('Arzt am 17.');
+      expect(result.text, 'Arzt am');
+      expect(result.date, DateTime(2021, 7, 17, 12));
+      expect(result.datePhrases, ['17.']);
+    });
 
     test('an am inside a word or a dotted date in the middle stays', () {
       expect(parse('Team 17.12.').text, 'Team');
@@ -492,10 +552,11 @@ void main() {
       }
     });
 
-    test('needs the end, at, @ or a month after it', () {
+    test("needs a time, a month or the line's end (QA-20) after it and a "
+        'day from 1 to 31', () {
       expect(parse('x 3rd y').date, isNull);
       expect(parse('x 3rd at').date, isNull);
-      expect(parse('x 3. ').date, isNull);
+      expect(parse('x 3rd @').date, isNull);
       expect(parse('x 3rd. jan').date, isNull);
       expect(parse('x 32nd').date, isNull);
       expect(parse('x 00th').date, isNull);
@@ -524,6 +585,13 @@ void main() {
       // The web gives "x   or" and "Rek".
       expect(parse('x 3rd may mayor').text, 'x   mayor');
       expect(parse('5th mar Remark').text, 'Remark');
+    });
+
+    test('QA-6: the month word only where it is a whole word in any '
+        'alphabet', () {
+      final result = parse('x 3rd may ámay');
+      expect(result.text, 'x   ámay');
+      expect(result.date, DateTime(2022, 5, 3, 12));
     });
 
     test("QA-4: the month word is not removed out of `may's`", () {
@@ -605,6 +673,180 @@ void main() {
     test('QA-5: a month word must be whole', () {
       expect(parse('x 3rd sept').date, isNull);
       expect(parse('x 17th september').date, DateTime(2021, 9, 17, 12));
+    });
+  });
+
+  group('QA-20: a day number before the tokens or spaces that end the line, '
+      'and a numeric date before assignees, are dates (the web drops '
+      'them)', () {
+    test("the owner's examples", () {
+      final rent = parse('Pay rent 5th *bills');
+      expect(rent.text, 'Pay rent');
+      expect(rent.labels, ['bills']);
+      expect(rent.date, DateTime(2021, 7, 5, 12));
+      // As for every phrase removed before other text (`Call tomorrow
+      // @anna`), its spaces stay until the assignee leaves the title.
+      final doctor = parse('Arzt 17.12. @anna');
+      expect(doctor.text, 'Arzt  @anna');
+      expect(doctor.assignees, ['anna']);
+      expect(doctor.date, DateTime(2021, 12, 17, 12));
+      expect(doctor.datePhrases, ['17.12.']);
+    });
+
+    for (final mode in [QuickAddMagicMode.vikunja, QuickAddMagicMode.todoist]) {
+      final prefixes = quickAddPrefixes(mode)!;
+      final assignee = prefixes.assignee;
+
+      test('${mode.name}: a label, a project or a priority after a day '
+          'number', () {
+        final label = parse('Pay rent 5th ${prefixes.label}bills', mode: mode);
+        expect(label.text, 'Pay rent');
+        expect(label.labels, ['bills']);
+        expect(label.date, DateTime(2021, 7, 5, 12));
+        final project = parse(
+          'Pay rent 5th ${prefixes.project}bills',
+          mode: mode,
+        );
+        expect(project.text, 'Pay rent');
+        expect(project.project, 'bills');
+        expect(project.date, DateTime(2021, 7, 5, 12));
+        final priority = parse('Call 3rd ${prefixes.priority}2', mode: mode);
+        expect(priority.text, 'Call');
+        expect(priority.priority, 2);
+        expect(priority.date, DateTime(2021, 7, 3, 12));
+        final dotted = parse('Lies 17. ${prefixes.label}buch', mode: mode);
+        expect(dotted.text, 'Lies');
+        expect(dotted.date, DateTime(2021, 7, 17, 12));
+      });
+
+      test('${mode.name}: assignees after a day number or a numeric date', () {
+        final ordinal = parse('Visit 24th ${assignee}anna', mode: mode);
+        expect(ordinal.text, 'Visit  ${assignee}anna');
+        expect(ordinal.assignees, ['anna']);
+        expect(ordinal.date, DateTime(2021, 6, 24, 12));
+        final numeric = parse('Arzt 17.12. ${assignee}anna', mode: mode);
+        expect(numeric.text, 'Arzt  ${assignee}anna');
+        expect(numeric.assignees, ['anna']);
+        expect(numeric.date, DateTime(2021, 12, 17, 12));
+        final several = parse(
+          'Arzt 17.12.  ${assignee}anna $assignee"bob b" ',
+          mode: mode,
+        );
+        expect(several.assignees, ['anna', 'bob b']);
+        expect(several.date, DateTime(2021, 12, 17, 12));
+        expect(
+          parse('x 9/11 ${assignee}anna', mode: mode).date,
+          DateTime(2021, 9, 11, 12),
+        );
+        expect(
+          parse('x 3rd ${assignee}anna', mode: mode).date,
+          DateTime(2021, 7, 3, 12),
+        );
+      });
+
+      test('${mode.name}: assignees between a date and its time or month', () {
+        final ordinal = parse('x 3rd ${assignee}anna at 10', mode: mode);
+        expect(ordinal.text, 'x  ${assignee}anna');
+        expect(ordinal.date, DateTime(2021, 7, 3, 10));
+        expect(ordinal.datePhrases, ['3rd', 'at 10']);
+        final numeric = parse('Arzt 17.12. ${assignee}anna at 10', mode: mode);
+        expect(numeric.text, 'Arzt  ${assignee}anna');
+        expect(numeric.date, DateTime(2021, 12, 17, 10));
+        expect(numeric.datePhrases, ['17.12.', 'at 10']);
+        final several = parse(
+          'Call 9/11 ${assignee}anna $assignee"bob b" at 15:30 now',
+          mode: mode,
+        );
+        expect(several.text, 'Call  ${assignee}anna $assignee"bob b" now');
+        expect(several.date, DateTime(2021, 9, 11, 15, 30));
+        final month = parse('x 3rd ${assignee}anna jan', mode: mode);
+        expect(month.text, 'x  ${assignee}anna');
+        expect(month.date, DateTime(2022, 1, 3, 12));
+        expect(month.datePhrases, ['3rd', 'jan']);
+      });
+
+      test('${mode.name}: a word between them still makes it no date', () {
+        final ordinal = parse('x 3rd ${assignee}anna y at 10', mode: mode);
+        expect(ordinal.date, DateTime(2021, 6, 24, 10));
+        expect(ordinal.datePhrases, ['at 10']);
+        final numeric = parse(
+          'Arzt 17.12. ${assignee}anna y at 10',
+          mode: mode,
+        );
+        expect(numeric.date, DateTime(2021, 6, 24, 10));
+        expect(numeric.datePhrases, ['at 10']);
+        expect(parse('x 3rd ${assignee}anna at', mode: mode).date, isNull);
+      });
+
+      test('${mode.name}: a word after them still makes it no date', () {
+        for (final text in [
+          'x 3rd ${assignee}anna y',
+          'Arzt 17.12. ${assignee}anna Termin',
+          'x 3rd ${prefixes.label}l y',
+          'x 3rd $assignee',
+        ]) {
+          final result = parse(text, mode: mode);
+          expect(result.date, isNull, reason: text);
+          expect(result.datePhrases, isEmpty, reason: text);
+        }
+      });
+    }
+
+    test("only where no rule found a date with the web's end: a date stated "
+        'elsewhere wins', () {
+      for (final (input, text, date) in [
+        (
+          '9/11 Prepare slides for part 2. @anna',
+          'Prepare slides for part 2. @anna',
+          DateTime(2021, 9, 11, 12),
+        ),
+        (
+          'Dec 17: agenda item 4. *work',
+          'agenda item 4.',
+          DateTime(2021, 12, 17, 12),
+        ),
+        (
+          '17.12. Kuchen, 1/2 Rezept @anna',
+          'Kuchen, 1/2 Rezept @anna',
+          DateTime(2021, 12, 17, 12),
+        ),
+        (
+          '17.12. Kuchen, 1/2 @anna',
+          'Kuchen, 1/2 @anna',
+          DateTime(2021, 12, 17, 12),
+        ),
+        (
+          'Dentist Fri. 13th *health',
+          'Dentist Fri.',
+          DateTime(2021, 7, 13, 12),
+        ),
+      ]) {
+        final result = parse(input);
+        expect(result.date, date, reason: input);
+        expect(result.text, text, reason: input);
+      }
+    });
+
+    test('a long line of day numbers and names is read quickly', () {
+      final watch = Stopwatch()..start();
+      [
+        '1. ' * 20000,
+        '${'1. ' * 20000}x',
+        '${'1. @a ' * 10000}x',
+        '${'1.1 ' * 15000}x',
+        '${'Release 2. at ' * 4000}x',
+        '${'1. ${' ' * 30}' * 2000}x',
+      ].forEach(parse);
+      expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
+    });
+
+    test('typed spaces after a day number or a numeric date', () {
+      final day = parse('x 3. ');
+      expect(day.text, 'x');
+      expect(day.date, DateTime(2021, 7, 3, 12));
+      expect(parse('x 3rd  ').date, DateTime(2021, 7, 3, 12));
+      expect(parse('x 17.12.  ').date, DateTime(2021, 12, 17, 12));
+      expect(parse('x 5th\t').date, DateTime(2021, 7, 5, 12));
     });
   });
 
@@ -903,8 +1145,24 @@ void main() {
       expect(result.date, DateTime(2021, 6, 24, 15, 5));
     });
 
-    test('tonight with a time is that time', () {
-      expect(parse('x tonight at 8', now: now).date, DateTime(2021, 6, 24, 8));
+    test('QA-7: tonight with an hour from 1 to 11 and no am or pm is that '
+        'hour in the evening (the web takes the morning)', () {
+      for (final (text, hour, minute) in [
+        ('x tonight at 8', 20, 0),
+        ('x at 8 tonight', 20, 0),
+        ('x Tonight @ 11:30', 23, 30),
+        ('x tonight at 1', 13, 0),
+        ('x tonight at 8am', 8, 0),
+        ('x tonight at 8 pm', 20, 0),
+        ('x tonight at 20', 20, 0),
+        ('x tonight at 12', 12, 0),
+        ('x tonight at 0', 0, 0),
+        ('x today at 8', 8, 0),
+      ]) {
+        final result = parse(text, now: now);
+        expect(result.date, DateTime(2021, 6, 24, hour, minute), reason: text);
+        expect(result.text, 'x', reason: text);
+      }
     });
 
     test('the first time counts; every occurrence of it is removed', () {

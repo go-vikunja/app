@@ -37,9 +37,13 @@ QuickAddPrefixes? quickAddPrefixes(QuickAddMagicMode mode) => switch (mode) {
 /// - Repeat keywords and units match in any case (`Daily`, `Every Day`).
 /// - The date keywords (`today` to `next monday`) need whole words:
 ///   `todays` and `next weekend` stay text.
-/// - `in 2 days` may be followed by punctuation (`in 2 days,`), where the
-///   web wants a space or the end; an apostrophe keeps it text on both
-///   (`in a day's work`).
+/// - `in 2 days`, a weekday and a repeat may be followed by punctuation
+///   (`in 2 days,`, `friday.`, `daily!`), where the web wants a space or
+///   the end; an apostrophe keeps it text on both (`in a day's work`). A
+///   weekday or repeat counts so only where the web's rules find none.
+/// - A day number before the tokens or spaces that end the line is a
+///   date, and so is a numeric date before assignees (`Pay rent 5th
+///   *bills`, `Arzt 17.12. @anna`), where the web's rules find no date.
 /// - Day-and-month dates need whole words: `12 decorations`,
 ///   `13th marathon` and `sep 17th tasks` stay text, and so does a day that
 ///   no month has (`dec 45`), which the web drops from the title.
@@ -50,7 +54,9 @@ QuickAddPrefixes? quickAddPrefixes(QuickAddMagicMode mode) => switch (mode) {
 /// - Amounts above 100000 (`every 999999 years`) are text, and so is an
 ///   `in …` date after the year 9999 (`in 9000 years`).
 /// - A date phrase removed before punctuation takes the spaces before it
-///   along: `Call back tomorrow.` becomes `Call back.`, not `Call back .`.
+///   along: `Call back tomorrow.` becomes `Call back.`, not `Call back .`;
+///   at the line's start, a date or repeat phrase takes the punctuation
+///   and the spaces after it: `Mon: standup` becomes `standup`.
 ParsedTaskText parseTaskText(
   String text, {
   required DateTime now,
@@ -74,7 +80,12 @@ ParsedTaskText parseTaskText(
   rest = cleanupItemText(rest, priorities, prefixes.priority);
   final assignees = _itemsFromPrefix(rest, prefixes.assignee);
   final repeat = parseRepeat(rest);
-  final date = parseDate(repeat.text, now.toLocal(), defaultTime: defaultTime);
+  final date = parseDate(
+    repeat.text,
+    now.toLocal(),
+    defaultTime: defaultTime,
+    assigneePrefix: prefixes.assignee,
+  );
 
   rest = cleanupItemText(date.text, labels, prefixes.label);
   rest = cleanupItemText(rest, projects, prefixes.project);

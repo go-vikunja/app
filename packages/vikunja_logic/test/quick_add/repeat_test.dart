@@ -149,10 +149,66 @@ void main() {
       expect(parse('x daily daily').text, 'x daily');
     });
 
-    test('needs a space or the end after it', () {
-      expect(parse('x weekly, y').repeats, isNull);
-      expect(parse('x weekly!').repeats, isNull);
-      expect(parse('x every dayz').repeats, isNull);
+    test('QA-6: punctuation and then a space or the end may follow it (the '
+        'web wants a space or the end)', () {
+      for (final (text, title, repeat) in [
+        ('x weekly, y', 'x, y', _repeat(1, QuickAddRepeatUnit.weeks)),
+        ('x weekly!', 'x!', _repeat(1, QuickAddRepeatUnit.weeks)),
+        (
+          'Water plants daily.',
+          'Water plants.',
+          _repeat(1, QuickAddRepeatUnit.days),
+        ),
+        ('x every 2 days; y', 'x; y', _repeat(2, QuickAddRepeatUnit.days)),
+        ('(x monthly)', '(x)', _repeat(1, QuickAddRepeatUnit.months)),
+      ]) {
+        final result = parse(text);
+        expect(result.repeats, repeat, reason: text);
+        expect(result.text, title, reason: text);
+      }
+    });
+
+    test('QA-6: a repeat the web reads wins over an earlier one before '
+        'punctuation', () {
+      final result = parse('x daily, every 2 days');
+      expect(result.repeats, _repeat(2, QuickAddRepeatUnit.days));
+      expect(result.text, 'x daily,');
+    });
+
+    test('QA-6: a closing quote ends no repeat, as it may close a quoted '
+        'name', () {
+      final result = parse('x @"Team daily"');
+      expect(result.repeats, isNull);
+      expect(result.text, 'x @"Team daily"');
+      expect(result.assignees, ['Team daily']);
+    });
+
+    test("QA-19: at the line's start the punctuation after it and the "
+        'spaces after that go with it', () {
+      for (final (text, title) in [
+        ('Daily: standup', 'standup'),
+        ('Every 2 weeks... review', 'review'),
+        ('  Weekly; x', 'x'),
+      ]) {
+        final result = parse(text);
+        expect(result.text, title, reason: text);
+        expect(result.repeats, isNotNull, reason: text);
+      }
+      expect(parse('x daily: standup').text, 'x: standup');
+    });
+
+    test('QA-6: a word joined to it keeps it text', () {
+      for (final text in [
+        'x every dayz',
+        'x weekly-ish',
+        'x daily/weekly',
+        'x weekly.y',
+        'x every day,then',
+      ]) {
+        final result = parse(text);
+        expect(result.repeats, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
     });
 
     test('amounts are digits or one to twelve', () {

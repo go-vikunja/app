@@ -166,9 +166,73 @@ void main() {
     expect(ymd(result.date), '2021-6-25');
   });
 
-  test('a weekday needs a space or the end after it, as on the web', () {
-    expect(parse('x Fri.').date, isNull);
-    expect(parse('x mon,').date, isNull);
+  test('QA-6: punctuation and then a space or the end may follow a weekday '
+      '(the web wants a space or the end)', () {
+    for (final (text, title, date) in [
+      ('Call Bob friday.', 'Call Bob.', '2021-6-25'),
+      ('Lunch mon, then gym', 'Lunch, then gym', '2021-6-28'),
+      ('x Fri.', 'x.', '2021-6-25'),
+      ('x next tue!', 'x!', '2021-6-29'),
+      ('(gym sat)', '(gym)', '2021-6-26'),
+      ('x sun?!', 'x?!', '2021-6-27'),
+    ]) {
+      final result = parse(text);
+      expect(result.text, title, reason: text);
+      expect(ymd(result.date), date, reason: text);
+    }
+  });
+
+  test('QA-6: a date stated after a weekday and punctuation wins, as on the '
+      'web, where that weekday is text', () {
+    for (final (text, title, date) in [
+      ('Dinner Fri, Dec 17', 'Dinner Fri,', DateTime(2021, 12, 17, 12)),
+      ('Flight Fri, 9/17 at 10:00', 'Flight Fri,', DateTime(2021, 9, 17, 10)),
+      ('Dentist Fri. 13th', 'Dentist Fri.', DateTime(2021, 7, 13, 12)),
+      ('Party Sat., June 5', 'Party Sat.,', DateTime(2022, 6, 5, 12)),
+    ]) {
+      final result = parse(text);
+      expect(result.date, date, reason: text);
+      expect(result.text, title, reason: text);
+    }
+    final alone = parse('Call Bob friday.');
+    expect(alone.text, 'Call Bob.');
+    expect(ymd(alone.date), '2021-6-25');
+  });
+
+  test('QA-6: only the occurrences that end as a weekday are removed', () {
+    final punctuated = parse('Standup mon. Gym mon-fri');
+    expect(punctuated.text, 'Standup. Gym mon-fri');
+    expect(ymd(punctuated.date), '2021-6-28');
+    final spaced = parse('Gym mon mon-fri');
+    expect(spaced.text, 'Gym  mon-fri');
+    expect(ymd(spaced.date), '2021-6-28');
+  });
+
+  test('QA-6: a closing quote ends no weekday, as it may close a quoted '
+      'name', () {
+    final quoted = parse('x @"Team sat"');
+    expect(quoted.date, isNull);
+    expect(quoted.text, 'x @"Team sat"');
+    expect(quoted.assignees, ['Team sat']);
+    final both = parse('x sat @"Team sat"');
+    expect(ymd(both.date), '2021-6-26');
+    expect(both.text, 'x  @"Team sat"');
+    expect(both.assignees, ['Team sat']);
+  });
+
+  test('QA-6: a weekday joined to another word stays text', () {
+    for (final text in [
+      'Gym mon-fri',
+      'Shop sat/sun',
+      'x fri.y',
+      'x fri,sat',
+      "x friday's",
+      'x mon_',
+    ]) {
+      final result = parse(text);
+      expect(result.date, isNull, reason: text);
+      expect(result.text, text, reason: text);
+    }
   });
 
   test('QA-6: removing a weekday leaves longer words alone', () {

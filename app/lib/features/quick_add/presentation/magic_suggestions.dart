@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/filters/search_index.dart';
@@ -23,11 +24,14 @@ import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
 /// sideways: labels, projects, or people (the ones this device knows, then
 /// the server's matches for [projectId] once typing pauses), leaving out
 /// the one the token already names in full. [onSelected] gets the label
-/// title, project title or username.
+/// title, project reference or username as written after the prefix; a
+/// label or project that [mode] cannot write so that it reads back as
+/// exactly that one is left out.
 class MagicSuggestions extends ConsumerStatefulWidget {
   const new({
     required this.token,
     required this.typed,
+    required this.mode,
     required this.projectId,
     required this.onSelected,
     super.key,
@@ -40,6 +44,7 @@ class MagicSuggestions extends ConsumerStatefulWidget {
 
   /// The token as it stands in the text, prefix included.
   final String typed;
+  final QuickAddMagicMode mode;
   final int? projectId;
   final ValueChanged<String> onSelected;
 
@@ -152,11 +157,13 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
     return [
       for (final label in filterLabels(labels, query))
         if (!_named(label.title))
-          _SuggestionChip(
-            avatar: _dot(parseHexColor(label.hexColor)),
-            label: label.title,
-            onPressed: () => widget.onSelected(label.title),
-          ),
+          if (writtenMagicItem(label.title, MagicTokenKind.label, widget.mode)
+              case final written?)
+            _SuggestionChip(
+              avatar: _dot(parseHexColor(label.hexColor)),
+              label: label.title,
+              onPressed: () => widget.onSelected(written),
+            ),
     ];
   }
 
@@ -164,7 +171,7 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
   /// completes the server's title, which quick add matches.
   /// Projects of the same title are told apart by their parents, and a
   /// tap completes what makes quick add take that one: the identifier
-  /// when the title is not enough.
+  /// when the title is not enough, or cannot be written.
   List<Widget> _projectChips(String query) {
     final l10n = context.l10n;
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
@@ -174,19 +181,27 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
     ];
     final needle = foldForSearch(query.trim());
     String titleOf(Project project) => project.displayTitle(l10n);
+    String? written(String reference) =>
+        writtenMagicItem(reference, MagicTokenKind.project, widget.mode);
     return [
       for (final project in candidates)
         if (needle.isEmpty ||
             foldForSearch(project.title).contains(needle) ||
             foldForSearch(titleOf(project)).contains(needle) ||
             foldForSearch(project.identifier).contains(needle))
-          if (projectReference(project, candidates) ?? project.title
+          if (projectReference(
+                    project,
+                    candidates,
+                    usable: (reference) => written(reference) != null,
+                  ) ??
+                  project.title
               case final reference when !_named(reference))
-            _SuggestionChip(
-              avatar: ProjectIcon(hexColor: project.hexColor),
-              label: projectLabel(project, candidates, titleOf: titleOf),
-              onPressed: () => widget.onSelected(reference),
-            ),
+            if (written(reference) case final text?)
+              _SuggestionChip(
+                avatar: ProjectIcon(hexColor: project.hexColor),
+                label: projectLabel(project, candidates, titleOf: titleOf),
+                onPressed: () => widget.onSelected(text),
+              ),
     ];
   }
 
@@ -206,7 +221,8 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
             ),
             label: user.displayName,
             tooltip: context.l10n.assigneeUsername(user.username),
-            onPressed: () => widget.onSelected(user.username),
+            onPressed: () =>
+                widget.onSelected(quoteQuickAddItem(user.username)),
           ),
     ];
   }

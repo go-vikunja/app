@@ -142,13 +142,13 @@ void main() {
       );
     });
 
-    test('quotes a value with spaces', () {
+    test('writes the item as given, quotes included', () {
       final value = at('Sell +gar');
       expect(
         completeMagicToken(
           value,
           activeMagicToken(value, vikunja)!,
-          'Garage Sale',
+          '"Garage Sale"',
         ),
         at('Sell +"Garage Sale" '),
       );
@@ -162,10 +162,87 @@ void main() {
         completeMagicToken(
           value,
           activeMagicToken(value, vikunja)!,
-          'Garage Sale',
+          '"Garage Sale"',
         ),
         at('Sell +"Garage Sale" '),
       );
+    });
+  });
+
+  group('writtenMagicItem', () {
+    const label = MagicTokenKind.label;
+    const project = MagicTokenKind.project;
+    const mode = QuickAddMagicMode.vikunja;
+
+    /// What the parser reads from [line] for [kind].
+    String? readBack(String line, MagicTokenKind kind, QuickAddMagicMode mode) {
+      final parsed = parseTaskText(
+        line,
+        now: DateTime(2026, 10, 10),
+        mode: mode,
+      );
+      return switch (kind) {
+        MagicTokenKind.label => parsed.labels.singleOrNull,
+        MagicTokenKind.project => parsed.project,
+        MagicTokenKind.assignee => parsed.assignees.singleOrNull,
+      };
+    }
+
+    test('plain, or quoted where it holds a space', () {
+      expect(writtenMagicItem('urgent', label, mode), 'urgent');
+      expect(writtenMagicItem('Road trip', label, mode), '"Road trip"');
+      expect(writtenMagicItem('Say "hi" now', label, mode), "'Say \"hi\" now'");
+    });
+
+    test('in the quote it lacks where it starts with a quote or the '
+        'prefix', () {
+      expect(writtenMagicItem("'90s", label, mode), '"\'90s"');
+      expect(writtenMagicItem('"Later"', project, mode), '\'"Later"\'');
+      expect(writtenMagicItem('*star', label, mode), '"*star"');
+      expect(writtenMagicItem("Bob's plan", project, mode), '"Bob\'s plan"');
+    });
+
+    test('none where no writing reads back as the item', () {
+      expect(writtenMagicItem('Bob\'s "big" plan', project, mode), isNull);
+      expect(writtenMagicItem('a *b', label, mode), isNull);
+      expect(writtenMagicItem('Sale *now', project, mode), isNull);
+      expect(writtenMagicItem('Home @work', project, mode), isNotNull);
+      expect(
+        writtenMagicItem('Home @work', project, QuickAddMagicMode.todoist),
+        isNull,
+      );
+      expect(writtenMagicItem('x', label, QuickAddMagicMode.disabled), isNull);
+    });
+
+    test('what it writes reads back as exactly the item, at the start of a '
+        'line and after other words', () {
+      for (final (item, kind) in [
+        ('urgent', label),
+        ('Road trip', label),
+        ('Say "hi" now', label),
+        ("'90s", label),
+        ('*star', label),
+        ('"Later"', project),
+        ("Bob's plan", project),
+        ('Home @work', project),
+        ('Garage +Sale', label),
+      ]) {
+        for (final mode in [
+          QuickAddMagicMode.vikunja,
+          QuickAddMagicMode.todoist,
+        ]) {
+          final written = writtenMagicItem(item, kind, mode);
+          if (written == null) continue;
+          final prefixes = quickAddPrefixes(mode)!;
+          final prefix = kind == label ? prefixes.label : prefixes.project;
+          for (final line in [
+            '$prefix$written',
+            'Plan it $prefix$written soon',
+          ]) {
+            expect(readBack(line, kind, mode), item, reason: '$mode: $line');
+          }
+        }
+      }
     });
   });
 

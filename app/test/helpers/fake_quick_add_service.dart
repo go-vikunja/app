@@ -20,19 +20,22 @@ typedef QuickAddSubmit = ({
 });
 
 /// Quick add for widget tests. A `planner` decides every plan (by default
-/// the line, trimmed, is the title and nothing is parsed, in [project]);
-/// every `plan` and `submit` call is recorded. A submit answers [result],
-/// with each line's planned title when it names no titles, or throws
-/// [submitError]; [beforeSubmit] can hold it.
+/// the line, trimmed, is the title and nothing is parsed, in [project]),
+/// and `inherited` the project a subtask takes from its parent (by
+/// default none); every `plan` and `submit` call is recorded. A submit
+/// answers [result], with each line's planned title when it names no
+/// titles, or throws [submitError]; [beforeSubmit] can hold it.
 final class FakeQuickAddService implements QuickAddService {
   new({
     this.project,
     this._planner,
+    this._inherited,
     this.result = const QuickAddResult(createdTaskIds: [-1]),
   });
 
   final Project? project;
   final QuickAddPlanner? _planner;
+  final int? Function(IndentedLine line)? _inherited;
   QuickAddResult result;
   Exception? submitError;
   Future<void> Function()? beforeSubmit;
@@ -64,6 +67,9 @@ final class FakeQuickAddService implements QuickAddService {
       fallbackPriority: fallbackPriority,
     );
   }
+
+  @override
+  int? inheritedProjectId(IndentedLine line) => _inherited?.call(line);
 
   QuickAddPlan _planned(
     String line, {

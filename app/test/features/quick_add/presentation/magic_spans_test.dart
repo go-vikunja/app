@@ -119,6 +119,20 @@ void main() {
     expect(startsOf('x at 9 y at 9 pm'), [(2, 'at 9', MagicSpanKind.date)]);
   });
 
+  test('QA-6: a weekday or a repeat where the parser takes it, not out of '
+      'a joined word', () {
+    expect(startsOf('x daily-ish daily.'), [
+      (12, 'daily', MagicSpanKind.repeat),
+    ]);
+    expect(startsOf('x daily. y daily'), [(11, 'daily', MagicSpanKind.repeat)]);
+    expect(startsOf('Standup mon. Gym mon-fri'), [
+      (8, 'mon', MagicSpanKind.date),
+    ]);
+    expect(startsOf('x mon-fri next sat'), [
+      (10, 'next sat', MagicSpanKind.date),
+    ]);
+  });
+
   test('a repeat without a date', () {
     expect(spansOf('Water plants every 3 days'), [
       ('every 3 days', MagicSpanKind.repeat),

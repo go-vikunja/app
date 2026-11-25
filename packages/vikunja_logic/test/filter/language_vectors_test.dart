@@ -120,20 +120,47 @@ void main() {
   });
 
   group('other web vectors', () {
+    // A source of only `:line` is in the file named last.
+    var file = '';
     for (final vector in loadJsonl('language_web_other.jsonl')) {
+      final src = vector['src']! as String;
+      if (!src.startsWith(':')) file = src.substring(0, src.lastIndexOf(':'));
       final filter = vector['filter'];
       _vectorTest(
         vector,
         () =>
             expect(parseTaskFilter(filter! as String), isA<FilterExpression>()),
-        skip: filter is String
-            ? null
-            : "the web editor's highlighting, autocomplete and popup belong "
-                  'to the filter builder (section C)',
+        skip: filter is String ? null : _notPorted(file),
       );
     }
   });
 }
+
+String _notPorted(String file) => switch (file.split('/').last) {
+  'highlighter.test.ts' =>
+    "the web editor's highlighter decorates its rich-text document, which "
+        "has no counterpart in the app's text field; that field highlights "
+        'with its own spans, tested by filterSpans in '
+        'app/test/features/filters/filter_syntax_test.dart',
+  'FilterAutocomplete.test.ts' =>
+    "the web editor's cursor arithmetic (calculateReplacementRange over its "
+        "rich-text document) has no counterpart in the app's text field, "
+        'which replaces what is typed at the caret, tested by completeFilter '
+        'in '
+        'app/test/features/filters/filter_syntax_test.dart',
+  'FilterInput.test.ts' =>
+    "the web's FilterInput component has no counterpart in the app's text "
+        'field, which has its own widget tests in '
+        'app/test/features/filters/filter_field_test.dart',
+  'FilterPopup.test.ts' =>
+    "the web's FilterPopup hands its settings to the route; the app has no "
+        'such popup',
+  'ShowTasks.test.ts' =>
+    'show tasks without a date is a selection, not a filter: covered by '
+        '"ShowTasks.test.ts 2b show tasks without date" in '
+        'test/lists/upcoming_selection_test.dart',
+  _ => throw StateError('no reason given for skipping $file'),
+};
 
 void _vectorTest(
   Map<String, Object?> vector,

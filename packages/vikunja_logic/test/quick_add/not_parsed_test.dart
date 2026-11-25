@@ -117,6 +117,38 @@ void main() {
     });
   });
 
+  group('QA-3, QA-5, QA-6: a letter of any alphabet continues the word '
+      '(the web stops at the first one outside A to Z)', () {
+    for (final text in [
+      'Reunião 3 março',
+      '5 mayúsculas',
+      '2 junções',
+      'Feira mar 3ã',
+      'Comprar 5th março',
+      'x 5 may\u0301',
+      'Ver todayú',
+      'x tomorrowç',
+      'x tonightã',
+      'x in 2 daysç',
+      'x in a weekú',
+      'x in 3 hourã',
+    ]) {
+      test(text, () {
+        expect(parse(text), ParsedTaskText(text: text));
+      });
+    }
+
+    test('after a word with such letters a date still counts', () {
+      final now = DateTime(2021, 6, 24, 12);
+      final month = parse('Reunião 3 mar', now: now);
+      expect(month.text, 'Reunião');
+      expect(month.date, DateTime(2022, 3, 3, 12));
+      final keyword = parse('Café tomorrow', now: now);
+      expect(keyword.text, 'Café');
+      expect(keyword.date, DateTime(2021, 6, 25, 12));
+    });
+  });
+
   group('QA-6: the in rule needs whole words', () {
     test('within 2 days', () {
       // Before 2.8.0 the web gave 2021-6-26 and the text "Reply with".

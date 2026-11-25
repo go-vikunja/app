@@ -33,11 +33,15 @@ List<Project> projectsNamed(
 }
 
 /// What a `+project` has to say for quick add to take exactly [project]:
-/// its title, else its identifier; null when neither tells it apart from
-/// the other [candidates].
-String? projectReference(Project project, List<Project> candidates) {
+/// its title, else its identifier, each only where [usable]; null when
+/// neither tells it apart from the other [candidates].
+String? projectReference(
+  Project project,
+  List<Project> candidates, {
+  bool Function(String reference)? usable,
+}) {
   for (final reference in [project.title, project.identifier]) {
-    if (reference.isEmpty) continue;
+    if (reference.isEmpty || !(usable?.call(reference) ?? true)) continue;
     final named = projectsNamed(reference, candidates);
     if (named.length == 1 && named.single.id == project.id) return reference;
   }

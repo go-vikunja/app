@@ -97,7 +97,10 @@ final class ComposerHarness {
   List<User> knownUsers = [sam];
   UserSettings get settings => data.shared.settings;
   set settings(UserSettings settings) => data.shared.settings = settings;
-  late final service = FakeQuickAddService(planner: _plan);
+  late final service = FakeQuickAddService(
+    planner: _plan,
+    inherited: (line) => _realService().inheritedProjectId(line),
+  );
 
   LocalQuickAddService _realService() => LocalQuickAddService(
     snapshot: QuickAddSnapshot(

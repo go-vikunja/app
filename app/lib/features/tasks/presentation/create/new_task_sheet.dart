@@ -238,6 +238,8 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   int? _plannedPriority;
   DateTime? _plannedAt;
   final _plans = <String, QuickAddPlan>{};
+  static const _stalePlansAllowed = 500;
+  int _plansLimit = _stalePlansAllowed;
 
   @override
   void initState() {
@@ -370,9 +372,15 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         fallbackId != _fallbackId ||
         _due != _plannedDue ||
         _priority != _plannedPriority ||
-        minute != _plannedAt ||
-        _plans.length > 500) {
+        minute != _plannedAt) {
       _plans.clear();
+      _plansLimit = _stalePlansAllowed;
+    } else if (_plans.length > _plansLimit) {
+      // Only the lines no longer in the text go, so that a long paste is
+      // not planned again on every keystroke and caret move.
+      final current = {for (final line in magicLines(_text.text)) line.text};
+      _plans.removeWhere((line, _) => !current.contains(line));
+      _plansLimit = _plans.length + _stalePlansAllowed;
     }
     _service = service;
     _mode = mode;
@@ -395,6 +403,32 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     );
     if (plan != null) _plans[line] = plan;
     return plan;
+  }
+
+  /// The plan of the task line [token] stands in, as Add plans it: a
+  /// subtask naming no project of its own goes to its parent's. [lines]
+  /// and [taskLines] are the text's, which are cut alike.
+  QuickAddPlan? _planOfTokenLine(
+    ActiveMagicToken token,
+    List<MagicLine> lines,
+    List<IndentedLine> taskLines,
+  ) {
+    if (lines.length != taskLines.length) return null;
+    final index = lines.indexWhere(
+      (line) =>
+          line.offset <= token.start &&
+          token.start < line.offset + line.text.length,
+    );
+    if (index < 0) return null;
+    final line = taskLines[index];
+    final inherited = _service?.inheritedProjectId(line);
+    if (inherited == null) return _plan(line.text);
+    return _service?.plan(
+      line.text,
+      fallbackProjectId: inherited,
+      fallbackDueDate: _due,
+      fallbackPriority: _priority,
+    );
   }
 
   List<MagicSpan> _lineSpans(String line) {
@@ -874,6 +908,9 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     final token = prefixes == null
         ? null
         : activeMagicToken(_text.value, prefixes);
+    final tokenPlan = token == null
+        ? null
+        : _planOfTokenLine(token, lines, taskLines) ?? plan;
     // Out of sight, an invalid repeat does not disable Add: Add shows it.
     final canAdd =
         service != null &&
@@ -1184,9 +1221,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           MagicSuggestions(
             token: token,
             typed: _text.text.substring(token.start, token.end),
-            projectId: (plan?.project ?? project)?.id,
-            onSelected: (item) =>
-                _edit(completeMagicToken(_text.value, token, item)),
+            mode: mode,
+            projectId: (tokenPlan?.project ?? project)?.id,
+            onSelected: (written) =>
+                _edit(completeMagicToken(_text.value, token, written)),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),

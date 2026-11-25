@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/outbox/failure_retry.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/user_repository.dart';
@@ -196,7 +197,7 @@ final class LocalQuickAddService implements QuickAddService {
       for (final line in lines)
         plan(
           line.text,
-          fallbackProjectId: _inheritedProjectId(line) ?? fallbackProjectId,
+          fallbackProjectId: inheritedProjectId(line) ?? fallbackProjectId,
           fallbackDueDate: fallbackDueDate,
           fallbackPriority: fallbackPriority,
         ),
@@ -383,23 +384,16 @@ final class LocalQuickAddService implements QuickAddService {
     return depth;
   }
 
-  /// The project a subtask line inherits from its parent line when it
-  /// names none of its own, matched like a `+project`; null when no
-  /// project a task can go to has that name, and the line's fallback
-  /// applies.
-  int? _inheritedProjectId(IndentedLine line) =>
-      switch (line.inheritedProject) {
-        final name? => _projectsNamed(
-          name,
-          _selectableProjects,
-        ).firstOrNull?.id,
-        null => null,
-      };
+  @override
+  int? inheritedProjectId(IndentedLine line) => switch (line.inheritedProject) {
+    final name? => _projectsNamed(name, _selectableProjects).firstOrNull?.id,
+    null => null,
+  };
 
   /// Every name looked up on the server in the task's project, also the
   /// ones the plan resolved: a known user may have no access there. Only
-  /// offline does the plan's resolution against the known people stand.
-  /// The names found leave the title.
+  /// where the server did not answer the search does the plan's resolution
+  /// against the known people stand. The names found leave the title.
   Future<_ReadyLine> _resolveAssignees(
     QuickAddPlan plan,
     _Submission submission,
@@ -567,10 +561,11 @@ bool _containsIgnoringCase(List<String> values, String value) {
 }
 
 /// The searches and label creates of one submit. The first
-/// `NetworkFailure` means the device is offline: later searches are
-/// skipped instead of each waiting for its own timeout. Labels are created
-/// on the device, offline too, and sent through the outbox. A guest's
-/// submit skips both.
+/// `NetworkFailure` means the device is offline, and the first
+/// `SessionEnded` that no search gets through: later searches are skipped
+/// instead of each waiting for its own failure. Labels are created on the
+/// device, offline too, and sent through the outbox. A guest's submit
+/// skips both.
 final class _Submission {
   new({
     required this._users,
@@ -586,13 +581,18 @@ final class _Submission {
   final bool _createsLabels;
   bool _reachable;
   final _searches = <(int, String), User?>{};
+  final _unanswered = <(int, String)>{};
   final _created = <String, Label>{};
   final List<String> labelsNotCreated = [];
 
   Label? createdLabel(String title) => _created[title.toLowerCase()];
 
   /// The user the server finds for [name] in [projectId]; not answered
-  /// when the device is offline.
+  /// when the server never gave its word on the search, as the outbox
+  /// would wait for or retry it: offline, after the session ended, on a
+  /// server error, a rate limit or an answer that is not Vikunja's. A
+  /// refusal is an answer. A search not answered is not asked again in
+  /// this submit, as each try may cost a refresh or a timeout.
   Future<({bool answered, User? user})> searchAssignee(
     int projectId,
     String name,
@@ -601,18 +601,26 @@ final class _Submission {
     if (_searches.containsKey(key)) {
       return (answered: true, user: _searches[key]);
     }
-    if (!_reachable) return (answered: false, user: null);
+    if (!_reachable || _unanswered.contains(key)) {
+      return (answered: false, user: null);
+    }
     try {
       final user = _searches[key] = acceptSearchedAssignee(
         await _users.searchAssignees(projectId, name),
         name,
       );
       return (answered: true, user: user);
-    } on NetworkFailure {
-      _reachable = false;
-      return (answered: false, user: null);
     } on VikunjaFailure catch (failure) {
       _log.fine('Assignee search failed: ${failure.runtimeType}');
+      if (failure is NetworkFailure || failure is SessionEnded) {
+        _reachable = false;
+      }
+      if (failure is SessionEnded ||
+          failureRetry(failure, unreadableIsFinal: false) !=
+              FailureRetry.never) {
+        _unanswered.add(key);
+        return (answered: false, user: null);
+      }
       return (answered: true, user: _searches[key] = null);
     }
   }

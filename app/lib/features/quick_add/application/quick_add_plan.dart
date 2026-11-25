@@ -172,6 +172,12 @@ abstract interface class QuickAddService {
     int? fallbackPriority,
   });
 
+  /// The project [submit] files the subtask [line] in when it names none of
+  /// its own: its parent's ([IndentedLine.inheritedProject]), matched like
+  /// a `+project`; null when no project a task can go to has that name,
+  /// and the fallback applies.
+  int? inheritedProjectId(IndentedLine line);
+
   /// Creates one task per non-empty line of [text] through the outbox
   /// (offline-capable), as [plan] plans it; a line indented deeper than
   /// the one before becomes a subtask of the nearest line above it with
@@ -181,10 +187,10 @@ abstract interface class QuickAddService {
   /// device and offline too, through the outbox like the tasks, and a
   /// `*label` that could not be created stays at the end of its line's
   /// title as typed; `@names` are resolved with the server's user search in
-  /// the task's project when it is reachable and with the known users
-  /// otherwise; every task also gets [extras]. A title over the server's
-  /// limit is cut, after the labels kept were added, and its rest starts
-  /// the description. Throws
+  /// the task's project when the server answers it and with the known
+  /// users otherwise; every task also gets [extras]. A title over the
+  /// server's limit is cut, after the labels kept were added, and its rest
+  /// starts the description. Throws
   /// [QuickAddNoProject] before creating anything when a line has no
   /// project, and [QuickAddPartlyFailed] when a line fails after earlier
   /// ones were created.

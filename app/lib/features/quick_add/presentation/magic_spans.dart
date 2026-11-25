@@ -162,13 +162,11 @@ List<MagicSpan> magicSpansOf(
         span.shifted(line.offset),
 ];
 
-// A phrase ends where the parser removes it: a time as a time
-// (QA-14), anything else as a word (QA-4).
-final _timePhrase = RegExp('^(?:at|@) ', caseSensitive: false);
-
-/// The repeat phrase where it first stands as words, the date phrases
-/// wherever they do (the parser removed every occurrence), outside of
-/// [taken]; neighbours of a kind with only spaces between them are one.
+/// The repeat phrase where it first stands as words, by the parser's two
+/// ends, the date phrases wherever they do (the parser removed every
+/// occurrence), outside of [taken]; each ends where the parser ends it
+/// (QA-4, QA-6, QA-14). Neighbours of a kind with only spaces between
+/// them are one.
 List<MagicSpan> _phraseSpans(
   String line,
   ParsedTaskText parsed,
@@ -177,30 +175,43 @@ List<MagicSpan> _phraseSpans(
   final found = <MagicSpan>[];
   bool free(int start, int end) =>
       !taken.any((span) => span.start < end && start < span.end);
-  void mark(String phrase, MagicSpanKind kind, {required bool everywhere}) {
-    if (phrase.isEmpty) return;
-    final end = _timePhrase.hasMatch(phrase)
-        ? quickAddTimeEnd
-        : quickAddWordEnd;
+  bool mark(
+    String phrase,
+    MagicSpanKind kind,
+    String end, {
+    required bool everywhere,
+  }) {
+    if (phrase.isEmpty) return false;
     final pattern = RegExp(
       '(?<!\\S)${RegExp.escape(phrase)}$end',
       caseSensitive: false,
+      unicode: true,
     );
+    var marked = false;
     for (final match in pattern.allMatches(line)) {
       if (!free(match.start, match.end)) continue;
       final span = MagicSpan(match.start, match.end, kind);
       taken.add(span);
       found.add(span);
-      if (!everywhere) return;
+      marked = true;
+      if (!everywhere) break;
     }
+    return marked;
   }
 
   if ((parsed.repeats, parsed.repeatPhrase) case (_?, final phrase?)) {
-    mark(phrase, MagicSpanKind.repeat, everywhere: false);
+    for (final end in [quickAddSpaceEnd, quickAddPunctuationEnd]) {
+      if (mark(phrase, MagicSpanKind.repeat, end, everywhere: false)) break;
+    }
   }
   if (parsed.date != null) {
     for (final phrase in parsed.datePhrases) {
-      mark(phrase, MagicSpanKind.date, everywhere: true);
+      mark(
+        phrase,
+        MagicSpanKind.date,
+        quickAddDatePhraseEnd(phrase),
+        everywhere: true,
+      );
     }
   }
   found.sort((a, b) => a.start.compareTo(b.start));

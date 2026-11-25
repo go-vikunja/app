@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/outbox/failure_retry.dart';
 import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/posted_at_json.dart';
@@ -1683,7 +1684,7 @@ final class OutboxSender {
   /// nothing done, for any other failure.
   Future<bool> _refusedLookup(OutboxRow op, VikunjaFailure failure) async {
     if (failure is SessionEnded ||
-        _retryOf(op, failure) != _Retry.never ||
+        _retryOf(op, failure) != FailureRetry.never ||
         _disposed) {
       return false;
     }
@@ -1707,16 +1708,16 @@ final class OutboxSender {
   }) async {
     if (_disposed) return;
     final retry = _retryOf(op, failure);
-    if (retry != _Retry.never) {
+    if (retry != FailureRetry.never) {
       final failed =
           attempts ??
-          (retry == _Retry.counted && !_followsCounted(op)
+          (retry == FailureRetry.counted && !_followsCounted(op)
               ? 1
               : op.attempts + 1);
       final limit = op.kind == OutboxOperationKind.uploadAttachment.name
           ? maxFailedUploadAnswersInARow
           : maxFailedAnswersInARow;
-      if (retry == _Retry.counted && failed >= limit) {
+      if (retry == FailureRetry.counted && failed >= limit) {
         _log.warning(
           '${op.kind} for task ${op.taskId} failed with '
           '${failure.runtimeType} $failed times in a row; given up',
@@ -1788,40 +1789,17 @@ final class OutboxSender {
         _ => false,
       };
 
-  /// A token the server rejects after the interceptor's own refresh means
-  /// a session that was replaced or a server that will accept the next
-  /// token; the session that ended for good arrives as `SessionEnded`. A
-  /// 2xx whose body is no JSON at all is a captive portal's page on a
-  /// cleartext network, which waits like being offline. An answer without
-  /// a Vikunja error code (a proxy's redirect, an access gate's 401 or 407
-  /// such as for an expired access header, a web server's 404 during a
-  /// deploy) is not the server's last word. A 2xx whose JSON cannot be
-  /// read, or an exception without a status, is final (a retry would only
-  /// repeat it), except for a create or an upload: the server may have
-  /// stored it, and the next attempt looks for it first.
-  static _Retry _retryOf(
-    OutboxRow op,
-    VikunjaFailure failure,
-  ) => switch (failure) {
-    NetworkFailure() ||
-    NotJsonResponse() ||
-    RateLimited() ||
-    RefreshRaceLost() ||
-    TokenRejected() => _Retry.waits,
-    ServerFailure() => _Retry.counted,
-    NotFound(:final routeAbsent) => routeAbsent ? _Retry.counted : _Retry.never,
-    UnexpectedResponse(statusCode: 401 || 407) => _Retry.counted,
-    UnexpectedResponse(:final statusCode?) when statusCode >= 400 =>
-      _Retry.never,
-    UnexpectedResponse(:final statusCode?) when statusCode >= 300 =>
-      _Retry.counted,
-    UnexpectedResponse() =>
-      OutboxDao.createKinds.contains(op.kind) ? _Retry.counted : _Retry.never,
-    _ => _Retry.never,
-  };
+  /// An answer that cannot be read is no final word on a create or an
+  /// upload: the server may have stored it, and the next attempt looks for
+  /// it first.
+  static FailureRetry _retryOf(OutboxRow op, VikunjaFailure failure) =>
+      failureRetry(
+        failure,
+        unreadableIsFinal: !OutboxDao.createKinds.contains(op.kind),
+      );
 
   static bool _followsCounted(OutboxRow op) => switch (op.lastError) {
-    final json? => _retryOf(op, decodeFailure(json)) == _Retry.counted,
+    final json? => _retryOf(op, decodeFailure(json)) == FailureRetry.counted,
     null => false,
   };
 
@@ -1903,18 +1881,6 @@ final class OutboxSender {
 }
 
 typedef _Clients = ({VikunjaWriteClient write, VikunjaReadClient read});
-
-enum _Retry {
-  /// Not the server's word on the op (the network, a rate limit, the
-  /// session): it waits as long as that lasts.
-  waits,
-
-  /// An answer that is neither success nor the server's last word.
-  counted,
-
-  /// A sync problem at once.
-  never,
-}
 
 /// The run of one lane, the queue or the uploads: idle, draining or
 /// waiting on its own, with the timer of its next pass.

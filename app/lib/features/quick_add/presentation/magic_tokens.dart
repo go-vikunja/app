@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 
@@ -56,15 +57,48 @@ bool _closed(String line, QuickAddToken token) =>
     token.end > token.itemStart &&
     line[token.end - 1] == line[token.itemStart - 1];
 
-/// Replaces [token] with its prefix and [item], followed by a space, and
-/// puts the caret after it.
+/// [item] as written after the prefix of [kind] so that quick add reads
+/// back exactly [item], at the start of a line and after other words: as
+/// [quoteQuickAddItem] writes it, else in the quote it lacks; null where
+/// no writing does, as for one holding a space and a prefix that splits
+/// it.
+String? writtenMagicItem(
+  String item,
+  MagicTokenKind kind,
+  QuickAddMagicMode mode,
+) {
+  final prefixes = quickAddPrefixes(mode);
+  if (prefixes == null || item.isEmpty) return null;
+  final prefix = switch (kind) {
+    MagicTokenKind.label => prefixes.label,
+    MagicTokenKind.project => prefixes.project,
+    MagicTokenKind.assignee => prefixes.assignee,
+  };
+  String? readBack(String line) => switch (kind) {
+    MagicTokenKind.project => parseQuickAddProject(line, mode: mode),
+    MagicTokenKind.label || MagicTokenKind.assignee => {
+      for (final token in quickAddTokens(line, prefix))
+        if (token.item.isNotEmpty) token.item,
+    }.singleOrNull,
+  };
+  for (final written in {quoteQuickAddItem(item), '"$item"', "'$item'"}) {
+    final token = '$prefix$written ';
+    if (readBack(token) == item && readBack('a $token') == item) {
+      return written;
+    }
+  }
+  return null;
+}
+
+/// Replaces [token] with its prefix and [written], the item as it is
+/// written there, followed by a space, and puts the caret after it.
 TextEditingValue completeMagicToken(
   TextEditingValue value,
   ActiveMagicToken token,
-  String item,
+  String written,
 ) {
   final text = value.text;
-  final replacement = '${token.prefix}${quoteQuickAddItem(item)}';
+  final replacement = '${token.prefix}$written';
   final spaced = text.startsWith(' ', token.end)
       ? replacement
       : '$replacement ';

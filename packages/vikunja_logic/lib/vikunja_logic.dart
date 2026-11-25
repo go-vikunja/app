@@ -23,6 +23,7 @@ export 'src/lists/task_tree.dart';
 export 'src/lists/upcoming_selection.dart';
 export 'src/lists/view_filter_kind.dart';
 export 'src/names/name_rules.dart';
+export 'src/quick_add/date_parser.dart' show quickAddDatePhraseEnd;
 export 'src/quick_add/indented_lines.dart';
 export 'src/quick_add/parsed_task_text.dart';
 export 'src/quick_add/phrase_ends.dart';
