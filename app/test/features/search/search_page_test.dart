@@ -203,6 +203,63 @@ void main() {
     );
   });
 
+  testWidgets("a result's star and due date change its task", (tester) async {
+    await openSearch(tester);
+    await search(tester, 'quarterly');
+    final row = find.widgetWithText(TaskRow, 'Quarterly report');
+
+    await tester.tap(
+      find.descendant(of: row, matching: find.byTooltip(en.taskAddFavourite)),
+    );
+    await tester.pumpAndSettle();
+    expect(data.tasks.writes, ['setFavorite 2 true']);
+
+    await tester.drag(row, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.shortcutToday));
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['setFavorite 2 true', 'update 2']);
+    expect(data.tasks.find(2)!.dueDate!.toLocal(), DateTime(2026, 10, 10, 12));
+  });
+
+  testWidgets('a favourite task of an archived project is found, with its '
+      'Done, star and due date off, as the server refuses changes to '
+      'it', (tester) async {
+    data.tasks.all = [
+      sampleTask(
+        id: 4,
+        title: 'Old report',
+        projectId: 3,
+        due: now.add(const Duration(days: 1)),
+        favorite: true,
+      ),
+    ];
+    await openSearch(tester);
+    await search(tester, 'old report');
+    final row = find.widgetWithText(TaskRow, 'Old report');
+    expect(row, findsOneWidget);
+
+    expect(tester.widget<TaskRow>(row).onDoneChanged, isNull);
+    expect(tester.widget<TaskRow>(row).onFavoriteChanged, isNull);
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(Checkbox)),
+      warnIfMissed: false,
+    );
+    await tester.tap(
+      find.descendant(
+        of: row,
+        matching: find.byTooltip(en.taskRemoveFavourite),
+      ),
+      warnIfMissed: false,
+    );
+    await tester.drag(row, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.shortcutToday), findsNothing);
+    expect(data.tasks.writes, isEmpty);
+  });
+
   testWidgets('Undo keeps the row in its place among the open results while '
       'the device stores it', (tester) async {
     await openSearch(tester);

@@ -341,6 +341,62 @@ void main() {
     expect(options.beforeSendTransaction, isNotNull);
   });
 
+  test('a report whose scrubbing throws partway is dropped by the app '
+      'itself, whatever the Sentry SDK does with a failing callback, and '
+      'through a real Sentry start nothing is sent, while a report scrubbed '
+      'whole is', () async {
+    SentryEvent failPartway(
+      SentryEvent event, {
+      required String part,
+      Iterable<String> hosts = const [],
+    }) {
+      event.message = SentryMessage('scrubbed');
+      throw StateError('a scrubber that fails partway');
+    }
+
+    var failing = true;
+    void configure(SentryOptions options) => configureCrashReportOptions(
+      options,
+      start: (
+        dsn: testCrashReportsDsn,
+        part: AppPart.app,
+        hosts: () => const {_host},
+      ),
+      release: 'io.vikunja.app@1.0.0+7',
+      dist: '7',
+      scrub: (event, {required part, hosts = const []}) => failing
+          ? failPartway(event, part: part, hosts: hosts)
+          : scrubCrashReport(event, part: part, hosts: hosts),
+    );
+
+    final options = SentryFlutterOptions();
+    configure(options);
+    expect(
+      await options.beforeSend!(
+        SentryEvent(message: SentryMessage('failed'), tags: {'server': _host}),
+        Hint(),
+      ),
+      isNull,
+    );
+
+    late _KeptEnvelopes transport;
+    await Sentry.init((options) {
+      configure(options);
+      transport = _KeptEnvelopes(options);
+      options.transport = transport;
+    });
+    addTearDown(Sentry.close);
+    await Sentry.captureEvent(
+      SentryEvent(message: SentryMessage('failed'), tags: {'server': _host}),
+    );
+    await Sentry.captureException(StateError('at https://$_host/api'));
+    expect(transport.sent, isEmpty);
+
+    failing = false;
+    await Sentry.captureEvent(SentryEvent(message: SentryMessage('control')));
+    expect(transport.sent, hasLength(1), reason: 'the transport is reached');
+  });
+
   test('a warning becomes a breadcrumb redacted when it is made', () {
     final breadcrumb = crashReportBreadcrumb(
       DiagnosticsEntry(
@@ -434,6 +490,22 @@ final class _RecordingOptions extends SentryFlutterOptions {
       for (final integration in integrations) '${integration.runtimeType}',
     ];
     super.dsn = value;
+  }
+}
+
+/// Keeps every envelope Sentry would send.
+final class _KeptEnvelopes implements Transport {
+  new(this._options);
+
+  final SentryOptions _options;
+  final sent = <String>[];
+
+  @override
+  Future<SentryId?> send(SentryEnvelope envelope) async {
+    final bytes = <int>[];
+    await envelope.envelopeStream(_options).forEach(bytes.addAll);
+    sent.add(String.fromCharCodes(bytes));
+    return SentryId.newId();
   }
 }
 

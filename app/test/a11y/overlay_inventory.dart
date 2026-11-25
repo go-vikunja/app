@@ -20,6 +20,12 @@ final class Exempt extends OverlayCoverage {
 const _menuOfTextItems =
     'a Material popup menu of text items; its labelled button is swept with '
     'the page, and the items are 48 dp rows that read their text';
+const _pickerForm =
+    'a picker sheet with a PickerHeader over labelled fields and rows, '
+    'built like the new-team and link sheets the sweep opens';
+const _pickerList =
+    'a picker sheet with a PickerHeader over a list of labelled rows, '
+    'built like the team picker the sweep opens';
 const _sameAlertAsDelete =
     'an AlertDialog.adaptive with a title, a text and AdaptiveDialogAction '
     'buttons, built like the delete-task dialog the sweep opens';
@@ -52,6 +58,12 @@ const overlayInventory = <String, OverlayCoverage>{
     '$_sameAlertAsDelete; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
+  'features/account_settings/presentation/api_tokens_page.dart '
+      '_ApiTokensPageState._showDetails showPickerSheet': Exempt(
+    "a token's details as text rows over a Delete button; "
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
   'features/account_settings/presentation/avatar_page.dart '
       '_AvatarPageState._uploadPhoto MaterialPageRoute': Swept(
     'avatar crop page',
@@ -60,15 +72,30 @@ const overlayInventory = <String, OverlayCoverage>{
       '_CaldavPageState._create MaterialPageRoute': Swept(
     'one-time secret page',
   ),
+  'features/account_settings/presentation/default_project_picker.dart '
+      'pickDefaultProject showPickerSheet': Swept(
+    'default-project picker',
+  ),
   'features/account_settings/presentation/one_time_secret_view.dart '
       '_OneTimeSecretViewState._confirmLeave showAdaptiveDialog': Exempt(
     '$_sameAlertAsDelete; opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/account_settings/presentation/searchable_option_sheet.dart '
+      'showSearchableOptionSheet showPickerSheet': Exempt(
+    '$_pickerList, with a search field; the time zone list opened at '
+    '200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/account_settings/presentation/sessions_page.dart '
       '_SessionRow.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/account_settings/presentation/sessions_page.dart '
+      '_SessionsPageState._showDetails showPickerSheet': Exempt(
+    "a session's details as text rows over an End button; opened at 200 % "
+    'in test/app/accessibility_smoke_test.dart',
   ),
   'features/accounts/presentation/account_switcher_sheet.dart '
       'showAccountSwitcher showReadableCupertinoSheet': Swept(
@@ -146,6 +173,16 @@ const overlayInventory = <String, OverlayCoverage>{
     '$_menuOfTextItems; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
+  'features/description_editor/presentation/link_sheet.dart '
+      'showLinkSheet showPickerSheet': Swept(
+    'link sheet',
+  ),
+  'features/home/presentation/description_conflict_sheet.dart '
+      'showDescriptionConflictSheet showPickerSheet': Exempt(
+    'a titled sheet of text and two labelled buttons; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
   'features/inbox/presentation/inbox_screen.dart '
       '_InboxScreenState.build PopupMenuButton': Exempt(
     _menuOfTextItems,
@@ -160,6 +197,18 @@ const overlayInventory = <String, OverlayCoverage>{
     'swept as the "connect insecure question" state of the connect '
     'screen',
   ),
+  'features/onboarding/presentation/guest/share_password_sheet.dart '
+      'askForSharePassword showPickerSheet': Exempt(
+    '$_pickerForm; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/onboarding/presentation/guest/shared_link_sheet.dart '
+      'askForSharedLink showPickerSheet': Exempt(
+    '$_pickerForm; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
   'features/privacy/presentation/crash_reports_question.dart '
       'showCrashReportsQuestion showAdaptiveDialog': Swept(
     'crash reports question',
@@ -167,6 +216,31 @@ const overlayInventory = <String, OverlayCoverage>{
   'features/projects/presentation/board/column_menu.dart '
       'ColumnMenuButton.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/projects/presentation/board/column_sheets.dart '
+      'showColumnLimitSheet showPickerSheet': Swept(
+    'column limit sheet',
+  ),
+  'features/projects/presentation/board/column_sheets.dart '
+      'showColumnTitleSheet showPickerSheet': Swept(
+    'column title sheet',
+  ),
+  'features/projects/presentation/manage/duplicate_project_sheet.dart '
+      'duplicateProjectAndOpen showPickerSheet': Exempt(
+    '$_pickerForm; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/projects/presentation/manage/new_project_sheet.dart '
+      'createProjectAndOpen showPickerSheet': Exempt(
+    '$_pickerForm; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/projects/presentation/manage/parent_picker.dart '
+      'pickParentProject showPickerSheet': Exempt(
+    '$_pickerList; opened at 200 % from the new project sheet in '
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/projects/presentation/manage/project_confirmations.dart '
@@ -179,6 +253,12 @@ const overlayInventory = <String, OverlayCoverage>{
     '$_menuOfTextItems; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
+  'features/projects/presentation/manage/view_form_sheet.dart '
+      'showViewFormSheet showPickerSheet': Exempt(
+    '$_pickerForm; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
   'features/projects/presentation/project_tasks_screen.dart '
       '_ProjectTasksScreenState.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '
@@ -187,6 +267,12 @@ const overlayInventory = <String, OverlayCoverage>{
   'features/projects/presentation/projects_screen.dart '
       '_ProjectsScreenState.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/projects/presentation/table_columns_sheet.dart '
+      'showTableColumnsSheet showPickerSheet': Exempt(
+    '$_pickerList, with checkboxes; '
+    'opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/quick_add/presentation/quick_add_help_sheet.dart '
@@ -213,6 +299,34 @@ const overlayInventory = <String, OverlayCoverage>{
       'showShareSheet showModalBottomSheet': Exempt(
     'opened at 200 % in both modes in '
     'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/sharing/presentation/link_qr_sheet.dart '
+      'showLinkQrSheet showPickerSheet': Exempt(
+    'a picker sheet with a PickerHeader over a labelled QR code image; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/sharing/presentation/link_share_form_sheet.dart '
+      'createLinkShare showPickerSheet': Exempt(
+    '$_pickerForm; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/sharing/presentation/link_share_sheet.dart '
+      'showLinkShareSheet showPickerSheet': Exempt(
+    '$_pickerList; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/sharing/presentation/person_search_sheet.dart '
+      'pickPerson showPickerSheet': Exempt(
+    '$_pickerList, with a search field; opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart and '
+    'test/app/accessibility_smoke_organise_test.dart',
+  ),
+  'features/sharing/presentation/team_pick_sheet.dart '
+      'pickTeam showPickerSheet': Swept(
+    'team picker',
   ),
   'features/smart_lists/presentation/smart_list_screen.dart '
       '_SmartListScreenState._menu PopupMenuButton': Exempt(
@@ -243,6 +357,10 @@ const overlayInventory = <String, OverlayCoverage>{
     'task sheet; the items are 48 dp rows that read their text; opened at '
     '200 % in test/app/accessibility_smoke_test.dart',
   ),
+  'features/tasks/presentation/details/attribute_editors.dart '
+      'editReminders showPickerSheet': Swept(
+    'reminders sheet',
+  ),
   'features/tasks/presentation/details/comments_section.dart '
       '_CommentMenu.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '
@@ -251,6 +369,13 @@ const overlayInventory = <String, OverlayCoverage>{
   'features/tasks/presentation/details/detail_menu.dart '
       'TaskDetailMenu.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/tasks/presentation/details/reaction_picker.dart '
+      'pickReaction showPickerSheet': Exempt(
+    'a titled sheet of emoji buttons that read their emoji and a labelled '
+    'field for another; '
+    'opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/tasks/presentation/edit/discard_changes_dialog.dart '
@@ -268,6 +393,10 @@ const overlayInventory = <String, OverlayCoverage>{
     'a list of labelled account rows for a link that names no '
     'account; opened in test/app/deep_link_test.dart',
   ),
+  'features/tasks/presentation/pickers/assignee_picker.dart '
+      'pickAssignees showPickerSheet': Swept(
+    'assignee picker',
+  ),
   'features/tasks/presentation/pickers/cupertino_picker_sheet.dart '
       'showCupertinoPickerSheet showCupertinoModalPopup': Swept(
     'date-time picker',
@@ -281,13 +410,17 @@ const overlayInventory = <String, OverlayCoverage>{
     'the Material time picker dialog of the time picker scenario, '
     'shown after the date',
   ),
-  'features/tasks/presentation/pickers/picker_sheet.dart '
-      'showPickerSheet showReadableCupertinoSheet': Swept(
+  'features/tasks/presentation/pickers/label_picker.dart '
+      'pickLabels showPickerSheet': Swept(
     'label picker',
   ),
   'features/tasks/presentation/pickers/picker_sheet.dart '
-      'showPickerSheet showModalBottomSheet': Swept(
-    'label picker',
+      'showPickerSheet showReadableCupertinoSheet': Exempt(
+    'the shared picker sheet presenter; its callers are listed',
+  ),
+  'features/tasks/presentation/pickers/picker_sheet.dart '
+      'showPickerSheet showModalBottomSheet': Exempt(
+    'the shared picker sheet presenter; its callers are listed',
   ),
   'features/tasks/presentation/pickers/project_picker.dart '
       'pickProject showReadableCupertinoSheet': Swept(
@@ -297,9 +430,21 @@ const overlayInventory = <String, OverlayCoverage>{
       'pickProject showModalBottomSheet': Swept(
     'project picker',
   ),
+  'features/tasks/presentation/pickers/reminder_picker.dart '
+      'pickReminder showPickerSheet': Exempt(
+    '$_pickerForm, opened from the reminders sheet; its custom form '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
   'features/tasks/presentation/pickers/time_picker.dart '
       'pickTimeOfDay showTimePicker': Swept(
     'time picker',
+  ),
+  'features/tasks/presentation/relations/add_relation_sheet.dart '
+      'pickRelation showPickerSheet': Exempt(
+    '$_pickerList, with a search field; '
+    'opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
   ),
   'features/tasks/presentation/rich_text/attachment_image_viewer.dart '
       'showAttachmentImage MaterialPageRoute': Swept(
@@ -318,10 +463,18 @@ const overlayInventory = <String, OverlayCoverage>{
       'showTaskDetail showModalBottomSheet': Swept(
     'detail sheet',
   ),
+  'features/teams/presentation/new_team_sheet.dart '
+      'showNewTeamSheet showPickerSheet': Swept(
+    'new-team sheet',
+  ),
   'features/teams/presentation/team_confirmations.dart '
       'explainOnlyAdmin showAdaptiveDialog': Exempt(
     '$_sameAlertAsDelete; opened at 200 % in '
     'test/app/accessibility_smoke_organise_test.dart',
+  ),
+  'features/teams/presentation/team_edit_sheet.dart '
+      'showTeamEditSheet showPickerSheet': Swept(
+    'team edit sheet',
   ),
   'features/teams/presentation/team_page.dart '
       '_MemberRow.build PopupMenuButton': Exempt(

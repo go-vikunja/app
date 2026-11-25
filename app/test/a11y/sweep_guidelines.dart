@@ -359,19 +359,6 @@ final class _ActionLabelGuideline extends AccessibilityGuideline {
   }
 }
 
-const _sameListTwice =
-    'The Projects tab lists a favourite saved filter in Favourites and again '
-    'in Saved filters; both rows open the same list, so the same name keeps '
-    'one purpose (WCAG 3.2.4), and the section headings tell them apart.';
-
-/// Names (lines joined by a space) that may repeat on one screen in the
-/// same context, each with the reason; every entry is also a deviation
-/// (decision log: Accessibility).
-const Map<String, String> repeatableTapLabels = {
-  'Urgent Favourite': _sameListTwice,
-  'Urgent Favorit': _sameListTwice,
-};
-
 final class _DistinctTapLabelGuideline extends AccessibilityGuideline {
   const new();
 
@@ -393,8 +380,7 @@ final class _DistinctTapLabelGuideline extends AccessibilityGuideline {
         if ((data.hasAction(SemanticsAction.tap) ||
                 data.hasAction(SemanticsAction.longPress)) &&
             name.isNotEmpty &&
-            !(dismissBarriers.contains(name) && _isModalBarrier(data)) &&
-            !repeatableTapLabels.containsKey(name.replaceAll('\n', ' '))) {
+            !(dismissBarriers.contains(name) && _isModalBarrier(data))) {
           byName
               .putIfAbsent((name, _context(node), heading), () => [])
               .add(node);

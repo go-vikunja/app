@@ -6,7 +6,8 @@ import '../helpers/source_sites.dart';
 /// pushed with the Navigator, which the route walk does not see.
 final RegExp overlayCall = RegExp(
   r'\b(showAdaptiveDialog|showDialog|showModalBottomSheet|showCupertinoSheet'
-  '|showReadableCupertinoSheet|showCupertinoModalPopup|showDatePicker'
+  '|showReadableCupertinoSheet|showPickerSheet|showCupertinoModalPopup'
+  '|showDatePicker'
   '|showTimePicker|showMenu'
   '|MenuAnchor|PopupMenuButton|MaterialPageRoute|CupertinoPageRoute'
   r'|PageRouteBuilder)\b\s*(?:<.*?>)?\(',

@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
@@ -161,6 +162,45 @@ void main() {
       await tester.pump(markedDoneSnackBarDuration);
       await tester.pumpAndSettle();
       expect(rowTitles(tester), ['Inbox star']);
+    });
+
+    testWidgets('at midnight, within a minute while it is open, last '
+        "night's task is overdue and tomorrow's is today", (tester) async {
+      var current = DateTime(2026, 10, 10, 22);
+      data.tasks.all = [
+        sampleTask(
+          id: 1,
+          title: 'Late star',
+          due: DateTime(2026, 10, 10, 23),
+          favorite: true,
+        ),
+        sampleTask(
+          id: 2,
+          title: 'Morning star',
+          due: DateTime(2026, 10, 11, 10),
+          favorite: true,
+        ),
+      ];
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [
+          quickAddServiceProvider.overrideWithValue(FakeQuickAddService()),
+          clockProvider.overrideWithValue(() => current),
+        ],
+      );
+      containerOf(tester)
+          .read(appRouterProvider)
+          .go(AppRoutes.project(Project.favoritesId));
+      await tester.pumpAndSettle();
+      expect(headings(tester), [en.sectionToday, en.sectionNextSevenDays]);
+
+      current = DateTime(2026, 10, 11, 8);
+      await tester.pump(const Duration(minutes: 1));
+      await tester.pumpAndSettle();
+
+      expect(headings(tester), [en.sectionOverdue, en.sectionToday]);
+      expect(rowTitles(tester), ['Late star', 'Morning star']);
     });
 
     testWidgets('without favourites says how to get some', (tester) async {

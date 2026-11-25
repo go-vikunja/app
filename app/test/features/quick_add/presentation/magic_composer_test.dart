@@ -118,6 +118,114 @@ void main() {
       );
     });
 
+    group('while a keyboard composes a word, as Japanese input does', () {
+      const line = 'Buy 牛乳 *緊急';
+      final label = line.indexOf('*');
+
+      /// What the field draws: each part's text, its highlight and whether
+      /// the composing underline marks it.
+      List<(String, MagicSpanKind?, bool)> drawn(WidgetTester tester) {
+        final context = tester.element(composerField());
+        final kinds = {
+          for (final kind in MagicSpanKind.values)
+            MagicColors.of(context, kind).$2: kind,
+        };
+        final editable = tester
+            .state<EditableTextState>(
+              find.descendant(
+                of: composerField(),
+                matching: find.byType(EditableText),
+              ),
+            )
+            .renderEditable;
+        return [
+          for (final child
+              in (editable.text! as TextSpan).children ?? const <InlineSpan>[])
+            if (child case TextSpan(:final text?))
+              (
+                text,
+                kinds[child.style?.backgroundColor],
+                child.style?.decoration?.contains(TextDecoration.underline) ??
+                    false,
+              ),
+        ];
+      }
+
+      Future<void> compose(WidgetTester tester, TextRange composing) async {
+        tester.testTextInput.updateEditingValue(
+          TextEditingValue(
+            text: line,
+            selection: const TextSelection.collapsed(offset: line.length),
+            composing: composing,
+          ),
+        );
+        await tester.pump();
+      }
+
+      testWidgets('inside a highlighted part, the composed letters keep the '
+          'highlight and get the underline', (tester) async {
+        await harness.open(tester);
+        await typeLine(tester, line);
+
+        await compose(tester, TextRange(start: label + 1, end: line.length));
+
+        expect(drawn(tester), [
+          ('Buy 牛乳 ', null, false),
+          ('*', MagicSpanKind.label, false),
+          ('緊急', MagicSpanKind.label, true),
+        ]);
+      });
+
+      testWidgets('across the end of a plain part into a highlighted one, '
+          'both sides are underlined and only the part is highlighted', (
+        tester,
+      ) async {
+        await harness.open(tester);
+        await typeLine(tester, line);
+
+        await compose(tester, TextRange(start: 4, end: label + 2));
+
+        expect(drawn(tester), [
+          ('Buy ', null, false),
+          ('牛乳 ', null, true),
+          ('*緊', MagicSpanKind.label, true),
+          ('急', MagicSpanKind.label, false),
+        ]);
+      });
+
+      testWidgets('a composing range the text no longer holds underlines '
+          'nothing', (tester) async {
+        await harness.open(tester);
+        await typeLine(tester, line);
+        // The framework's setter refuses such a value in debug builds only.
+        final stale = _StaleComposing(
+          const TextEditingValue(
+            text: line,
+            composing: TextRange(start: 4, end: 40),
+          ),
+        )..highlighter = composerController(tester).highlighter;
+        final context = tester.element(composerField());
+        final kinds = {
+          for (final kind in MagicSpanKind.values)
+            MagicColors.of(context, kind).$2: kind,
+        };
+
+        final span = stale.buildTextSpan(context: context, withComposing: true);
+
+        expect(
+          [
+            for (final child in span.children!.cast<TextSpan>())
+              (
+                child.text,
+                kinds[child.style?.backgroundColor],
+                child.style?.decoration,
+              ),
+          ],
+          [('Buy 牛乳 ', null, null), ('*緊急', MagicSpanKind.label, null)],
+        );
+      });
+    });
+
     testWidgets('nothing while the line is only magic', (tester) async {
       await harness.open(tester);
       await typeLine(tester, '*urgent tomorrow');
@@ -1437,4 +1545,15 @@ void main() {
       );
     });
   });
+}
+
+/// A controller holding a composing range past its text, as a release build
+/// lets one through.
+final class _StaleComposing extends MagicTextEditingController {
+  new(this._value);
+
+  final TextEditingValue _value;
+
+  @override
+  TextEditingValue get value => _value;
 }

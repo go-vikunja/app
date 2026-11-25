@@ -190,6 +190,108 @@ void main() {
     expect(plain.text, 'done = false && dueDat < now');
   });
 
+  group('while a keyboard composes a word, as Japanese input does', () {
+    const line = 'labels in 買い物';
+
+    /// What the field draws: each part's text, its colour and its
+    /// decoration.
+    List<(String, Color?, TextDecoration?)> drawn(WidgetTester tester) {
+      final editable = tester
+          .state<EditableTextState>(
+            find.descendant(
+              of: filterField(),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .renderEditable;
+      return [
+        for (final child in (editable.text! as TextSpan).children!)
+          if (child case TextSpan(:final text?))
+            (text, child.style?.color, child.style?.decoration),
+      ];
+    }
+
+    Future<void> compose(WidgetTester tester, TextRange composing) async {
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: line,
+          selection: const TextSelection.collapsed(offset: line.length),
+          composing: composing,
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('inside a highlighted part, the composed letters keep its '
+        'colour and get the underline', (tester) async {
+      await openNewSavedFilter(tester);
+      await type(tester, line);
+      final colors = Theme.of(tester.element(filterField())).colorScheme;
+
+      await compose(tester, const TextRange(start: 2, end: 5));
+
+      expect(drawn(tester), [
+        ('la', colors.primary, null),
+        ('bel', colors.primary, TextDecoration.underline),
+        ('s', colors.primary, null),
+        (' ', null, null),
+        ('in', colors.tertiary, null),
+        (' ', null, null),
+        ('買い物', colors.secondary, TextDecoration.underline),
+      ]);
+    });
+
+    testWidgets('across parts, each side keeps its own colour and the '
+        'underline runs through the plain text between', (tester) async {
+      await openNewSavedFilter(tester);
+      await type(tester, line);
+      final colors = Theme.of(tester.element(filterField())).colorScheme;
+
+      await compose(tester, const TextRange(start: 4, end: 8));
+
+      expect(drawn(tester), [
+        ('labe', colors.primary, null),
+        ('ls', colors.primary, TextDecoration.underline),
+        (' ', null, TextDecoration.underline),
+        ('i', colors.tertiary, TextDecoration.underline),
+        ('n', colors.tertiary, null),
+        (' ', null, null),
+        ('買い物', colors.secondary, TextDecoration.underline),
+      ]);
+    });
+
+    testWidgets('a composing range the text no longer holds underlines '
+        'nothing', (tester) async {
+      await openNewSavedFilter(tester);
+      await type(tester, line);
+      final context = tester.element(filterField());
+      final colors = Theme.of(context).colorScheme;
+      // The framework's setter refuses such a value in debug builds only.
+      final stale = _StaleComposing(
+        const TextEditingValue(
+          text: line,
+          composing: TextRange(start: 4, end: 40),
+        ),
+      );
+
+      final span = stale.buildTextSpan(context: context, withComposing: true);
+
+      expect(
+        [
+          for (final child in span.children!.cast<TextSpan>())
+            (child.text, child.style?.color, child.style?.decoration),
+        ],
+        [
+          ('labels', colors.primary, null),
+          (' ', null, null),
+          ('in', colors.tertiary, null),
+          (' ', null, null),
+          ('買い物', colors.secondary, TextDecoration.underline),
+        ],
+      );
+    });
+  });
+
   testWidgets('suggests a field, then its operators, then label titles, and '
       'saves the labels as ids', (tester) async {
     await openNewSavedFilter(tester);
@@ -764,4 +866,15 @@ void main() {
     expect(find.byType(SavedFilterFormPage), findsOneWidget);
     expect(find.byType(ActionChip), findsNothing);
   });
+}
+
+/// A controller holding a composing range past its text, as a release build
+/// lets one through.
+final class _StaleComposing extends FilterTextEditingController {
+  new(this._value);
+
+  final TextEditingValue _value;
+
+  @override
+  TextEditingValue get value => _value;
 }

@@ -17,7 +17,10 @@ import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_s
 import 'package:vikunja_mobile/features/accounts/presentation/remove_account_dialog.dart';
 import 'package:vikunja_mobile/features/common/presentation/day_range_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/link_sheet.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/crash_reports_question.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/column_sheets.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/team_pick_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
@@ -30,6 +33,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/time_picker.d
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
+import 'package:vikunja_mobile/features/teams/presentation/new_team_sheet.dart';
+import 'package:vikunja_mobile/features/teams/presentation/team_edit_sheet.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
 import '../features/account_settings/avatar_fakes.dart';
@@ -61,6 +66,12 @@ const overlayRegistry = <String>[
   'reminders sheet',
   'assignee picker',
   'default-project picker',
+  'team picker',
+  'new-team sheet',
+  'team edit sheet',
+  'column title sheet',
+  'column limit sheet',
+  'link sheet',
   'option sheet',
   'delete-task dialog',
   'sign-out dialog',
@@ -85,6 +96,7 @@ SweepScenario _overlay(
   String id, {
   required void Function(BuildContext context, WidgetTester tester) show,
   required ScreenFinder expectScreen,
+  void Function(SyncFakes data)? seed,
   SweepStep? after,
   SweepStep? tearDown,
   Size? iOSSurface,
@@ -92,7 +104,11 @@ SweepScenario _overlay(
   kind: SweepKind.overlay,
   name: id,
   route: AppRoutes.overview,
-  setUp: (tester, _) => pumpSweepApp(tester),
+  setUp: (tester, _) {
+    final data = sweepData();
+    seed?.call(data);
+    return pumpSweepApp(tester, data: data);
+  },
   navigate: (tester, l10n) async {
     show(_page(tester), tester);
     if (after != null) {
@@ -250,6 +266,70 @@ final List<SweepScenario> overlayScenarios = [
       ),
     ),
     expectScreen: (_) => _byTypeName('_DefaultProjectList'),
+  ),
+  _overlay(
+    'team picker',
+    seed: (data) => data.teams.teams = [
+      sampleTeam(
+        id: 5,
+        name: 'Gardeners',
+        isPublic: true,
+        members: const [
+          TeamMember(user: alice, admin: true),
+          TeamMember(user: kim),
+        ],
+      ),
+      sampleTeam(id: 6, name: 'Synced from the sign-in', isExternal: true),
+    ],
+    show: (context, _) => unawaited(
+      pickTeam(context, excludedTeamIds: const {}, includePublic: false),
+    ),
+    expectScreen: (_) => find.byType(TeamPickSheet),
+  ),
+  _overlay(
+    'new-team sheet',
+    show: (context, _) =>
+        unawaited(showNewTeamSheet(context, onCreated: (_) {})),
+    expectScreen: (_) => find.byType(NewTeamSheet),
+  ),
+  _overlay(
+    'team edit sheet',
+    show: (context, _) => unawaited(
+      showTeamEditSheet(
+        context,
+        team: sampleTeam(id: 5, name: 'Gardeners', isPublic: true),
+        onSaved: (_) {},
+      ),
+    ),
+    expectScreen: (_) => find.byType(TeamEditSheet),
+  ),
+  _overlay(
+    'column title sheet',
+    show: (context, _) {
+      final l10n = context.l10n;
+      unawaited(
+        showColumnTitleSheet(
+          context,
+          title: l10n.boardColumnRenameTitle,
+          actionLabel: l10n.boardColumnSave,
+          initial: 'Doing',
+        ),
+      );
+    },
+    expectScreen: (_) => find.byType(ColumnTitleSheet),
+  ),
+  _overlay(
+    'column limit sheet',
+    show: (context, _) =>
+        unawaited(showColumnLimitSheet(context, current: 2, count: 2)),
+    expectScreen: (_) => find.byType(ColumnLimitSheet),
+  ),
+  _overlay(
+    'link sheet',
+    show: (context, _) => unawaited(
+      showLinkSheet(context, hasLink: true, href: 'https://example.org/fence'),
+    ),
+    expectScreen: (_) => find.byType(LinkSheet),
   ),
   _overlay(
     'option sheet',

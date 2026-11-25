@@ -39,17 +39,26 @@ const _localisation = 'app/l10n/';
 /// each other.
 const _leaves = <String>[_localisation, 'app/layout/'];
 
-const _upward = ['features/', 'app/', 'bootstrap/'];
+/// What core/ may import of the app: itself and the localisations; all
+/// else, main.dart included, is above it.
+const _coreLevel = <String>['core/', 'l10n/', _localisation];
 
 const _package = 'package:vikunja_mobile/';
 
 final _directive = RegExp(
-  r'''^\s*(?:import|export)\s+(['"])(.+?)\1''',
+  r'''^\s*(?:import|export)\s+(['"][^;]*);''',
   multiLine: true,
 );
+final _condition = RegExp(r'\bif\s*\([^)]*\)');
+final _quoted = RegExp(r'''(['"])(.+?)\1''');
+
+/// Every URI of a directive: the first and each conditional alternative.
+Iterable<String> _uris(String directive) => _quoted
+    .allMatches(directive.replaceAll(_condition, ' '))
+    .map((match) => match[2]!);
 
 /// What breaks the layers in [lib]: core/ importing from above it (other
-/// than [_localisation] and [allowed]), a relative import in core/ that a
+/// than [_coreLevel] and [allowed]), a relative import in core/ that a
 /// check by package path would miss, [_leaves] importing more, bootstrap/
 /// imported from outside main.dart and bootstrap/, and an entry of
 /// [allowed] that matches no import or gives no reason.
@@ -68,17 +77,17 @@ List<String> layerViolations(
     final path = p.posix.joinAll(
       p.split(p.relative(entity.path, from: lib.path)),
     );
-    for (final match in _directive.allMatches(entity.readAsStringSync())) {
-      final uri = match[2]!;
+    for (final uri in [
+      for (final match in _directive.allMatches(entity.readAsStringSync()))
+        ..._uris(match[1]!),
+    ]) {
       if (!uri.startsWith('package:') && !uri.startsWith('dart:')) {
         if (path.startsWith('core/')) violations.add('$path: relative $uri');
         continue;
       }
       if (!uri.startsWith(_package)) continue;
       final target = uri.substring(_package.length);
-      if (path.startsWith('core/') &&
-          _upward.any(target.startsWith) &&
-          !target.startsWith(_localisation)) {
+      if (path.startsWith('core/') && !_coreLevel.any(target.startsWith)) {
         if (allowed[path]?.containsKey(target) ?? false) {
           used.add('$path -> $target');
         } else {
@@ -109,8 +118,9 @@ List<String> layerViolations(
 }
 
 void main() {
-  test('core imports nothing from features, app or bootstrap beyond the '
-      'localisation and the listed exceptions', () {
+  test('core imports only core, l10n and app/l10n, main.dart and '
+      "conditional imports' alternatives included, beyond the listed "
+      'exceptions', () {
     expect(
       layerViolations(Directory('lib')),
       isEmpty,
@@ -121,8 +131,9 @@ void main() {
     );
   });
 
-  test('the check finds an import upward, a relative one, a leaf that '
-      'imports more, bootstrap reached from elsewhere and a stale or '
+  test('the check finds an import upward, the entry file and a '
+      "conditional import's alternative included, a relative one, a leaf "
+      'that imports more, bootstrap reached from elsewhere and a stale or '
       'unexplained exception', () {
     final lib = Directory.systemTemp.createTempSync('layer_imports');
     addTearDown(() => lib.deleteSync(recursive: true));
@@ -137,7 +148,21 @@ import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 import "package:vikunja_mobile/features/x/application/y.dart";
 export 'package:vikunja_mobile/app/theme/theme.dart';
 import '../features/z.dart';
+import 'package:vikunja_mobile/main.dart';
+import 'package:vikunja_mobile/core/io_stub.dart'
+    if (dart.library.io) 'package:vikunja_mobile/features/io.dart'
+    if (dart.library.js_interop) "package:vikunja_mobile/core/web.dart";
+export 'package:vikunja_mobile/core/d.dart' if (dart.library.io) 'package:vikunja_mobile/app/e.dart' show D;
 part 'a.g.dart';
+''');
+    write('core/settings.dart', '''
+import 'package:vikunja_mobile/core/b.dart';
+
+final page = SettingsPage(
+  export: _export.value,
+  title: 'Export to features/x.dart',
+  link: 'package:vikunja_mobile/features/y.dart',
+);
 ''');
     write('core/a.g.dart', '''
 import 'package:vikunja_mobile/features/generated_only.dart';
@@ -171,7 +196,10 @@ import 'package:vikunja_mobile/bootstrap/bootstrap.dart';
       ),
       [
         'app/l10n/l10n.dart -> core/c.dart',
+        'core/a.dart -> app/e.dart',
         'core/a.dart -> app/theme/theme.dart',
+        'core/a.dart -> features/io.dart',
+        'core/a.dart -> main.dart',
         'core/a.dart: relative ../features/z.dart',
         'features/x/application/y.dart -> bootstrap/start_values.dart',
         'no reason: core/a.dart -> features/x/application/y.dart',

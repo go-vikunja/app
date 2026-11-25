@@ -11,7 +11,8 @@ import 'helpers.dart';
 
 // One throwaway user moves its own tasks and projects to the trash through
 // the write ports, seeded by raw v2 calls, and takes them back or deletes
-// them for good through the trash port. The tests run in order and build
+// them for good through the trash port; a second one, sharing a project,
+// moves a task there too. The tests run in order and build
 // on each other. The trash exists from 2.8.0 on.
 const _pace = Duration(milliseconds: 500);
 
@@ -45,30 +46,37 @@ void main() {
         late int toolsId;
         late int screwsId;
 
-        Future<Map<String, Object?>> post(
-          String path,
-          Map<String, Object?> body,
-        ) async {
+        Future<Map<String, Object?>?> send(
+          String method,
+          String path, {
+          Map<String, Object?>? body,
+          TestUser? as,
+        }) async {
           try {
             final response = await despiteWriteRaces(
               () => seedRequest<Map<String, Object?>>(
                 dio,
                 connection,
-                user.jwt,
-                'POST',
+                (as ?? user).jwt,
+                method,
                 path,
                 data: body,
               ),
             );
             await Future<void>.delayed(_pace);
-            return response.data!;
+            return response.data;
           } on DioException catch (error) {
             throw StateError(
-              'POST $path failed with ${error.response?.statusCode}: '
+              '$method $path failed with ${error.response?.statusCode}: '
               '${error.response?.data}',
             );
           }
         }
+
+        Future<Map<String, Object?>> post(
+          String path,
+          Map<String, Object?> body,
+        ) async => (await send('POST', path, body: body))!;
 
         Future<int> create(String path, Map<String, Object?> body) async =>
             (await post(path, body))['id']! as int;
@@ -84,6 +92,11 @@ void main() {
 
         Future<List<int>> trashedTaskIds() async => [
           for (final trashed in await patiently(trash.tasks)) trashed.task.id,
+        ];
+
+        Future<List<int>> trashedProjectIds() async => [
+          for (final trashed in await patiently(trash.projects))
+            trashed.project.id,
         ];
 
         bool before280() {
@@ -310,6 +323,119 @@ void main() {
             trash.restoreTask(soilId),
             throwsA(_notFound(4002)),
           );
+        });
+
+        test('emptying as the app does, with its default, also removes what '
+            'another user moved there; without it that stays', () async {
+          if (before280()) return;
+          final member = await registerAndLogin(dio, connection);
+          await post('/projects/$gardenId/users', {
+            'username': member.username,
+            'permission': 1,
+          });
+          final leavesId = await create('/projects/$gardenId/tasks', {
+            'title': 'Rake the leaves',
+          });
+          final countBefore = await patiently(trash.taskCount);
+
+          await send('DELETE', '/tasks/$leavesId', as: member);
+
+          final listed = (await patiently(trash.tasks))
+              .singleWhere((trashed) => trashed.task.id == leavesId);
+          expect(listed.deletedBy?.id, member.id);
+          expect(
+            await patiently(trash.taskCount),
+            TrashCount(
+              total: countBefore.total + 1,
+              byOthers: countBefore.byOthers + 1,
+            ),
+          );
+
+          await paced(() => trash.emptyTasks(includeOthers: false));
+          expect(await trashedTaskIds(), contains(leavesId));
+
+          await paced(trash.emptyTasks);
+
+          expect(await trashedTaskIds(), isEmpty);
+          expect(
+            await patiently(trash.taskCount),
+            const TrashCount(total: 0, byOthers: 0),
+          );
+          await expectLater(
+            trash.restoreTask(leavesId),
+            throwsA(_notFound(4002)),
+          );
+        });
+
+        test('a project deleted for good takes its subprojects and their '
+            'tasks along, and the count follows', () async {
+          if (before280()) return;
+          final barnId = await project('Trash contract barn');
+          final hayId = await project('Hay', parent: barnId);
+          final balesId = await project('Bales', parent: hayId);
+          final stackId = await create('/projects/$balesId/tasks', {
+            'title': 'Stack the bales',
+          });
+          final sweepId = await create('/projects/$barnId/tasks', {
+            'title': 'Sweep the barn',
+          });
+          final countBefore = await patiently(trash.projectCount);
+
+          await paced(() => projects.delete(barnId));
+          expect(
+            await patiently(trash.projectCount),
+            TrashCount(
+              total: countBefore.total + 1,
+              byOthers: countBefore.byOthers,
+            ),
+          );
+
+          await paced(() => trash.deleteProjectForever(barnId));
+
+          expect(await patiently(trash.projectCount), countBefore);
+          expect(await trashedProjectIds(), isNot(contains(barnId)));
+          for (final id in [barnId, hayId, balesId]) {
+            await expectLater(
+              reads.projects.read(id),
+              throwsA(_notFound(3001)),
+              reason: 'project $id',
+            );
+          }
+          for (final id in [stackId, sweepId]) {
+            await expectLater(
+              reads.tasks.read(id),
+              throwsA(_notFound(4002)),
+              reason: 'task $id',
+            );
+          }
+          expect(
+            await trashedTaskIds(),
+            isNot(anyOf(contains(stackId), contains(sweepId))),
+          );
+        });
+
+        test('emptying the project trash as the app does, with its default, '
+            'removes the projects and their tasks', () async {
+          if (before280()) return;
+          final atticId = await project('Trash contract attic');
+          final boxId = await create('/projects/$atticId/tasks', {
+            'title': 'Label the boxes',
+          });
+          await paced(() => projects.delete(atticId));
+          expect(await trashedProjectIds(), contains(atticId));
+
+          await paced(trash.emptyProjects);
+
+          expect(await trashedProjectIds(), isEmpty);
+          expect(
+            await patiently(trash.projectCount),
+            const TrashCount(total: 0, byOthers: 0),
+          );
+          await expectLater(
+            reads.projects.read(atticId),
+            throwsA(_notFound(3001)),
+          );
+          await expectLater(reads.tasks.read(boxId), throwsA(_notFound(4002)));
         });
       });
     }

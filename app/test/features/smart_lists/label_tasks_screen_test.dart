@@ -2,12 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/label_tasks_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 import '../../a11y/sweep_data.dart';
 import '../../helpers/large_screens.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/sample_data.dart';
 
 void main() {
   for (final size in [androidPhone, androidTabletLandscape]) {
@@ -53,4 +56,54 @@ void main() {
       );
     });
   }
+
+  testWidgets("at midnight, within a minute while it is open, last night's "
+      "task is overdue and tomorrow's is today", (tester) async {
+    var current = DateTime(2026, 10, 10, 22);
+    final data = sweepData();
+    data.tasks.all = [
+      sampleTask(
+        id: 1,
+        title: 'Late call',
+        due: DateTime(2026, 10, 10, 23),
+        labels: [calls],
+      ),
+      sampleTask(
+        id: 2,
+        title: 'Morning call',
+        due: DateTime(2026, 10, 11, 10),
+        labels: [calls],
+      ),
+    ];
+    await pumpSignedInApp(
+      tester,
+      sync: data,
+      overrides: [
+        ...sweepRepositoryOverrides(),
+        clockProvider.overrideWithValue(() => current),
+      ],
+    );
+    pushTo(tester, AppRoutes.labelTasks(calls.id));
+    await tester.pumpAndSettle();
+    List<String> headings() => [
+      for (final header in tester.widgetList<ListSectionHeader>(
+        find.byType(ListSectionHeader),
+      ))
+        header.title,
+    ];
+    expect(headings(), [en.sectionToday, en.sectionNextSevenDays]);
+
+    current = DateTime(2026, 10, 11, 8);
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pumpAndSettle();
+
+    expect(headings(), [en.sectionOverdue, en.sectionToday]);
+    expect(
+      [
+        for (final row in tester.widgetList<TaskRow>(find.byType(TaskRow)))
+          row.task.title,
+      ],
+      ['Late call', 'Morning call'],
+    );
+  });
 }

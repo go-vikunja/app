@@ -101,11 +101,20 @@ class PickerHeader extends StatelessWidget {
           ),
           if (label != null)
             switch (theme.platform) {
-              TargetPlatform.iOS || TargetPlatform.macOS => CupertinoButton(
-                onPressed: onAction,
-                child: Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+              // CupertinoButton never tells a screen reader it is disabled.
+              TargetPlatform.iOS || TargetPlatform.macOS => Semantics(
+                container: true,
+                button: true,
+                enabled: onAction != null,
+                label: label,
+                onTap: onAction,
+                excludeSemantics: true,
+                child: CupertinoButton(
+                  onPressed: onAction,
+                  child: Text(
+                    label,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
               _ => TextButton(onPressed: onAction, child: Text(label)),

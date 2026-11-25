@@ -174,6 +174,7 @@ void configureCrashReportOptions(
   required CrashReportStart start,
   required String release,
   required String dist,
+  @visibleForTesting CrashReportScrub scrub = scrubCrashReport,
 }) {
   options
     ..release = release
@@ -191,8 +192,16 @@ void configureCrashReportOptions(
     ..considerInAppFramesByDefault = false
     ..beforeBreadcrumb = _onlyTheAppsBreadcrumbs
     ..beforeSendTransaction = _noTransactions
-    ..beforeSend = (event, _) =>
-        scrubCrashReport(event, part: start.part.name, hosts: start.hosts());
+    ..beforeSend = (event, _) {
+      // The scrubber changes the event in place, so a throw leaves it half
+      // scrubbed; some Sentry versions send it anyway. No log here: a SEVERE
+      // record would be reported in turn.
+      try {
+        return scrub(event, part: start.part.name, hosts: start.hosts());
+      } on Object {
+        return null;
+      }
+    };
   _inAppPackages.forEach(options.addInAppInclude);
   for (final integration in List.of(options.integrations)) {
     if (!keptSentryIntegrations.contains('${integration.runtimeType}')) {
@@ -204,6 +213,12 @@ void configureCrashReportOptions(
   // a DSN it does not start.
   options.dsn = start.dsn;
 }
+
+typedef CrashReportScrub = SentryEvent Function(
+  SentryEvent event, {
+  required String part,
+  Iterable<String> hosts,
+});
 
 Breadcrumb? _onlyTheAppsBreadcrumbs(Breadcrumb? breadcrumb, Hint _) =>
     breadcrumb?.category == crashReportLogCategory ? breadcrumb : null;

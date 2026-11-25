@@ -9,6 +9,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
@@ -805,5 +806,54 @@ void main() {
       lessThanOrEqualTo(screen.right - inset),
     );
     expect(tester.getRect(find.byType(AppBar)).width, screen.width);
+  });
+
+  testWidgets('at midnight, within a minute while it is open, the range '
+      "starts on the new day, last night's task is overdue and tomorrow's "
+      'is today', (tester) async {
+    var current = DateTime(2026, 10, 13, 23, 30);
+    data.tasks.all = [
+      sampleTask(id: 3, title: 'Call mum', due: DateTime(2026, 10, 13, 23, 45)),
+      sampleTask(id: 4, title: 'Water plants', due: DateTime(2026, 10, 14, 9)),
+      sampleTask(id: 5, title: 'Write report', due: DateTime(2026, 10, 20, 9)),
+      sampleTask(id: 6, title: 'Plan trip', due: DateTime(2026, 10, 21, 0, 15)),
+    ];
+    usePhoneSurface(tester, logicalSize: const Size(360, 2000));
+    await pumpSignedInApp(
+      tester,
+      sync: data,
+      overrides: [clockProvider.overrideWithValue(() => current)],
+    );
+    await openTab(tester, en.tabUpcoming);
+    expect(
+      find.text(en.upcomingSubtitle(en.rangeNext7Days, 'Oct 13 – Oct 20', 3)),
+      findsOneWidget,
+    );
+    expect(sectionTitles(tester), [
+      en.sectionToday,
+      en.sectionTomorrow,
+      'Tue, Oct 20',
+    ]);
+
+    current = DateTime(2026, 10, 14, 0, 30);
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(en.upcomingSubtitle(en.rangeNext7Days, 'Oct 14 – Oct 21', 3)),
+      findsOneWidget,
+    );
+    expect(sectionTitles(tester), [
+      en.sectionOverdue,
+      en.sectionToday,
+      'Tue, Oct 20',
+      'Wed, Oct 21',
+    ]);
+    expect(rowTitles(tester), [
+      'Call mum',
+      'Water plants',
+      'Write report',
+      'Plan trip',
+    ]);
   });
 }
