@@ -82,6 +82,14 @@ class ShareInboxTest {
         assertFalse(ShareInbox.isForeignContent("content", GALLERY, OWN) { throw IllegalStateException() })
     }
 
+    @Test
+    fun `a long text is cut after the last whole character that fits`() {
+        val emoji = "\uD83D\uDE00"
+        assertEquals("a$emoji", ShareInbox.cutText("a$emoji$emoji", 4))
+        assertEquals("a$emoji", ShareInbox.cutText("a$emoji", 4))
+        assertEquals("abcd", ShareInbox.cutText("abcdef", 4))
+    }
+
     private companion object {
         const val OWN = "io.vikunja.app"
         const val GALLERY = "com.example.gallery.provider"

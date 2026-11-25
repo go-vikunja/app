@@ -80,6 +80,32 @@ void main() {
       });
       expect(long!.text, hasLength(maxSharedTextLength));
     });
+
+    test('a subject or text is cut after the last whole character that '
+        'fits', () {
+      const emoji = '\u{1F600}';
+      const family = '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}';
+      final share = incomingShareFromChannel({
+        'subject': 'a${emoji * 600}',
+        'text': 'b${family * 12500}',
+      });
+
+      expect(share!.subject, 'a${emoji * 499}');
+      expect(share.text, 'b${family * 12499}');
+    });
+
+    test('a single character longer than the limit is cut between code '
+        'points', () {
+      const accent = '\u0301';
+      const skinTone = '\u{1F3FB}';
+      final share = incomingShareFromChannel({
+        'subject': 'e${accent * 1500}',
+        'text': 'a${skinTone * 60000}',
+      });
+
+      expect(share!.subject, 'e${accent * 999}');
+      expect(share.text, 'a${skinTone * 49999}');
+    });
   });
 
   test('the pending share is read from the platform', () async {
@@ -126,6 +152,16 @@ void main() {
     await source().clear();
 
     expect(calls.single.method, 'clear');
+  });
+
+  test('a copy can be called off', () async {
+    await source().cancelCopy('content://x/1');
+
+    expect(calls.single.method, 'cancelCopy');
+    expect(calls.single.arguments, {'uri': 'content://x/1'});
+
+    messenger.setMockMethodCallHandler(channel, null);
+    await source().cancelCopy('content://x/1');
   });
 
   test('a share that arrives while the app runs is announced', () async {

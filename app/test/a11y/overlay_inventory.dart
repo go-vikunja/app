@@ -195,12 +195,12 @@ const overlayInventory = <String, OverlayCoverage>{
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/share/presentation/open_shared_link_sheet.dart '
-      'askToOpenSharedLink showReadableCupertinoSheet': Exempt(
+      '_ask showReadableCupertinoSheet': Exempt(
     'a sheet of three labelled choices; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/share/presentation/open_shared_link_sheet.dart '
-      'askToOpenSharedLink showModalBottomSheet': Exempt(
+      '_ask showModalBottomSheet': Exempt(
     'a sheet of three labelled choices; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
@@ -231,6 +231,10 @@ const overlayInventory = <String, OverlayCoverage>{
       'AttachmentRow.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
+  ),
+  'features/tasks/presentation/details/attachments_section.dart '
+      '_TaskAttachmentsSectionState._askSaveOrShare showAdaptiveDialog': Exempt(
+    _sameAlertAsDelete,
   ),
   'features/tasks/presentation/details/attachments_section.dart '
       '_TaskAttachmentsSectionState._pickSource showMenu': Exempt(

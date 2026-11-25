@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/files/file_actions.dart';
 import 'package:vikunja_mobile/core/files/link_share_actions.dart';
 import 'package:vikunja_mobile/core/files/platform_file_actions.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
@@ -113,7 +114,10 @@ void main() {
         excursions: excursions,
       );
 
-      expect(await actions.openWith(file, mimeType: 'application/pdf'), isTrue);
+      expect(
+        await actions.openWith(file, mimeType: 'application/pdf'),
+        FileOpenResult.opened,
+      );
       expect(excursions.active, isTrue);
       [
         AppLifecycleState.inactive,
@@ -137,6 +141,24 @@ void main() {
 
       expect(seen, ['openWith true', 'saveAs true']);
       expect(shared, [true]);
+      expect(excursions.active, isFalse);
+    });
+
+    test('a file Android does not open ends the excursion at once', () async {
+      final seen = mockChannel(
+        PlatformFileActions.channelName,
+        (_) => throw PlatformException(code: 'not_viewable'),
+      );
+      final actions = PlatformFileActions(
+        android: true,
+        excursions: excursions,
+      );
+
+      expect(
+        await actions.openWith(file, mimeType: 'text/html'),
+        FileOpenResult.notViewable,
+      );
+      expect(seen, ['openWith true']);
       expect(excursions.active, isFalse);
     });
 

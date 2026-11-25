@@ -7,8 +7,11 @@ import 'dart:ui' show Rect;
 /// picker); iOS: both through the share sheet ("Open in…", "Save to
 /// Files"). An `origin` anchors the share sheet on an iPad.
 abstract interface class FileActions {
-  /// False when no app can open the file.
-  Future<bool> openWith(File file, {required String mimeType, Rect? origin});
+  Future<FileOpenResult> openWith(
+    File file, {
+    required String mimeType,
+    Rect? origin,
+  });
 
   /// False when the user cancelled.
   Future<bool> saveAs(
@@ -24,6 +27,17 @@ abstract interface class FileActions {
     required String mimeType,
     Rect? origin,
   });
+}
+
+enum FileOpenResult {
+  opened,
+
+  /// No app on the device opens the file.
+  noApp,
+
+  /// Android does not hand a file of this kind to another app to open:
+  /// web pages, XML and SVG, which a browser would run.
+  notViewable,
 }
 
 /// [mimeType] without parameters (the server's `text/plain;

@@ -109,7 +109,11 @@ abstract interface class ShareIntentSource {
   /// [maxBytes] and [SharedFileUnreadable] when it cannot be read.
   Future<CopiedSharedFile> copy(String uri, {required int maxBytes});
 
-  /// Forgets the pending share and deletes the inbox copies that were not
-  /// moved away.
+  /// Calls off a [copy] of [uri] still running, which then throws
+  /// [SharedFileUnreadable]; nothing when none runs.
+  Future<void> cancelCopy(String uri);
+
+  /// Forgets the pending share, calls off the copies still running and
+  /// deletes the inbox copies that were not moved away. Answers at once.
   Future<void> clear();
 }

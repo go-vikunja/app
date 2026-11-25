@@ -4123,6 +4123,14 @@
     }
   },
   "attachmentNoApp": "No app on this device can open this file.",
+  "attachmentNotViewableTitle": "Save or share this file?",
+  "@attachmentNotViewableTitle": {
+    "description": "Android: question after Open on an attachment that is a web page, an XML or an SVG file, which the app does not hand to another app to open; the buttons are Cancel, Share and Save to device."
+  },
+  "attachmentNotViewableBody": "Web pages, XML and SVG files can run code in the app that opens them, so they aren't opened from here. You can save the file to the device or share it instead.",
+  "@attachmentNotViewableBody": {
+    "description": "Android: body of the question titled attachmentNotViewableTitle, why the file is not opened."
+  },
   "attachmentNeedsConnection": "This needs a connection to the server.",
   "attachmentUnconfirmed": "Couldn't confirm the change. Check your connection and try again.",
   "attachmentForbidden": "You don't have permission to change this task's attachments.",
@@ -4237,6 +4245,10 @@
     }
   },
   "shareFailed": "What was shared couldn't be added.",
+  "shareReadOnlyAccount": "This account can only read its projects, so what was shared can't be added to it.",
+  "@shareReadOnlyAccount": {
+    "description": "Note in the sheet for what another app shared, in place of its fields, when the account it goes to may only read each of its projects, such as a guest of a read-only shared link: no task can be created or added to."
+  },
   "syncProblemUploadFailed": "“{name}” could not be uploaded.",
   "@syncProblemUploadFailed": {
     "description": "A sync problem on the Account tab: an attachment could not be uploaded; name is the file name, for example scan.pdf.",
@@ -7578,6 +7590,24 @@
   "guestShareNewTask": "Make it a new task instead",
   "@guestShareNewTask": {
     "description": "Shared link sheet, signed in: makes a task of the shared text as with any other share."
+  },
+  "inviteShareTitle": "Open the invitation?",
+  "@inviteShareTitle": {
+    "description": "Sheet when another app shares a text with an admin's invitation link to create an account on a Vikunja server; nothing is checked before the user chooses Open invitation."
+  },
+  "inviteShareBody": "This is an invitation to create an account on {host}. Opening it checks the invitation with that server.",
+  "@inviteShareBody": {
+    "description": "Shared invitation sheet: what opening the invitation does",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "inviteShareOpen": "Open invitation",
+  "@inviteShareOpen": {
+    "description": "Shared invitation sheet: checks the invitation on its server, on the connect screen or, signed in, on Add account. Signed in, the sheet also offers guestShareNewTask."
   },
   "guestLinkGoneTitle": "This link doesn't work",
   "@guestLinkGoneTitle": {

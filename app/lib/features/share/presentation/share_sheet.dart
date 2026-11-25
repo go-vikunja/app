@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart'
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/share/application/share_files.dart';
 import 'package:vikunja_mobile/features/share/application/share_targets.dart';
@@ -113,6 +114,13 @@ Future<ShareOutcome?> showShareSheet(
   }
 }
 
+/// Whether the account may only read every project it has, such as a guest
+/// of a read-only shared link: nothing shared can go anywhere. An account
+/// without projects, or with only archived ones, is not one.
+bool onlyReadsItsProjects(List<Project> projects) =>
+    writableProjects(projects).isEmpty &&
+    projects.any((project) => ProjectAccess.of(project).isReadOnly);
+
 enum _Mode { newTask, addToTask }
 
 typedef _ReadyFile = ({String path, String name, String? mimeType});
@@ -188,8 +196,8 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
 
   void _onTextChanged() => setState(() {});
 
-  bool _canSubmit(Project? project) {
-    if (_submitting || _files.preparing) return false;
+  bool _canSubmit(Project? project, {required bool readOnly}) {
+    if (readOnly || _submitting || _files.preparing) return false;
     return switch (_mode) {
       _Mode.newTask => _title.text.trim().isNotEmpty && project != null,
       _Mode.addToTask =>
@@ -212,15 +220,19 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   /// Files whose location stayed go only when the user chooses Upload.
   Future<void> _submit(Project? project) async {
     final repository = ref.read(taskRepositoryProvider);
-    if (repository == null || !_canSubmit(project)) return;
+    final readOnly = onlyReadsItsProjects(
+      ref.read(projectsProvider).value ?? const [],
+    );
+    if (repository == null || !_canSubmit(project, readOnly: readOnly)) return;
     final l10n = context.l10n;
     final route = ModalRoute.of(context);
     setState(() {
       _submitting = true;
       _error = null;
     });
+    final ready = _files.ready;
     final wanted = await withoutUnwantedLocations(context, [
-      for (final (item, copy) in _files.ready)
+      for (final (item, copy) in ready)
         PickedFile(
           path: copy.path,
           name: item.name,
@@ -232,6 +244,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
         ),
     ]);
     if (!mounted) return;
+    // A skipped file's copy is deleted; its row would offer it again.
+    final kept = {for (final file in wanted) file.path};
+    for (final (item, copy) in ready) {
+      if (!kept.contains(copy.path)) _files.remove(item.file);
+    }
     final files = [
       for (final file in wanted)
         (path: file.path, name: file.name, mimeType: file.mimeType),
@@ -344,6 +361,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       accountsProvider.select((accounts) => accounts.value?.activeAccount),
     );
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
+    final readOnly = onlyReadsItsProjects(projects);
     final settings =
         ref.watch(userSettingsProvider).value ?? const UserSettings();
     final project = defaultProjectFor(
@@ -372,7 +390,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                 _Mode.newTask => l10n.shareCreate,
                 _Mode.addToTask => l10n.shareAdd,
               },
-              onAction: _canSubmit(project)
+              onAction: _canSubmit(project, readOnly: readOnly)
                   ? () => unawaited(_submit(project))
                   : null,
             ),
@@ -394,6 +412,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                         color: colors.onSurfaceVariant,
                       ),
                     ),
+                  if (readOnly)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(l10n.shareReadOnlyAccount),
+                    ),
                   if (_error case final error?)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -405,34 +428,36 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 12),
-                  SegmentedButton<_Mode>(
-                    segments: [
-                      ButtonSegment(
-                        value: _Mode.newTask,
-                        label: Text(l10n.newTask),
-                        icon: const Icon(Icons.add_task),
-                      ),
-                      ButtonSegment(
-                        value: _Mode.addToTask,
-                        label: Text(l10n.shareAddToTask),
-                        icon: const Icon(Icons.playlist_add),
-                      ),
-                    ],
-                    selected: {_mode},
-                    onSelectionChanged: _submitting
-                        ? null
-                        : (selected) => setState(() {
-                            _mode = selected.single;
-                            _error = null;
-                          }),
-                  ),
-                  const SizedBox(height: 16),
-                  ...switch (_mode) {
-                    _Mode.newTask => _newTaskFields(l10n, projects, project),
-                    _Mode.addToTask => _addToTaskFields(l10n, projects),
-                  },
-                  if (widget.share.files.isNotEmpty) ..._fileRows(l10n),
+                  if (!readOnly) ...[
+                    const SizedBox(height: 12),
+                    SegmentedButton<_Mode>(
+                      segments: [
+                        ButtonSegment(
+                          value: _Mode.newTask,
+                          label: Text(l10n.newTask),
+                          icon: const Icon(Icons.add_task),
+                        ),
+                        ButtonSegment(
+                          value: _Mode.addToTask,
+                          label: Text(l10n.shareAddToTask),
+                          icon: const Icon(Icons.playlist_add),
+                        ),
+                      ],
+                      selected: {_mode},
+                      onSelectionChanged: _submitting
+                          ? null
+                          : (selected) => setState(() {
+                              _mode = selected.single;
+                              _error = null;
+                            }),
+                    ),
+                    const SizedBox(height: 16),
+                    ...switch (_mode) {
+                      _Mode.newTask => _newTaskFields(l10n, projects, project),
+                      _Mode.addToTask => _addToTaskFields(l10n, projects),
+                    },
+                    if (widget.share.files.isNotEmpty) ..._fileRows(l10n),
+                  ],
                 ],
               ),
             ),

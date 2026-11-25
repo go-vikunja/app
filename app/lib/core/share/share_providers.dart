@@ -40,5 +40,8 @@ final class NoShareIntentSource implements ShareIntentSource {
       Future.error(const SharedFileUnreadable());
 
   @override
+  Future<void> cancelCopy(String uri) async {}
+
+  @override
   Future<void> clear() async {}
 }

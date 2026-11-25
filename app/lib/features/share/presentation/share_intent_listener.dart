@@ -19,6 +19,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart
 
 final _log = Logger('ShareIntent');
 
+const _clearLimit = Duration(seconds: 5);
+
 /// Takes what other apps share into this app, the share that started the app
 /// and the ones that arrive while it runs: once the app is past the splash
 /// and the first sync and the app lock is open (the platform keeps the
@@ -29,11 +31,13 @@ final _log = Logger('ShareIntent');
 /// as if the user went back: a New task sheet with typed text asks, and when
 /// it stays, the share is dropped with the same note. Then the share sheet
 /// opens over the current screen. Signed out it says so. A shared project's
-/// link is offered to open as a guest and an admin's invite goes to its
-/// check, signed in or out, both on the connect screen. Whatever happens, the
-/// share is cleared at the end, which deletes the inbox copies that did not
-/// move into uploads. A newer share replaces one still being handled.
-/// Nothing shared is logged.
+/// link is offered to open as a guest and an admin's invite to open for its
+/// check, signed in or out, both on the connect screen; nothing closes and
+/// no server is asked before the user chooses that, and signed in either
+/// can become a task instead. Whatever happens, the share is cleared at the
+/// end, which deletes the inbox copies that did not move into uploads; a
+/// clear the platform does not answer in time is not waited for. A newer
+/// share replaces one still being handled. Nothing shared is logged.
 class ShareIntentListener extends ConsumerStatefulWidget {
   const new({required this.child, super.key});
 
@@ -220,29 +224,30 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
   }) async {
     if (share.files.isNotEmpty) return false;
     final text = [?share.text, ?share.subject].join('\n');
+    final Future<SharedLinkChoice?> Function(BuildContext context) ask;
     final String address;
     if (parseLinkShareUrl(text) case final link?) {
-      final choice = Completer<SharedLinkChoice?>();
-      await _opener.showAfterFrame(
-        (context) => choice.complete(
-          askToOpenSharedLink(context, link: link, offerNewTask: signedIn),
-        ),
-      );
-      if (!choice.isCompleted) choice.complete(null);
-      final chosen = await choice.future;
-      if (!mounted || generation != _generation) return true;
-      if (chosen == SharedLinkChoice.newTask) return false;
-      if (chosen == null) {
-        await _clear(generation);
-        return true;
-      }
+      ask = (context) =>
+          askToOpenSharedLink(context, link: link, offerNewTask: signedIn);
       address = link.url.toString();
     } else if (parseInviteLink(text) case final invite?) {
+      ask = (context) => askToOpenSharedInvite(
+        context,
+        invite: invite,
+        offerNewTask: signedIn,
+      );
       address = inviteUrl(invite).toString();
     } else {
       return false;
     }
+    final choice = Completer<SharedLinkChoice?>();
+    await _opener.showAfterFrame((context) => choice.complete(ask(context)));
+    if (!choice.isCompleted) choice.complete(null);
+    final chosen = await choice.future;
+    if (!mounted || generation != _generation) return true;
+    if (chosen == SharedLinkChoice.newTask) return false;
     await _clear(generation);
+    if (chosen == null) return true;
     await _connect(address, generation, signedIn: signedIn);
     return true;
   }
@@ -309,7 +314,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
   Future<void> _clear(int generation) async {
     if (generation != _generation) return;
     try {
-      await _source.clear();
+      await _source.clear().timeout(_clearLimit);
     } on Object catch (error) {
       _log.warning('Clearing a share failed: ${error.runtimeType}');
     }

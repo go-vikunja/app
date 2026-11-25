@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:characters/characters.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -76,6 +77,17 @@ final class ChannelShareIntentSource implements ShareIntentSource {
   }
 
   @override
+  Future<void> cancelCopy(String uri) async {
+    try {
+      await _channel.invokeMethod<void>('cancelCopy', {'uri': uri});
+    } on MissingPluginException {
+      return;
+    } on PlatformException catch (error) {
+      _log.info('Calling off a copy failed: ${error.code}');
+    }
+  }
+
+  @override
   Future<void> clear() async {
     try {
       await _channel.invokeMethod<void>('clear');
@@ -130,7 +142,25 @@ IncomingShare? incomingShareFromChannel(Object? value) {
 }
 
 String? _text(Object? value, int maxLength) => switch (value) {
-  final String text when text.trim().isNotEmpty =>
-    text.length > maxLength ? text.substring(0, maxLength) : text,
+  final String text when text.trim().isNotEmpty => _cut(text, maxLength),
   _ => null,
 };
+
+/// At most [maxLength] UTF-16 code units, ending after a whole character
+/// as shown: a cut inside one would leave half an emoji, which Flutter
+/// draws as a single replacement mark for the whole text.
+String _cut(String text, int maxLength) {
+  if (text.length <= maxLength) return text;
+  var end = 0;
+  for (final character in text.characters) {
+    if (end + character.length > maxLength) break;
+    end += character.length;
+  }
+  if (end == 0 && maxLength > 0) {
+    // A single character longer than the limit: cut between code points.
+    end = (text.codeUnitAt(maxLength - 1) & 0xFC00) == 0xD800
+        ? maxLength - 1
+        : maxLength;
+  }
+  return text.substring(0, end);
+}

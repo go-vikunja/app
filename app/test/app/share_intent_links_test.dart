@@ -236,16 +236,133 @@ void main() {
     expect(find.byType(ProjectTasksScreen), findsOneWidget);
   });
 
-  testWidgets('signed out, an invite goes to its check', (tester) async {
-    invites.onCheck = (_) async => InvitePreview(name: 'Autumn helpers');
-    data.shareSource.push(IncomingShare(text: inviteLink()));
-    await pumpSignedOut(tester);
+  group('an invite', () {
+    late FakeServerConnector connector;
 
-    expect(sheet, findsNothing);
-    expect(find.byType(InviteCard), findsOneWidget);
-    expect(find.text('Autumn helpers'), findsOneWidget);
-    expect(invites.checkedTokens, [fakeInviteToken]);
-    expect(data.shareSource.calls.last, 'clear');
+    Future<void> pumpSignedOutCounting(WidgetTester tester) {
+      connector = FakeServerConnector.succeeding(server);
+      return pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: data,
+        connector: connector,
+        overrides: guestEntryOverrides(invites: invites),
+      );
+    }
+
+    Future<void> pumpSignedInCounting(WidgetTester tester) async {
+      connector = FakeServerConnector.succeeding(server);
+      await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: data,
+        connector: connector,
+        overrides: guestEntryOverrides(invites: invites),
+      );
+    }
+
+    testWidgets('signed out, asks first and contacts no server; Open goes to '
+        'its check', (tester) async {
+      invites.onCheck = (_) async => InvitePreview(name: 'Autumn helpers');
+      data.shareSource.push(IncomingShare(text: inviteLink()));
+      await pumpSignedOutCounting(tester);
+
+      expect(sheet, findsOneWidget);
+      expect(inSheet(find.text(en.inviteShareTitle)), findsOneWidget);
+      expect(
+        inSheet(find.text(en.inviteShareBody('tasks.example.org'))),
+        findsOneWidget,
+      );
+      expect(inSheet(find.text(en.guestShareNewTask)), findsNothing);
+      expect(find.byType(InviteCard), findsNothing);
+      expect(connector.inputs, isEmpty);
+      expect(invites.checkedTokens, isEmpty);
+      expect(data.shareSource.calls, ['pending']);
+
+      await tester.tap(inSheet(find.text(en.inviteShareOpen)));
+      await tester.pumpAndSettle();
+
+      expect(sheet, findsNothing);
+      expect(find.byType(InviteCard), findsOneWidget);
+      expect(find.text('Autumn helpers'), findsOneWidget);
+      expect(invites.checkedTokens, [fakeInviteToken]);
+      expect(data.shareSource.calls.last, 'clear');
+    });
+
+    testWidgets('closing the question drops the share and checks nothing', (
+      tester,
+    ) async {
+      data.shareSource.push(IncomingShare(text: inviteLink()));
+      await pumpSignedOutCounting(tester);
+
+      Navigator.of(tester.element(sheet)).pop();
+      await tester.pumpAndSettle();
+
+      expect(sheet, findsNothing);
+      expect(data.shareSource.calls.last, 'clear');
+      expect(connector.inputs, isEmpty);
+      expect(invites.checkedTokens, isEmpty);
+      expect(find.byType(InviteCard), findsNothing);
+    });
+
+    testWidgets('signed in, one among other words can still become a task, '
+        'and nothing closed meanwhile', (tester) async {
+      await pumpSignedInCounting(tester);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      data.shareSource.push(
+        IncomingShare(text: 'Join our board: ${inviteLink()}'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(sheet, findsOneWidget);
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+      expect(invites.checkedTokens, isEmpty);
+      expect(connector.inputs, isEmpty);
+
+      await tester.tap(inSheet(find.text(en.guestShareNewTask)));
+      await tester.pumpAndSettle();
+
+      expect(sheet, findsNothing);
+      expect(find.byType(ShareSheet), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(
+              find
+                  .descendant(
+                    of: find.byType(ShareSheet),
+                    matching: find.byType(TextField),
+                  )
+                  .first,
+            )
+            .controller!
+            .text,
+        startsWith('Join our board:'),
+      );
+      expect(invites.checkedTokens, isEmpty);
+      expect(find.byType(InviteCard), findsNothing);
+    });
+
+    testWidgets('signed in, Open checks it for another account', (
+      tester,
+    ) async {
+      invites.onCheck = (_) async => InvitePreview(name: 'Autumn helpers');
+      await pumpSignedInCounting(tester);
+      data.shareSource.push(IncomingShare(text: inviteLink()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(inSheet(find.text(en.inviteShareOpen)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InviteCard), findsOneWidget);
+      expect(invites.checkedTokens, [fakeInviteToken]);
+      expect(connector.inputs, isNotEmpty);
+      expect(data.shareSource.calls.last, 'clear');
+    });
   });
 
   testWidgets('a share with files is never taken for a link', (tester) async {

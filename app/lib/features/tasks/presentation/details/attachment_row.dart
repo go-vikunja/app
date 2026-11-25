@@ -64,10 +64,13 @@ class AttachmentRow extends StatelessWidget {
     final onCancel = this.onCancel;
     final busyStatus = this.busyStatus;
     final busy = busyStatus != null;
+    // As the file on the device is named: a right-to-left override would
+    // let a name read as another type than the one it ends in.
+    final name = safeFileName(attachment.name);
     final trailing = busy && onCancel != null
         ? IconButton(
             onPressed: onCancel,
-            tooltip: l10n.attachmentCancelDownload(attachment.name),
+            tooltip: l10n.attachmentCancelDownload(name),
             icon: const Icon(Icons.close),
           )
         : busy
@@ -83,7 +86,7 @@ class AttachmentRow extends StatelessWidget {
         : actions.isEmpty || onAction == null
         ? null
         : PopupMenuButton<AttachmentAction>(
-            tooltip: l10n.attachmentOptions(attachment.name),
+            tooltip: l10n.attachmentOptions(name),
             icon: const Icon(Icons.more_vert),
             onSelected: (action) => onAction(action, _originOf(context)),
             itemBuilder: (context) => [
@@ -120,7 +123,7 @@ class AttachmentRow extends StatelessWidget {
                 )
               : AttachmentIcon(icon: icon),
         ),
-        title: Text(attachment.name),
+        title: Text(name),
         subtitle: Wrap(
           spacing: 8,
           runSpacing: 4,

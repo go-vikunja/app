@@ -107,25 +107,25 @@ final class FakeAttachmentRepository implements AttachmentRepository {
 
 /// Records every action in [calls] (`openWith <path> <mime>`,
 /// `saveAs <path> <name> <mime>`, `share <path> <name> <mime>`) with its
-/// share sheet anchor in [origins]; [openWith] answers [canOpen], [saveAs]
+/// share sheet anchor in [origins]; [openWith] answers [openResult], [saveAs]
 /// answers [saveConfirmed]; [beforeCall] can hold or fail one and
 /// [failure] fails every call while set.
 final class FakeFileActions implements FileActions {
   final List<String> calls = [];
   final List<Rect?> origins = [];
-  bool canOpen = true;
+  FileOpenResult openResult = FileOpenResult.opened;
   bool saveConfirmed = true;
   Exception? failure;
   Future<void> Function(String call)? beforeCall;
 
   @override
-  Future<bool> openWith(
+  Future<FileOpenResult> openWith(
     File file, {
     required String mimeType,
     Rect? origin,
   }) async {
     await _call('openWith ${file.path} $mimeType', origin);
-    return canOpen;
+    return openResult;
   }
 
   @override
@@ -163,7 +163,8 @@ final class FakeFileActions implements FileActions {
 /// unknown); a URI that is not in the pending share is
 /// `SharedFileUnreadable`, as on the platform. [clear] forgets the pending
 /// share. Every call is recorded in [calls] (`pending`,
-/// `copy <uri> max <bytes>`, `clear`); [beforeCall] can hold or fail one.
+/// `copy <uri> max <bytes>`, `cancelCopy <uri>`, `clear`); [beforeCall] can
+/// hold or fail one.
 final class FakeShareIntentSource implements ShareIntentSource {
   new({IncomingShare? initial}) : _pending = initial;
 
@@ -208,6 +209,9 @@ final class FakeShareIntentSource implements ShareIntentSource {
     copiedPaths.add(copied.path);
     return copied;
   }
+
+  @override
+  Future<void> cancelCopy(String uri) => _call('cancelCopy $uri');
 
   @override
   Future<void> clear() async {

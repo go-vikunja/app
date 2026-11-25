@@ -484,7 +484,8 @@ void main() {
   });
 
   testWidgets('Add to task with only a file whose location stayed: Skip '
-      'leaves nothing to add, so the sheet stays', (tester) async {
+      'leaves nothing to add, so the sheet stays without the file, and Add '
+      'neither asks again nor fails', (tester) async {
     data.shareLocations.failures['/cache/share-inbox/1'] = PlatformException(
       code: 'remove_location_failed',
     );
@@ -507,6 +508,39 @@ void main() {
     expect(data.tasks.writes, isEmpty);
     expect(sheet, findsOneWidget);
     expect(find.text(en.shareAddedToTask(0)), findsNothing);
+    expect(inSheet(find.text('list.pdf')), findsNothing);
+    expect(enabled(tester, en.shareAdd), isFalse);
+  });
+
+  testWidgets('after Skip and a Create that failed, the next Create neither '
+      'asks about the skipped file again nor fails on it', (tester) async {
+    data.shareLocations.failures['/cache/share-inbox/1'] = PlatformException(
+      code: 'remove_location_failed',
+    );
+    var failing = true;
+    data.tasks.beforeWrite = () async {
+      if (failing) throw StateError('the database went away');
+    };
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.push(const IncomingShare(text: 'Scan', files: [_list]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(action(en.shareCreate));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text(en.attachmentLocationKeptSkip));
+    await tester.pumpAndSettle();
+    expect(inSheet(find.text(en.shareFailed)), findsOneWidget);
+    expect(inSheet(find.text('list.pdf')), findsNothing);
+
+    failing = false;
+    await tapAction(tester, en.shareCreate);
+
+    expect(find.text(en.attachmentLocationKeptTitle), findsNothing);
+    // The failed create is recorded before it throws.
+    expect(data.tasks.writes, ['create -1 Scan', 'create -2 Scan']);
+    expect(sheet, findsNothing);
+    expect(find.text(en.shareTaskCreated(0)), findsOneWidget);
   });
 
   testWidgets('a file can be left out; one that cannot be read is flagged '
@@ -588,6 +622,63 @@ void main() {
       data.shareSource.calls.where((call) => call.startsWith('copy')),
       hasLength(20),
     );
+  });
+
+  testWidgets('an account that can only read its projects says it cannot '
+      'take the share and offers nothing that would not work', (tester) async {
+    data.projects.all = [
+      sampleProject(
+        id: 1,
+        title: 'Work',
+      ).copyWith(maxPermission: Permission.read),
+    ];
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.push(
+      const IncomingShare(text: 'Buy milk', files: [_list]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(inSheet(find.text(en.shareReadOnlyAccount)), findsOneWidget);
+    expect(enabled(tester, en.shareCreate), isFalse);
+    expect(inSheet(find.text(en.shareAddToTask)), findsNothing);
+    expect(inSheet(find.byType(TextField)), findsNothing);
+    expect(inSheet(find.text('list.pdf')), findsNothing);
+
+    await tester.tap(inSheet(find.byTooltip(en.cancel)));
+    await tester.pumpAndSettle();
+    expect(sheet, findsNothing);
+    expect(data.tasks.writes, isEmpty);
+    expect(data.shareSource.calls.last, 'clear');
+  });
+
+  testWidgets('a file the other app never delivers: Cancel closes at once, '
+      'and the next share opens though the platform never answers the '
+      'clear', (tester) async {
+    final never = Completer<void>();
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.beforeCall = (call) =>
+        call.startsWith('copy') || call == 'clear'
+        ? never.future
+        : Future.value();
+    data.shareSource.push(const IncomingShare(text: 'First', files: [_list]));
+    // The row's progress never settles.
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(inSheet(find.text(en.shareFilePreparing)), findsOneWidget);
+
+    await tester.tap(inSheet(find.byTooltip(en.cancel)));
+    await tester.pumpAndSettle();
+    expect(sheet, findsNothing);
+    expect(data.shareSource.calls.last, 'clear');
+
+    data.shareSource.beforeCall = null;
+    data.shareSource.push(const IncomingShare(text: 'Second'));
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pumpAndSettle();
+
+    expect(sheet, findsOneWidget);
+    expect(fieldText(tester, en.taskEditTitleLabel), 'Second');
   });
 
   testWidgets('a newer share replaces the one on screen', (tester) async {

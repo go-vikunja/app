@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -53,8 +55,10 @@ final class ShareFileItem {
 /// The files of a share, copied one after the other into the share inbox
 /// with the server's limit, so that the sheet can say which can go; every
 /// copy goes through the location removal before it is ready. At most
-/// [maxFiles]; the rest are [leftOut]. A removed file is no longer copied;
-/// its copy goes when the share is cleared.
+/// [maxFiles]; the rest are [leftOut]. A removed file is no longer copied,
+/// and one removed while it copies has that copy called off, so the next
+/// file does not wait for a sending app that never delivers; its copy goes
+/// when the share is cleared.
 final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
   new({
     required this._source,
@@ -83,6 +87,7 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
   final int _maxBytes;
   final int leftOut;
   var _disposed = false;
+  ({String uri, Completer<Never> removed})? _copying;
 
   bool get preparing => value.any((item) => item.status is ShareFilePreparing);
 
@@ -98,8 +103,13 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
       if (item.status is! ShareFilePreparing) continue;
       if (!value.any((current) => current.file.uri == item.file.uri)) continue;
       final CopiedSharedFile copy;
+      final removed = Completer<Never>();
+      _copying = (uri: item.file.uri, removed: removed);
       try {
-        copy = await _source.copy(item.file.uri, maxBytes: _maxBytes);
+        copy = await Future.any([
+          _source.copy(item.file.uri, maxBytes: _maxBytes),
+          removed.future,
+        ]);
       } on SharedFileTooLarge catch (error) {
         _set(item.file, ShareFileTooLarge(error.maxBytes));
         continue;
@@ -107,6 +117,8 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
         _log.info('Copying a shared file failed: ${error.runtimeType}');
         _set(item.file, const ShareFileUnreadable());
         continue;
+      } finally {
+        _copying = null;
       }
       // Not by the other app's type, which can be generic: the platform
       // tells photos and videos apart by their content.
@@ -120,6 +132,11 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
 
   void remove(SharedFile file) {
     if (_disposed) return;
+    if (_copying case (:final uri, :final removed)? when uri == file.uri) {
+      _copying = null;
+      removed.completeError(const SharedFileUnreadable());
+      unawaited(_source.cancelCopy(uri));
+    }
     value = [
       for (final item in value)
         if (item.file.uri != file.uri) item,

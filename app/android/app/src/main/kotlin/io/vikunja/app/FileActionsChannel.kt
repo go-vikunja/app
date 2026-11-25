@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -59,9 +60,14 @@ internal class FileActionsChannel(
     }
 
     private fun openWith(file: File, mime: String, result: MethodChannel.Result) {
+        val type = viewType(file.name, mime) { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it) }
+        if (type == null) {
+            result.error("not_viewable", null, null)
+            return
+        }
         val uri = FileProvider.getUriForFile(context, authority(context), file)
         val intent = Intent(Intent.ACTION_VIEW)
-            .setDataAndType(uri, mime)
+            .setDataAndType(uri, type)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         try {
             activity.startActivity(intent)
@@ -138,5 +144,21 @@ internal class FileActionsChannel(
         fun authority(context: Context) = "${context.packageName}.files"
     }
 }
+
+// The type ACTION_VIEW hands on: the one of the file's name, as
+// AttachmentFileProvider answers the other app too; only for a name of no
+// known type the type the server sent, which it guesses from the content
+// the uploader chose. Null for web pages, XML and SVG: a browser would run
+// them.
+internal fun viewType(fileName: String, sentType: String, typeOfExtension: (String) -> String?): String? {
+    val extension = fileName.substringAfterLast('.', "").lowercase()
+    val byName = if (extension.isEmpty()) null else typeOfExtension(extension)?.lowercase()
+    val type = byName ?: sentType
+    return if (isActiveContent(type.lowercase())) null else type
+}
+
+private fun isActiveContent(type: String): Boolean =
+    type == "text/html" || type == "application/xhtml+xml" || type == "image/svg+xml" ||
+        type == "text/xml" || type == "application/xml" || type.endsWith("+xml")
 
 class AttachmentFileProvider : FileProvider()

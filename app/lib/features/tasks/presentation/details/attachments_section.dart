@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/files/file_actions.dart';
@@ -180,22 +181,63 @@ class _TaskAttachmentsSectionState
           context,
           taskId: attachment.taskId,
           attachmentId: attachment.id,
-          description: attachment.name,
+          description: safeFileName(attachment.name),
         ),
       );
       return;
     }
     unawaited(
       _withDownload(attachment, (file) async {
-        final opened = await ref
+        final result = await ref
             .read(fileActionsProvider)
             .openWith(
               file,
               mimeType: plainMimeType(attachment.mime),
               origin: origin,
             );
-        if (!opened) _message((l10n) => l10n.attachmentNoApp);
+        switch (result) {
+          case FileOpenResult.opened:
+            return;
+          case FileOpenResult.noApp:
+            _message((l10n) => l10n.attachmentNoApp);
+          case FileOpenResult.notViewable:
+            if (!mounted) return;
+            switch (await _askSaveOrShare()) {
+              case AttachmentAction.save:
+                await _saveFile(attachment, file, origin);
+              case AttachmentAction.share:
+                await _shareFile(attachment, file, origin);
+              case _:
+                return;
+            }
+        }
       }),
+    );
+  }
+
+  Future<AttachmentAction?> _askSaveOrShare() {
+    final l10n = context.l10n;
+    return showAdaptiveDialog<AttachmentAction>(
+      context: context,
+      builder: (context) => AlertDialog.adaptive(
+        scrollable: true,
+        title: Text(l10n.attachmentNotViewableTitle),
+        content: Text(l10n.attachmentNotViewableBody),
+        actions: [
+          AdaptiveDialogAction(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.cancel),
+          ),
+          AdaptiveDialogAction(
+            onPressed: () => Navigator.of(context).pop(AttachmentAction.share),
+            child: Text(l10n.attachmentShare),
+          ),
+          AdaptiveDialogAction(
+            onPressed: () => Navigator.of(context).pop(AttachmentAction.save),
+            child: Text(l10n.attachmentSaveToDevice),
+          ),
+        ],
+      ),
     );
   }
 
@@ -238,30 +280,37 @@ class _TaskAttachmentsSectionState
     }
   }
 
-  Future<void> _share(TaskAttachment attachment, Rect? origin) => _withDownload(
-    attachment,
-    (file) => ref
-        .read(fileActionsProvider)
-        .share(
-          file,
-          fileName: attachment.name,
-          mimeType: plainMimeType(attachment.mime),
-          origin: origin,
-        ),
-  );
+  Future<void> _share(TaskAttachment attachment, Rect? origin) =>
+      _withDownload(attachment, (file) => _shareFile(attachment, file, origin));
+
+  Future<void> _shareFile(TaskAttachment attachment, File file, Rect? origin) =>
+      ref
+          .read(fileActionsProvider)
+          .share(
+            file,
+            fileName: safeFileName(attachment.name),
+            mimeType: plainMimeType(attachment.mime),
+            origin: origin,
+          );
 
   Future<void> _save(TaskAttachment attachment, Rect? origin) =>
-      _withDownload(attachment, (file) async {
-        final saved = await ref
-            .read(fileActionsProvider)
-            .saveAs(
-              file,
-              fileName: attachment.name,
-              mimeType: plainMimeType(attachment.mime),
-              origin: origin,
-            );
-        if (saved) _message((l10n) => l10n.attachmentSaved);
-      });
+      _withDownload(attachment, (file) => _saveFile(attachment, file, origin));
+
+  Future<void> _saveFile(
+    TaskAttachment attachment,
+    File file,
+    Rect? origin,
+  ) async {
+    final saved = await ref
+        .read(fileActionsProvider)
+        .saveAs(
+          file,
+          fileName: safeFileName(attachment.name),
+          mimeType: plainMimeType(attachment.mime),
+          origin: origin,
+        );
+    if (saved) _message((l10n) => l10n.attachmentSaved);
+  }
 
   void _cancelDownload(TaskAttachment attachment) =>
       _downloads[attachment.id]?.cancel();
@@ -287,7 +336,7 @@ class _TaskAttachmentsSectionState
     final confirmed = await confirmAdaptive(
       context,
       title: l10n.attachmentDeleteTitle,
-      body: l10n.attachmentDeleteBody(attachment.name),
+      body: l10n.attachmentDeleteBody(safeFileName(attachment.name)),
       confirmLabel: l10n.attachmentDeleteConfirm,
       destructive: true,
     );

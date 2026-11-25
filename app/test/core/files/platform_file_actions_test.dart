@@ -48,7 +48,7 @@ void main() {
 
       expect(
         await android.openWith(file, mimeType: 'application/pdf; x=y'),
-        isTrue,
+        FileOpenResult.opened,
       );
       expect(
         await android.saveAs(
@@ -72,6 +72,24 @@ void main() {
       expect(shared, isEmpty);
     });
 
+    test('no app to open it, or a type the platform does not open, says '
+        'so', () async {
+      final android = actions(android: true);
+      messenger.setMockMethodCallHandler(channel, (call) async => false);
+      expect(
+        await android.openWith(file, mimeType: 'application/pdf'),
+        FileOpenResult.noApp,
+      );
+      messenger.setMockMethodCallHandler(
+        channel,
+        (call) async => throw PlatformException(code: 'not_viewable'),
+      );
+      expect(
+        await android.openWith(file, mimeType: 'text/html'),
+        FileOpenResult.notViewable,
+      );
+    });
+
     test('sharing uses the share sheet with the file and its name', () async {
       await actions(android: true).share(
         file,
@@ -92,7 +110,10 @@ void main() {
     test('open with and save as use the share sheet', () async {
       final ios = actions(android: false);
 
-      expect(await ios.openWith(file, mimeType: 'application/pdf'), isTrue);
+      expect(
+        await ios.openWith(file, mimeType: 'application/pdf'),
+        FileOpenResult.opened,
+      );
       shareResult = const ShareResult('', ShareResultStatus.dismissed);
       expect(
         await ios.saveAs(

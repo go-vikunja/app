@@ -30,7 +30,7 @@ final class PlatformFileActions implements FileActions {
   final AppExcursions? _excursions;
 
   @override
-  Future<bool> openWith(
+  Future<FileOpenResult> openWith(
     File file, {
     required String mimeType,
     Rect? origin,
@@ -42,18 +42,32 @@ final class PlatformFileActions implements FileActions {
         mimeType: mimeType,
         origin: origin,
       );
-      return result.status != ShareResultStatus.unavailable;
+      return result.status == ShareResultStatus.unavailable
+          ? FileOpenResult.noApp
+          : FileOpenResult.opened;
     }
-    // The other app opens and the channel answers at once.
-    Future<bool> open() async =>
-        await _channel.invokeMethod<bool>('openWith', {
+    // The other app opens and the channel answers at once. The channel
+    // hands the file on with the type of its name and refuses web pages,
+    // XML and SVG, which a browser would run.
+    Future<FileOpenResult> open() async {
+      try {
+        final opened = await _channel.invokeMethod<bool>('openWith', {
           'path': file.path,
           'mime': plainMimeType(mimeType),
-        }) ??
-        false;
+        });
+        return opened ?? false ? FileOpenResult.opened : FileOpenResult.noApp;
+      } on PlatformException catch (error) {
+        if (error.code == 'not_viewable') return FileOpenResult.notViewable;
+        rethrow;
+      }
+    }
+
     final excursions = _excursions;
     if (excursions == null) return await open();
-    return await excursions.launchAway(open, opened: (opened) => opened);
+    return await excursions.launchAway(
+      open,
+      opened: (result) => result == FileOpenResult.opened,
+    );
   }
 
   @override

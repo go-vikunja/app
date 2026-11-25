@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
+import 'package:vikunja_mobile/core/files/file_actions.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
@@ -463,12 +464,68 @@ void main() {
     });
 
     testWidgets('a file no app can open says so', (tester) async {
-      data.fileActions.canOpen = false;
+      data.fileActions.openResult = FileOpenResult.noApp;
       await openDetail(tester, data.tasks.find(4)!);
 
       await choose(tester, pdf, en.attachmentOpen);
 
       expect(find.text(en.attachmentNoApp), findsOneWidget);
+    });
+
+    testWidgets('a file the platform will not open, such as a web page, is '
+        'offered for saving or sharing instead', (tester) async {
+      final page = sampleAttachment(
+        id: 8,
+        taskId: 4,
+        name: 'invoice.html',
+        mime: 'text/html; charset=utf-8',
+      );
+      data.details.detailsByTask[4] = TaskDetails(attachments: [page]);
+      data.fileActions.openResult = FileOpenResult.notViewable;
+      await openDetail(tester, data.tasks.find(4)!);
+
+      for (final choice in [en.attachmentSaveToDevice, en.attachmentShare]) {
+        await tester.tap(inSheet(find.text('invoice.html')));
+        await tester.pumpAndSettle();
+        expect(find.text(en.attachmentNotViewableTitle), findsOneWidget);
+        expect(find.text(en.attachmentNotViewableBody), findsOneWidget);
+        await tester.tap(find.text(choice).last);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(inSheet(find.text('invoice.html')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.cancel).last);
+      await tester.pumpAndSettle();
+
+      const path = '/cache/attachments/4/8/invoice.html';
+      expect(data.fileActions.calls, [
+        'openWith $path text/html',
+        'saveAs $path invoice.html text/html',
+        'openWith $path text/html',
+        'share $path invoice.html text/html',
+        'openWith $path text/html',
+      ]);
+      expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('a name shows without hidden direction characters, so one '
+        'that reads as a PDF really ends in .pdf', (tester) async {
+      final spoof = sampleAttachment(
+        id: 8,
+        taskId: 4,
+        name: 'invoice_\u202Efdp.html',
+        mime: 'text/html',
+      );
+      data.details.detailsByTask[4] = TaskDetails(attachments: [spoof]);
+      await openDetail(tester, data.tasks.find(4)!);
+
+      expect(inSheet(find.text('invoice_fdp.html')), findsOneWidget);
+      expect(inSheet(find.text(spoof.name)), findsNothing);
+      expect(
+        inSheet(find.byTooltip(en.attachmentOptions('invoice_fdp.html'))),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Share and Save hand the downloaded file on, anchored at the '

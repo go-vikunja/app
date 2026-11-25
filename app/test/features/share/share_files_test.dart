@@ -92,6 +92,29 @@ void main() {
     expect(controller.value.map((item) => item.file), [files[0]]);
   });
 
+  test('a file removed while it copies has its copy called off, and the '
+      'next file copies without waiting for it', () async {
+    final files = [file(1), file(2)];
+    final never = Completer<void>();
+    final source = FakeShareIntentSource(initial: IncomingShare(files: files))
+      ..beforeCall = (call) =>
+          call == 'copy content://f/1 max 100' ? never.future : Future.value();
+    final controller = controllerFor(source, files);
+
+    final preparing = controller.prepare();
+    await pumpEventQueue();
+    controller.remove(files[0]);
+    await preparing;
+
+    expect(source.calls, [
+      'copy content://f/1 max 100',
+      'cancelCopy content://f/1',
+      'copy content://f/2 max 100',
+    ]);
+    expect(controller.value.map((item) => item.file), [files[1]]);
+    expect(controller.value.single.status, isA<ShareFileReady>());
+  });
+
   test('without attachments on the server nothing is copied; past 20 files '
       'the rest are left out; names are made safe', () async {
     final files = [
