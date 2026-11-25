@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
@@ -228,8 +230,8 @@ void main() {
   });
 
   group('v2 update', () {
-    test('sends a merge-patch with every field and returns the filter as '
-        'stored', () async {
+    test('a draft with nothing unchanged sends a merge-patch with every '
+        'field and returns the filter as stored', () async {
       final dio = fakeDio({
         '$_v2/filters/$_today': _write('v2_saved_filter_update'),
       });
@@ -248,6 +250,57 @@ void main() {
         updated.updated!.isAfter(DateTime.utc(2026, 10, 20, 8, 43, 41)),
         isTrue,
       );
+    });
+
+    test('a draft that leaves fields unchanged sends only the others, and '
+        "only the filter's changed keys for the merge", () async {
+      final dio = fakeDio({
+        '$_v2/filters/$_today': _write('v2_saved_filter_update'),
+      });
+      final client = _client(dio, hasV2: true);
+
+      await client.savedFilters.update(
+        _today,
+        const SavedFilterDraft(
+          title: 'This week',
+          description: 'stale',
+          filter: ViewFilter(
+            filter: 'due_date < now/w+1w',
+            search: 'stale',
+            includeNulls: true,
+          ),
+          unchanged: {
+            SavedFilterDraftField.description,
+            SavedFilterDraftField.search,
+            SavedFilterDraftField.sort,
+            SavedFilterDraftField.isFavorite,
+          },
+        ),
+      );
+      await client.savedFilters.update(
+        _today,
+        SavedFilterDraft(
+          title: 'This week',
+          filter: const ViewFilter(),
+          unchanged: SavedFilterDraftField.values.toSet()
+            ..remove(SavedFilterDraftField.title),
+        ),
+      );
+
+      expect(_calls(dio), [
+        'PATCH $_v2/filters/$_today',
+        'PATCH $_v2/filters/$_today',
+      ]);
+      expect(adapterOf(dio).decodedBodies, [
+        {
+          'title': 'This week',
+          'filters': {
+            'filter': 'due_date < now/w+1w',
+            'filter_include_nulls': true,
+          },
+        },
+        {'title': 'This week'},
+      ]);
     });
 
     test('reads the filter when nothing changed (304)', () async {
@@ -287,8 +340,8 @@ void main() {
   });
 
   group('v1 update', () {
-    test('reads the filter and posts it back whole with the draft '
-        'overlaid', () async {
+    test('reads the filter and posts it back whole with a draft with nothing '
+        'unchanged overlaid', () async {
       final dio = fakeDio({
         '$_v1/filters/$_urgent': _byMethod({
           'GET': _write('v1_saved_filter_update_read'),
@@ -312,6 +365,53 @@ void main() {
       expect(updated.title, 'Urgent');
       expect(updated.description, '');
       expect(updated.filter, const ViewFilter(filter: 'priority >= 4'));
+    });
+
+    test('a draft that leaves fields unchanged overlays only the others, the '
+        "filter's key by key, so the server's search and sort stay", () async {
+      final dio = fakeDio({
+        '$_v1/filters/$_urgent': _byMethod({
+          'GET': _write('v1_saved_filter_update_read'),
+          'POST': _write('v1_saved_filter_update'),
+        }),
+      });
+      final read = jsonDecode(
+        fixtureJson('write/v1_saved_filter_update_read_2.7.0.json')['body']!
+            as String,
+      ) as Map<String, Object?>;
+
+      await _client(dio, hasV2: false).savedFilters.update(
+        _urgent,
+        const SavedFilterDraft(
+          title: 'Urgent',
+          description: 'stale',
+          filter: ViewFilter(filter: 'priority >= 4', search: 'stale'),
+          unchanged: {
+            SavedFilterDraftField.description,
+            SavedFilterDraftField.search,
+            SavedFilterDraftField.sort,
+            SavedFilterDraftField.includeNulls,
+            SavedFilterDraftField.isFavorite,
+          },
+        ),
+      );
+
+      expect(_calls(dio), [
+        'GET $_v1/filters/$_urgent',
+        'POST $_v1/filters/$_urgent',
+      ]);
+      expect(_lastBody(dio), {
+        ...read,
+        'title': 'Urgent',
+        'filters': {
+          's': '',
+          'sort_by': ['due_date'],
+          'order_by': ['asc'],
+          'filter': 'priority >= 4',
+          'filter_include_nulls': true,
+        },
+      });
+      expect(_lastBody(dio), containsPair('description', 'Open and urgent'));
     });
 
     test('a favourite keeps everything else', () async {

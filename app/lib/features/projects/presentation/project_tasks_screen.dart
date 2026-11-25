@@ -119,8 +119,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   // so the tapped one keeps its focus.
   final GlobalKey _controlsKey = GlobalKey();
 
-  /// Saved filters show as projects with ids below zero; nobody follows
-  /// them.
+  /// Ids below zero open the smart list screen, so this only keeps out a
+  /// link to project 0, which is no project.
   bool get _followable => widget.projectId > 0;
 
   @override

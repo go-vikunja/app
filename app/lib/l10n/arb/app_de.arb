@@ -220,6 +220,7 @@
   "projectMoveForbidden": "Du darfst dieses Projekt nicht verschieben.",
   "projectMoveArchived": "Archivierte Projekte lassen sich nicht verschieben und nehmen keine Projekte auf.",
   "projectMoveNotPossible": "Dorthin lässt sich das Projekt nicht verschieben.",
+  "projectMoveNoRoomAtTop": "Über dem ersten Projekt hier ist kein Platz mehr. Verschiebe zuerst das erste Projekt nach unten, dann entsteht Platz.",
   "projectMoveGone": "Das Projekt oder sein neues übergeordnetes Projekt gibt es nicht mehr.",
   "projectMoveRefused": "Der Server hat das Verschieben abgelehnt: {message}",
   "projectMoveFailed": "Das Projekt konnte nicht verschoben werden.",

@@ -700,7 +700,9 @@ final class _AccountBuild {
         section: WidgetCatalogSection.project,
         title: title,
         color: _color(row.node.project.hexColor),
-        writable: ProjectAccess.of(row.node.project).canAddTasks,
+        writable:
+            !archived.contains(row.node.project.id) &&
+            ProjectAccess.of(row.node.project).canAddTasks,
         depth: row.depth,
         parent: parent,
       );

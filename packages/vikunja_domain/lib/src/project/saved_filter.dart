@@ -69,8 +69,9 @@ final class SavedFilter {
   String toString() => 'SavedFilter($id)';
 }
 
-/// What the app sends to create a saved filter or to replace one: every
-/// field is sent.
+/// What the app sends to create a saved filter or to change one. A create
+/// sends every field; an update leaves every field in [unchanged] as the
+/// server has it.
 @immutable
 final class SavedFilterDraft {
   const new({
@@ -78,6 +79,7 @@ final class SavedFilterDraft {
     required this.filter,
     this.description = '',
     this.isFavorite = false,
+    this.unchanged = const {},
   });
 
   /// 1 to 250 characters.
@@ -92,19 +94,76 @@ final class SavedFilterDraft {
   final ViewFilter filter;
   final bool isFavorite;
 
+  /// Ignored by a create.
+  final Set<SavedFilterDraftField> unchanged;
+
+  /// This draft as an update of [start], what the edit began with: what it
+  /// left as it was stays as the server has it, so that a change made
+  /// elsewhere since survives.
+  SavedFilterDraft changedFrom(SavedFilterDraft start) => SavedFilterDraft(
+    title: title,
+    description: description,
+    filter: filter,
+    isFavorite: isFavorite,
+    unchanged: {
+      if (title.trim() == start.title.trim()) SavedFilterDraftField.title,
+      if (description == start.description) SavedFilterDraftField.description,
+      if (filter.filter.trim() == start.filter.filter.trim())
+        SavedFilterDraftField.filterText,
+      if (filter.search == start.filter.search) SavedFilterDraftField.search,
+      if (_sameStrings(filter.sortBy, start.filter.sortBy) &&
+          _sameStrings(filter.orderBy, start.filter.orderBy))
+        SavedFilterDraftField.sort,
+      if (filter.includeNulls == start.filter.includeNulls)
+        SavedFilterDraftField.includeNulls,
+      if (isFavorite == start.isFavorite) SavedFilterDraftField.isFavorite,
+    },
+  );
+
   @override
   bool operator ==(Object other) =>
       other is SavedFilterDraft &&
       other.title == title &&
       other.description == description &&
       other.filter == filter &&
-      other.isFavorite == isFavorite;
+      other.isFavorite == isFavorite &&
+      other.unchanged.length == unchanged.length &&
+      other.unchanged.containsAll(unchanged);
 
   @override
-  int get hashCode => Object.hash(title, description, filter, isFavorite);
+  int get hashCode => Object.hash(
+    title,
+    description,
+    filter,
+    isFavorite,
+    Object.hashAllUnordered(unchanged),
+  );
 
   /// Without the title, the description and the filter, which are user
   /// text.
   @override
-  String toString() => 'SavedFilterDraft(favorite: $isFavorite)';
+  String toString() {
+    final fields = [
+      'favorite: $isFavorite',
+      if (unchanged.isNotEmpty)
+        'unchanged: ${unchanged.map((field) => field.name).join('/')}',
+    ];
+    return 'SavedFilterDraft(${fields.join(', ')})';
+  }
+}
+
+bool _sameStrings(List<String> a, List<String> b) =>
+    a.length == b.length &&
+    Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
+
+/// The parts of a saved filter an update can leave as they are; the
+/// search, sort and include-nulls flag are keys of its filter.
+enum SavedFilterDraftField {
+  title,
+  description,
+  filterText,
+  search,
+  sort,
+  includeNulls,
+  isFavorite,
 }

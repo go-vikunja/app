@@ -300,8 +300,10 @@ void main() {
   });
 
   group('edit', () {
-    testWidgets('from the menu, with what is stored; save replaces it and '
-        'keeps the search and sort the form does not show', (tester) async {
+    testWidgets('from the menu, with what is stored; save sends only what '
+        'the user changed, never the description, search or sort', (
+      tester,
+    ) async {
       await pumpAt(tester, AppRoutes.project(urgent.projectId));
       await openMenu(tester);
       await chooseItem(tester, en.projectEdit);
@@ -328,27 +330,33 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(data.savedFilters.calls, ['update -2 On fire']);
-      expect(
-        data.savedFilters.drafts.single,
-        const SavedFilterDraft(
-          title: 'On fire',
-          description: 'What burns',
-          filter: ViewFilter(
-            filter: 'done = false && priority >= 4',
-            search: 'kept',
-            sortBy: ['due_date'],
-            orderBy: ['desc'],
-            includeNulls: true,
-          ),
-        ),
-      );
+      final draft = data.savedFilters.drafts.single;
+      expect(draft.title, 'On fire');
+      expect(draft.filter.includeNulls, isTrue);
+      expect(draft.unchanged, {
+        SavedFilterDraftField.description,
+        SavedFilterDraftField.filterText,
+        SavedFilterDraftField.search,
+        SavedFilterDraftField.sort,
+        SavedFilterDraftField.isFavorite,
+      });
       expect(find.byType(SavedFilterFormPage), findsNothing);
       expect(find.widgetWithText(AppBar, 'On fire'), findsOneWidget);
       expect(find.text(en.savedFilterSaved), findsOneWidget);
     });
 
+    testWidgets('spaces around the title alone change nothing, so Save '
+        'stays disabled', (tester) async {
+      await pumpAt(tester, AppRoutes.savedFilterEdit(urgent.projectId));
+
+      await tester.enterText(formField(en.projectTitleLabel), ' Urgent  ');
+      await tester.pump();
+
+      expect(enabled(tester, en.projectSave), isFalse);
+    });
+
     testWidgets("the web's rich-text description shows with its formatting "
-        'and goes back as stored', (tester) async {
+        'and is never sent by the form', (tester) async {
       const rich = SavedFilterRef(
         projectId: -2,
         title: 'Urgent',
@@ -368,11 +376,14 @@ void main() {
       await tester.tap(appBarButton(en.projectSave));
       await tester.pumpAndSettle();
 
-      expect(data.savedFilters.drafts.last.description, rich.description);
+      expect(
+        data.savedFilters.drafts.last.unchanged,
+        contains(SavedFilterDraftField.description),
+      );
     });
 
     testWidgets('the description is edited in the description editor, which '
-        "saves it with its formatting; the form's Save keeps it", (
+        "saves it with its formatting; the form's Save leaves it alone", (
       tester,
     ) async {
       const rich = SavedFilterRef(
@@ -412,8 +423,13 @@ void main() {
 
       await tester.tap(appBarButton(en.projectSave));
       await tester.pumpAndSettle();
+      expect(data.savedFilters.calls.last, 'update -2 On fire');
       expect(
-        data.savedFilters.drafts.last.description,
+        data.savedFilters.drafts.last.unchanged,
+        contains(SavedFilterDraftField.description),
+      );
+      expect(
+        data.projects.savedFilters.single.description,
         '<p>What <strong>burns</strong> <em>now</em></p>',
       );
     });
@@ -448,6 +464,39 @@ void main() {
           id: 1,
           title: 'Urgent',
           filter: ViewFilter(filter: 'priority = 5'),
+        )
+        ..beforeCall = (call) => read.future;
+      await pumpAt(tester, AppRoutes.savedFilterEdit(-2), settle: false);
+
+      expect(find.text(en.savedFilterLoading), findsOneWidget);
+      read.complete();
+      await tester.pumpAndSettle();
+
+      expect(data.savedFilters.calls, ['read -2']);
+      expect(fieldText(tester, en.filterLabel), 'priority = 5');
+    });
+
+    testWidgets('a stored definition older than the listed saved filter is '
+        'read again first', (tester) async {
+      final read = Completer<void>();
+      final changedOnTheWeb = DateTime.utc(2026, 10, 10, 9);
+      data.projects.savedFilters = [
+        SavedFilterRef(
+          projectId: -2,
+          title: 'Urgent',
+          updated: changedOnTheWeb,
+          definition: SavedFilterDefinition(
+            filter: const ViewFilter(filter: 'priority >= 4'),
+            updated: DateTime.utc(2026, 10, 9, 9),
+          ),
+        ),
+      ];
+      data.savedFilters
+        ..online[-2] = SavedFilter(
+          id: 1,
+          title: 'Urgent',
+          filter: const ViewFilter(filter: 'priority = 5'),
+          updated: changedOnTheWeb,
         )
         ..beforeCall = (call) => read.future;
       await pumpAt(tester, AppRoutes.savedFilterEdit(-2), settle: false);

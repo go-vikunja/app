@@ -44,15 +44,14 @@ final class LocalSavedFilterRepository implements SavedFilterRepository {
     int pseudoProjectId,
     String description,
   ) async {
-    final id = _filterId(pseudoProjectId);
-    final current = await _write.savedFilters.read(id);
     final updated = await _write.savedFilters.update(
-      id,
+      _filterId(pseudoProjectId),
       SavedFilterDraft(
-        title: current.title,
+        title: '',
         description: description,
-        filter: current.filter,
-        isFavorite: current.isFavorite,
+        filter: const ViewFilter(),
+        unchanged: {...SavedFilterDraftField.values}
+          ..remove(SavedFilterDraftField.description),
       ),
     );
     await storeSavedFilterAnswer(_db, updated);
@@ -93,12 +92,16 @@ final class LocalSavedFilterRepository implements SavedFilterRepository {
 
   static SavedFilterDraft _checked(SavedFilterDraft draft) {
     final title = draft.title.trim();
-    if (title.isEmpty) throw ArgumentError.value(draft.title, 'title');
+    if (title.isEmpty &&
+        !draft.unchanged.contains(SavedFilterDraftField.title)) {
+      throw ArgumentError.value(draft.title, 'title');
+    }
     return SavedFilterDraft(
       title: title,
       description: draft.description,
       filter: draft.filter,
       isFavorite: draft.isFavorite,
+      unchanged: draft.unchanged,
     );
   }
 

@@ -276,6 +276,24 @@ void main() {
         expect(plan.project, inbox);
       });
 
+      test('nor one unarchived below an archived project (before 2.6), not '
+          'even as the default project', () {
+        final leftBehind = sampleProject(
+          id: 8,
+          title: 'Behind',
+          parent: archived.id,
+        );
+        final projects = [inbox, garage, archived, leftBehind];
+
+        final plan = service(
+          projects: projects,
+          settings: const UserSettings(defaultProjectId: 8),
+        ).plan('Clean up +Behind', fallbackProjectId: 8);
+        expect(plan.unmatchedProject, 'Behind');
+        expect(plan.unmatchedProjectReadOnly, isFalse);
+        expect(plan.project, inbox);
+      });
+
       test('projects the user may only read are not matched, and the plan '
           'says so', () {
         final projects = [

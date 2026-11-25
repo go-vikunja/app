@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show listEquals, setEquals;
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -547,30 +547,8 @@ final class IncrementalRun {
   static bool _sameViews(List<ProjectView> a, List<ProjectView> b) {
     if (a.length != b.length) return false;
     final byId = {for (final view in b) view.id: view};
-    return a.every((x) {
-      final y = byId[x.id];
-      return y != null &&
-          x.projectId == y.projectId &&
-          x.title == y.title &&
-          x.kind == y.kind &&
-          x.position == y.position &&
-          x.bucketConfigurationMode == y.bucketConfigurationMode &&
-          x.defaultBucketId == y.defaultBucketId &&
-          x.doneBucketId == y.doneBucketId &&
-          _sameFilter(x.filter, y.filter);
-    });
+    return a.every((view) => byId[view.id] == view);
   }
-
-  static bool _sameFilter(ViewFilter? a, ViewFilter? b) => switch ((a, b)) {
-    (null, null) => true,
-    (final a?, final b?) =>
-      a.filter == b.filter &&
-          a.search == b.search &&
-          listEquals(a.sortBy, b.sortBy) &&
-          listEquals(a.orderBy, b.orderBy) &&
-          a.includeNulls == b.includeNulls,
-    _ => false,
-  };
 
   static bool _sameLabel(Label? before, Label label) =>
       before == label && before?.createdBy?.id == label.createdBy?.id;

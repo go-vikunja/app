@@ -345,10 +345,11 @@ abstract interface class SavedFiltersPort implements SavedFiltersReadPort {
   /// v2 `POST`, v1 `PUT /filters`. Not idempotent.
   Future<SavedFilter> create(SavedFilterDraft draft);
 
-  /// Writes every field of the draft and returns the saved filter as
-  /// stored: v2 a merge-patch (an unchanged one answers 304 and is read),
-  /// v1 a read posted back whole with the draft overlaid, which keeps what
-  /// this client does not model.
+  /// Writes the draft's fields but those it left unchanged, and of the
+  /// filter only the changed keys, and returns the saved filter as stored:
+  /// v2 a merge-patch (an unchanged one answers 304 and is read), v1 a read
+  /// posted back whole with the draft overlaid, the filter key by key,
+  /// which keeps what this client does not model.
   Future<SavedFilter> update(int id, SavedFilterDraft draft);
 
   /// Changes only the favourite, like [update].

@@ -885,6 +885,10 @@
   "@projectMoveNotPossible": {
     "description": "The server refused the new parent: the project itself, one of its subprojects or a saved filter."
   },
+  "projectMoveNoRoomAtTop": "There's no room left above the first project here. Moving that project down makes room.",
+  "@projectMoveNoRoomAtTop": {
+    "description": "After many moves to the top of a level of the project tree, no position is left above its first project; the move is refused until the user moves that first project down."
+  },
   "projectMoveGone": "The project or its new parent no longer exists.",
   "projectMoveRefused": "The server refused the move: {message}",
   "@projectMoveRefused": {

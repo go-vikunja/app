@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
@@ -54,8 +55,9 @@ const _newFilter = ViewFilter(
 /// A new saved filter ([pseudoProjectId] null), or one edited: title,
 /// description, the filter with the builder, whether tasks without a value
 /// count, and the favourite. Save waits for the server and stays open with
-/// the reason when it refuses; a new one opens once created. The stored
-/// search and sort, which the form does not show, stay as they are. A new
+/// the reason when it refuses; a new one opens once created. An edit sends
+/// only what the user changed, so the search and sort, which the form does
+/// not show, and what changed elsewhere since stay as they are. A new
 /// one's description is plain text; an existing one's is the web's rich
 /// text, edited in the description editor, which saves it on its own.
 class SavedFilterFormPage extends ConsumerStatefulWidget {
@@ -143,7 +145,7 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
   bool get _dirty {
     final start = _start;
     if (start == null) return false;
-    return _title.text != start.title ||
+    return _title.text.trim() != start.title.trim() ||
         (_isNew && _description.text != _plainDescription(start)) ||
         _filter.apiText != start.filter.filter.trim() ||
         _includeNulls != start.filter.includeNulls ||
@@ -160,20 +162,33 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
       !_filter.blocksSaving &&
       !_saving;
 
-  SavedFilterDraft _draft(_Start start) => SavedFilterDraft(
-    title: _title.text.trim(),
-    description: !_isNew || _description.text == _plainDescription(start)
-        ? _storedDescription(start)
-        : plainTextToHtml(_description.text.trim()),
-    filter: ViewFilter(
-      filter: _filter.apiText.trim(),
-      search: start.filter.search,
-      sortBy: start.filter.sortBy,
-      orderBy: start.filter.orderBy,
-      includeNulls: _includeNulls,
-    ),
-    isFavorite: _favourite,
-  );
+  /// Never an edit's description, which the description editor saves on its
+  /// own (decision log: Projects).
+  SavedFilterDraft _draft(_Start start) {
+    final draft = SavedFilterDraft(
+      title: _title.text.trim(),
+      description: !_isNew || _description.text == _plainDescription(start)
+          ? start.description
+          : plainTextToHtml(_description.text.trim()),
+      filter: ViewFilter(
+        filter: _filter.apiText.trim(),
+        search: start.filter.search,
+        sortBy: start.filter.sortBy,
+        orderBy: start.filter.orderBy,
+        includeNulls: _includeNulls,
+      ),
+      isFavorite: _favourite,
+    );
+    if (_isNew) return draft;
+    return draft.changedFrom(
+      SavedFilterDraft(
+        title: start.title,
+        description: start.description,
+        filter: start.filter,
+        isFavorite: start.isFavorite,
+      ),
+    );
+  }
 
   void _filterChanged(FilterInput input) => setState(() {
     if (input.apiText != _filter.apiText) _filterError = null;
@@ -316,7 +331,7 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
   }
 
   /// The stored saved filter, its definition read from the server when
-  /// this device does not know it.
+  /// this device does not know it or knows an older one than the listed.
   Widget _editBody(BuildContext context) {
     final l10n = context.l10n;
     final pseudoProjectId = widget.pseudoProjectId!;
@@ -325,8 +340,9 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
         ?.where((filter) => filter.projectId == pseudoProjectId)
         .firstOrNull;
     if (_start == null) {
-      if (listed?.definition case final definition?) {
-        _adopt(_startOf(listed!, definition));
+      if (listed?.definition case final definition?
+          when !needsDefinition(listed!)) {
+        _adopt(_startOf(listed, definition));
       } else if (listed != null && _reading == null) {
         // Within this build, so the loading state shows at once.
         _reading = ref

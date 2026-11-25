@@ -227,7 +227,8 @@ final class _SavedFiltersApi implements SavedFiltersPort {
     await _transport.patchOrReplace(
       '/filters/$id',
       'saved filter',
-      encodeSavedFilterDraft(draft),
+      encodeSavedFilterChanges(draft),
+      mergedObjects: const {'filters'},
     ),
   );
 

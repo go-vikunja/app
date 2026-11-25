@@ -957,6 +957,21 @@ void main() {
       );
     });
 
+    test('has no link when the only writable project was unarchived below '
+        'an archived one (before 2.6)', () async {
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 1,
+          title: 'Inbox',
+          parent: 3,
+        ).copyWith(maxPermission: Permission.admin),
+      ]);
+
+      final quickAdd = await one(const QuickAddKind());
+
+      expect(quickAdd.newTaskLink, isNull);
+    });
+
     test('tells a read-only guest why, not to create a project', () async {
       await db.projectsDao.upsertAll([
         sampleProject(
@@ -1032,6 +1047,27 @@ void main() {
       expect(catalog.lists[7].writable, isFalse);
       expect(catalog.lists[8].color, '4caf50');
       expect(catalog.lists.last.key, '$accountId.filter_2');
+    });
+
+    test('a project unarchived below an archived one (before 2.6) takes no '
+        'tasks', () async {
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 1,
+          title: 'Inbox',
+          parent: 3,
+        ).copyWith(maxPermission: Permission.admin),
+      ]);
+
+      final catalog = await catalogOf(alice);
+
+      expect(catalog.canAddTasks, isFalse);
+      expect(
+        catalog.lists
+            .singleWhere((list) => list.key == '$accountId.project_1')
+            .writable,
+        isFalse,
+      );
     });
 
     test('names the projects above a nested one', () async {

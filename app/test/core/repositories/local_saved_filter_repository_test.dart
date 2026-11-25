@@ -84,8 +84,58 @@ void main() {
     expect(sync.refreshAfterWriteCalls, 1);
   });
 
-  test("a description is written onto the server's filter as read just "
-      'before, so a change made elsewhere survives', () async {
+  test('an update leaves what the draft left unchanged as the server has '
+      'it now', () async {
+    server.serverSavedFilters[13] = SavedFilter(
+      id: 13,
+      title: 'Changed on the web',
+      description: 'Web text',
+      filter: const ViewFilter(
+        filter: 'priority >= 4',
+        search: 'kept',
+        sortBy: ['due_date'],
+        orderBy: ['asc'],
+      ),
+      isFavorite: true,
+      updated: listed,
+    );
+
+    await repository.update(
+      -14,
+      const SavedFilterDraft(
+        title: 'Mine',
+        description: 'stale',
+        filter: ViewFilter(filter: 'done = false', includeNulls: true),
+        unchanged: {
+          SavedFilterDraftField.description,
+          SavedFilterDraftField.search,
+          SavedFilterDraftField.sort,
+          SavedFilterDraftField.isFavorite,
+        },
+      ),
+    );
+
+    final written = server.serverSavedFilters[13]!;
+    expect(written.title, 'Mine');
+    expect(written.description, 'Web text');
+    expect(written.isFavorite, isTrue);
+    expect(
+      written.filter,
+      const ViewFilter(
+        filter: 'done = false',
+        search: 'kept',
+        sortBy: ['due_date'],
+        orderBy: ['asc'],
+        includeNulls: true,
+      ),
+    );
+    final filter = (await stored()).single;
+    expect(filter.description, 'Web text');
+    expect(filter.definition?.filter, written.filter);
+  });
+
+  test('a description is sent alone, without a read first, so a change '
+      'made elsewhere survives', () async {
     server.serverSavedFilters[13] = SavedFilter(
       id: 13,
       title: 'Changed on the web',
@@ -97,10 +147,7 @@ void main() {
     await repository.updateDescription(-14, '<p>What <em>burns</em></p>');
     await pumpEventQueue();
 
-    expect(server.requests, [
-      'read filter 13',
-      'update filter 13 Changed on the web',
-    ]);
+    expect(server.requests, ['update filter 13']);
     final written = server.serverSavedFilters[13]!;
     expect(written.description, '<p>What <em>burns</em></p>');
     expect(written.filter.filter, 'priority >= 4');

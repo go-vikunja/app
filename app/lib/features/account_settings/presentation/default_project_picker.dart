@@ -8,7 +8,8 @@ import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
 /// The account's default project: 0 for none, null when dismissed. Archived
-/// projects are left out, as the server refuses them.
+/// projects and those below one are left out, as the server refuses the
+/// archived ones and the app treats those below alike.
 Future<int?> pickDefaultProject(
   BuildContext context, {
   required List<Project> projects,

@@ -114,13 +114,45 @@ void main() {
       );
     });
 
-    test('a place whose position would fall below 0.1', () {
+    test('a place whose position would fall below 0.1: at the top of a '
+        'level as a refusal of its own, as moving the first project down '
+        'makes room', () {
       final low = movesOf([
         sampleProject(id: 1, title: 'First', position: 0.15),
         sampleProject(id: 2, title: 'Second', position: 5),
+        sampleProject(id: 3, title: 'Child', parent: 1, position: 0.15),
+        sampleProject(id: 4, title: 'Other child', parent: 1, position: 3),
       ]);
 
-      expect(low.plan(2, parentId: 0, index: 0), const ProjectMoveRefused());
+      expect(
+        low.plan(2, parentId: 0, index: 0),
+        const ProjectMoveRefused(reason: ProjectMoveRefusal.noRoomAtTop),
+      );
+      expect(
+        low.plan(4, parentId: 1, index: 0),
+        const ProjectMoveRefused(reason: ProjectMoveRefusal.noRoomAtTop),
+      );
+      expect(
+        low.plan(2, parentId: 1, index: 0),
+        const ProjectMoveRefused(reason: ProjectMoveRefusal.noRoomAtTop),
+      );
+
+      // Only where the first project can be moved down to make room.
+      for (final first in [
+        sampleProject(id: 1, title: 'First', position: 0.15, archived: true),
+        sampleProject(
+          id: 1,
+          title: 'First',
+          position: 0.15,
+        ).copyWith(maxPermission: Permission.read),
+      ]) {
+        expect(
+          movesOf([first, sampleProject(id: 2, title: 'Second', position: 5)])
+              .plan(2, parentId: 0, index: 0),
+          const ProjectMoveRefused(),
+          reason: '$first',
+        );
+      }
       expect(
         low.plan(1, parentId: 0, index: 1),
         const MoveProject(
@@ -162,11 +194,11 @@ void main() {
 
       expect(
         writable.plan(2, parentId: 1, index: 0),
-        const ProjectMoveRefused(adminOnly: true),
+        const ProjectMoveRefused(reason: ProjectMoveRefusal.adminOnly),
       );
       expect(
         writable.plan(3, parentId: 0, index: 3),
-        const ProjectMoveRefused(adminOnly: true),
+        const ProjectMoveRefused(reason: ProjectMoveRefusal.adminOnly),
       );
       expect(
         writable.plan(2, parentId: 0, index: 2),

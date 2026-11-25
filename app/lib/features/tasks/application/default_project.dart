@@ -33,14 +33,17 @@ Iterable<Project> _flatten(ProjectNode node) sync* {
   }
 }
 
-/// [projects] without those the user may only read, where the server
-/// refuses new tasks and tasks moved in.
+/// [projects] that tasks can go to, without those the user may only read,
+/// where the server refuses new tasks and tasks moved in.
 List<Project> writableProjects(List<Project> projects) => [
-  for (final project in projects)
+  for (final project in outsideArchivedTrees(projects))
     if (ProjectAccess.of(project).canAddTasks) project,
 ];
 
 /// The projects a task can be moved to or created in, as the tree shows
 /// them, with their depth for indentation.
 List<ProjectTreeRow> selectableProjects(List<Project> projects) =>
-    flattenProjectTree(buildProjectTree(projects), collapsedIds: const {});
+    flattenProjectTree(
+      buildProjectTree(outsideArchivedTrees(projects)),
+      collapsedIds: const {},
+    );

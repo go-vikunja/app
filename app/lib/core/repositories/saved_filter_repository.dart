@@ -13,15 +13,17 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// 11001.
 abstract interface class SavedFilterRepository {
   /// Returns the new saved filter's pseudo project id. A blank title (after
-  /// trimming) is an `ArgumentError` before any request.
+  /// trimming) is an `ArgumentError` before any request, also for an update
+  /// that sends the title.
   Future<int> create(SavedFilterDraft draft);
 
-  /// Replaces title, description, filter and favourite with the draft's;
+  /// Writes the draft's title, description, filter and favourite, but
+  /// those it left unchanged (the filter's text, search, sort and
+  /// include-nulls each on its own), which stay as the server has them now;
   /// fails like [create].
   Future<void> update(int pseudoProjectId, SavedFilterDraft draft);
 
-  /// Replaces only the description, the web's rich text: the saved filter
-  /// is read from the server first and written back with it, so a change
+  /// Changes only the description, the web's rich text, so a change
   /// another device made to the rest survives. Fails like [update].
   Future<void> updateDescription(int pseudoProjectId, String description);
 

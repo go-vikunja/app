@@ -462,6 +462,20 @@ class _SectionsState extends ConsumerState<_Sections> {
     _ => null,
   };
 
+  void _refuse(ProjectMoveRefused refused) {
+    unawaited(HapticFeedback.heavyImpact());
+    final l10n = context.l10n;
+    final text = switch (refused.reason) {
+      ProjectMoveRefusal.adminOnly => l10n.projectMoveAdminOnly,
+      ProjectMoveRefusal.noRoomAtTop => l10n.projectMoveNoRoomAtTop,
+      ProjectMoveRefusal.notAllowed => null,
+    };
+    if (text == null) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
   Map<CustomSemanticsAction, VoidCallback> _actionsFor(Project project) {
     final l10n = context.l10n;
     final moves = _moves;
@@ -469,7 +483,7 @@ class _SectionsState extends ConsumerState<_Sections> {
     final siblings = moves.childrenOf(parentId);
     final index = siblings.indexWhere((other) => other.id == project.id);
     final up = index > 0
-        ? _planned(project.id, parentId: parentId, index: index - 1)
+        ? moves.plan(project.id, parentId: parentId, index: index - 1)
         : null;
     final down = index >= 0 && index < siblings.length - 1
         ? _planned(project.id, parentId: parentId, index: index + 1)
@@ -498,9 +512,12 @@ class _SectionsState extends ConsumerState<_Sections> {
     final parentTitle = parent?.displayTitle(l10n) ?? '';
     final previousTitle = previous?.displayTitle(l10n) ?? '';
     return {
-      if (up != null)
+      if (up case final MoveProject move)
         CustomSemanticsAction(label: l10n.moveUp): () =>
-            unawaited(_send(up, moved: l10n.movedUp)),
+            unawaited(_send(move, moved: l10n.movedUp))
+      else if (up case final ProjectMoveRefused refused
+          when refused.reason == ProjectMoveRefusal.noRoomAtTop)
+        CustomSemanticsAction(label: l10n.moveUp): () => _refuse(refused),
       if (down != null)
         CustomSemanticsAction(label: l10n.moveDown): () =>
             unawaited(_send(down, moved: l10n.movedDown)),
@@ -695,15 +712,8 @@ class _SectionsState extends ConsumerState<_Sections> {
             expand: drop is _Into ? drop.projectId : null,
           ),
         );
-      case ProjectMoveRefused(:final adminOnly):
-        unawaited(HapticFeedback.heavyImpact());
-        if (adminOnly) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              SnackBar(content: Text(context.l10n.projectMoveAdminOnly)),
-            );
-        }
+      case final ProjectMoveRefused refused:
+        _refuse(refused);
       case ProjectStays():
         break;
     }

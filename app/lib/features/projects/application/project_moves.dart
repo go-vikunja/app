@@ -64,23 +64,34 @@ final class ProjectStays extends ProjectMovePlan {
 /// Not allowed: into itself or below itself, an archived project moved or
 /// taking it, a project the user may only read moved, a parent the user
 /// may only read taking it, a place whose position would fall below
-/// [minProjectPosition] or not sort between its neighbours, or, [adminOnly],
-/// another parent for a project the user is no admin of.
+/// [minProjectPosition] or not sort between its neighbours, or another
+/// parent for a project the user is no admin of.
 final class ProjectMoveRefused extends ProjectMovePlan {
-  const new({this.adminOnly = false});
+  const new({this.reason = ProjectMoveRefusal.notAllowed});
 
-  final bool adminOnly;
+  final ProjectMoveRefusal reason;
 
   @override
   bool operator ==(Object other) =>
-      other is ProjectMoveRefused && other.adminOnly == adminOnly;
+      other is ProjectMoveRefused && other.reason == reason;
 
   @override
-  int get hashCode => Object.hash(ProjectMoveRefused, adminOnly);
+  int get hashCode => Object.hash(ProjectMoveRefused, reason);
 
   @override
-  String toString() =>
-      adminOnly ? 'ProjectMoveRefused(admin only)' : 'ProjectMoveRefused';
+  String toString() => 'ProjectMoveRefused(${reason.name})';
+}
+
+enum ProjectMoveRefusal {
+  notAllowed,
+
+  /// Another parent for a project the user is no admin of.
+  adminOnly,
+
+  /// Above the first project of a level, whose position leaves no room
+  /// above [minProjectPosition] (decision log: Projects, manual order),
+  /// where the user can move that project down to make room.
+  noRoomAtTop,
 }
 
 /// The project tree as the Projects tab shows it, for moving projects in
@@ -164,7 +175,7 @@ final class ProjectTreeMoves {
         : parentId;
     if (parentProjectId != moved.parentProjectId) {
       if (!ProjectAccess.of(moved).canChangeParent) {
-        return const ProjectMoveRefused(adminOnly: true);
+        return const ProjectMoveRefused(reason: ProjectMoveRefusal.adminOnly);
       }
       if (_all[parentProjectId] case final parent?
           when !ProjectAccess.of(parent).canCreateChild) {
@@ -193,7 +204,18 @@ final class ProjectTreeMoves {
         : before != null && after != null && fits(before.position)
         ? before.position
         : null;
-    if (position == null) return const ProjectMoveRefused();
+    if (position == null) {
+      return ProjectMoveRefused(
+        reason:
+            before == null &&
+                between < minProjectPosition &&
+                after != null &&
+                !isArchived(after.id) &&
+                ProjectAccess.of(after).canReorder
+            ? ProjectMoveRefusal.noRoomAtTop
+            : ProjectMoveRefusal.notAllowed,
+      );
+    }
     return MoveProject(
       projectId: projectId,
       position: position,

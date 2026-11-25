@@ -113,11 +113,15 @@ final class WriteTransport {
   /// identifier, favourite and archive state, and its position, which
   /// renumbers the siblings; a view's kind, which turns a board into a
   /// list). A [followable] object is patched through [followablePatch].
+  /// The objects under [mergedObjects] take [changes] key by key on v1 as
+  /// well, as the merge-patch does on v2; elsewhere v1 replaces an object
+  /// whole.
   Future<Response<Object?>> patchOrReplace(
     String path,
     String what,
     Map<String, Object?> changes, {
     bool followable = false,
+    Set<String> mergedObjects = const {},
   }) async {
     switch (version) {
       case ApiVersion.v2:
@@ -135,7 +139,20 @@ final class WriteTransport {
           await send('GET', path),
           (json) => objectOf(json, what),
         );
-        return await send('POST', path, body: {...current, ...changes});
+        return await send(
+          'POST',
+          path,
+          body: {
+            ...current,
+            ...changes,
+            for (final key in mergedObjects)
+              if ((current[key], changes[key]) case (
+                final Map<String, Object?> stored,
+                final Map<String, Object?> changed,
+              ))
+                key: {...stored, ...changed},
+          },
+        );
     }
   }
 

@@ -61,7 +61,40 @@ final class FakeSavedFilterRepository implements SavedFilterRepository {
     await _call('update', '$pseudoProjectId ${draft.title}');
     final title = _checkedTitle(draft.title);
     _listed(pseudoProjectId);
-    _replace(pseudoProjectId, (_) => _refOf(pseudoProjectId, draft, title));
+    _replace(pseudoProjectId, (filter) {
+      bool sends(SavedFilterDraftField field) =>
+          !draft.unchanged.contains(field);
+      final known = filter.definition?.filter ?? const ViewFilter();
+      return SavedFilterRef(
+        projectId: pseudoProjectId,
+        title: sends(SavedFilterDraftField.title) ? title : filter.title,
+        isFavorite: sends(SavedFilterDraftField.isFavorite)
+            ? draft.isFavorite
+            : filter.isFavorite,
+        description: sends(SavedFilterDraftField.description)
+            ? draft.description
+            : filter.description,
+        definition: SavedFilterDefinition(
+          filter: ViewFilter(
+            filter: sends(SavedFilterDraftField.filterText)
+                ? draft.filter.filter
+                : known.filter,
+            search: sends(SavedFilterDraftField.search)
+                ? draft.filter.search
+                : known.search,
+            sortBy: sends(SavedFilterDraftField.sort)
+                ? draft.filter.sortBy
+                : known.sortBy,
+            orderBy: sends(SavedFilterDraftField.sort)
+                ? draft.filter.orderBy
+                : known.orderBy,
+            includeNulls: sends(SavedFilterDraftField.includeNulls)
+                ? draft.filter.includeNulls
+                : known.includeNulls,
+          ),
+        ),
+      );
+    });
   }
 
   @override

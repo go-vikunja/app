@@ -47,6 +47,61 @@ void main() {
     );
   });
 
+  test('as an update of what an edit started from, leaves unchanged what '
+      'equals that start', () {
+    const start = SavedFilterDraft(
+      title: 'Urgent',
+      description: 'What burns',
+      filter: ViewFilter(
+        filter: 'priority >= 4',
+        search: 'fire',
+        sortBy: ['due_date'],
+        orderBy: ['asc'],
+      ),
+    );
+    const edited = SavedFilterDraft(
+      title: ' Urgent ',
+      description: 'What burns',
+      filter: ViewFilter(
+        filter: 'priority >= 4 ',
+        search: 'fire',
+        sortBy: ['due_date'],
+        orderBy: ['asc'],
+        includeNulls: true,
+      ),
+      isFavorite: true,
+    );
+
+    expect(edited.changedFrom(start).unchanged, {
+      SavedFilterDraftField.title,
+      SavedFilterDraftField.description,
+      SavedFilterDraftField.filterText,
+      SavedFilterDraftField.search,
+      SavedFilterDraftField.sort,
+    });
+    expect(
+      const SavedFilterDraft(
+        title: 'Burning',
+        filter: ViewFilter(
+          filter: 'priority = 5',
+          sortBy: ['due_date'],
+          orderBy: ['desc'],
+        ),
+      ).changedFrom(start).unchanged,
+      {SavedFilterDraftField.includeNulls, SavedFilterDraftField.isFavorite},
+    );
+    expect(edited.changedFrom(start), isNot(edited));
+    expect(edited.changedFrom(start), edited.changedFrom(start));
+    expect(
+      edited.changedFrom(start).hashCode,
+      edited.changedFrom(start).hashCode,
+    );
+    expect(
+      start.changedFrom(start).unchanged,
+      SavedFilterDraftField.values.toSet(),
+    );
+  });
+
   test('toString leaves out the user text', () {
     const draft = SavedFilterDraft(
       title: 'Secret plans',

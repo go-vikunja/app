@@ -562,6 +562,21 @@ void main() {
     expect(harness.service.submits.single.fallbackProjectId, 3);
   });
 
+  testWidgets('the picker leaves out a project unarchived below an archived '
+      'one (before 2.6)', (tester) async {
+    harness.data.projects.all = [
+      ...harness.data.projects.all,
+      sampleProject(id: 5, title: 'Seeds', position: 5, parent: gardening.id),
+    ];
+    await harness.open(tester);
+
+    await tester.tap(projectField('Inbox'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(ListTile, 'Garage Sale'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Seeds'), findsNothing);
+  });
+
   testWidgets('Pick date opens the pickers and shows the date as a chip '
       'that can be removed', (tester) async {
     await harness.open(tester);

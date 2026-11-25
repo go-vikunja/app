@@ -76,6 +76,17 @@ bool isArchivedInTree(int projectId, Map<int, Project> projectsById) {
   return false;
 }
 
+/// [projects] without the archived ones and those below one, which take
+/// neither tasks nor subprojects (decision log: Projects). Servers before
+/// 2.6 let a subproject be unarchived while its parent stays archived.
+List<Project> outsideArchivedTrees(List<Project> projects) {
+  final byId = {for (final project in projects) project.id: project};
+  return [
+    for (final project in projects)
+      if (!isArchivedInTree(project.id, byId)) project,
+  ];
+}
+
 List<Project> favouriteProjects(List<Project> projects) => [
   for (final project in projects)
     if (project.isFavorite && !project.isArchived && !project.isPseudo) project,

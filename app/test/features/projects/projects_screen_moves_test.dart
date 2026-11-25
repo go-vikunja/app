@@ -443,9 +443,9 @@ void main() {
       expect(find.text(en.projectMoveAdminOnly), findsNothing);
     });
 
-    testWidgets('a place whose position would fall below 0.1 is not offered', (
-      tester,
-    ) async {
+    testWidgets('a place above the first project whose position would fall '
+        'below 0.1 is not offered, and dropping there says how to make '
+        'room', (tester) async {
       final haptics = recordHaptics(tester);
       data.projects.all = [
         sampleProject(id: 1, title: 'Tiny', position: 0.15),
@@ -465,6 +465,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(data.projects.moves, isEmpty);
       expect(haptics, contains('HapticFeedbackType.heavyImpact'));
+      expect(find.text(en.projectMoveNoRoomAtTop), findsOneWidget);
     });
 
     testWidgets('the tree scrolls while a project is held near its end', (
@@ -764,6 +765,27 @@ void main() {
       expect(tester.takeAnnouncements(), [
         isAccessibilityAnnouncement(en.projectMovedInto('Work')),
       ]);
+    });
+
+    testWidgets('Move up to the top without room says how to make room, the '
+        'move refused', (tester) async {
+      final haptics = recordHaptics(tester);
+      data.projects.all = [
+        sampleProject(id: 1, title: 'Tiny', position: 0.15),
+        sampleProject(id: 2, title: 'Next', position: 10),
+      ];
+      await pumpProjects(tester);
+
+      expect(
+        actionsOf(tester, 'Next'),
+        unorderedEquals([en.moveUp, en.projectMoveInto('Tiny')]),
+      );
+      await performAction(tester, 'Next', en.moveUp);
+
+      expect(data.projects.moves, isEmpty);
+      expect(haptics, contains('HapticFeedbackType.heavyImpact'));
+      expect(find.text(en.projectMoveNoRoomAtTop), findsOneWidget);
+      expect(treeRows(tester), [('Tiny', 0), ('Next', 0)]);
     });
 
     testWidgets('an archived project offers none', (tester) async {

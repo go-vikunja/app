@@ -20,11 +20,37 @@ SavedFilter parseSavedFilter(Object? json) {
   );
 }
 
-/// The create and update body on both versions. Never a timezone: v2
-/// refuses the property, v1 drops it.
+/// The create body on both versions. Never a timezone: v2 refuses the
+/// property, v1 drops it.
 Map<String, Object?> encodeSavedFilterDraft(SavedFilterDraft draft) => {
   'title': draft.title,
   'description': draft.description,
   'filters': encodeViewFilter(draft.filter),
   'is_favorite': draft.isFavorite,
 };
+
+/// The update body: what the draft left unchanged is not sent, and the
+/// filter only with its changed keys, which the update merges into the
+/// server's filter.
+Map<String, Object?> encodeSavedFilterChanges(SavedFilterDraft draft) {
+  bool sends(SavedFilterDraftField field) => !draft.unchanged.contains(field);
+  final filter = draft.filter;
+  final filters = {
+    if (sends(SavedFilterDraftField.filterText)) 'filter': filter.filter,
+    if (sends(SavedFilterDraftField.search)) 's': filter.search,
+    if (sends(SavedFilterDraftField.sort)) ...{
+      'sort_by': filter.sortBy,
+      'order_by': filter.orderBy,
+    },
+    if (sends(SavedFilterDraftField.includeNulls))
+      'filter_include_nulls': filter.includeNulls,
+  };
+  return {
+    if (sends(SavedFilterDraftField.title)) 'title': draft.title,
+    if (sends(SavedFilterDraftField.description))
+      'description': draft.description,
+    if (filters.isNotEmpty) 'filters': filters,
+    if (sends(SavedFilterDraftField.isFavorite))
+      'is_favorite': draft.isFavorite,
+  };
+}

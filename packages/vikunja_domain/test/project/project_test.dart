@@ -47,33 +47,43 @@ void main() {
       );
     });
 
-    test('views are identified by id and project', () {
-      const a = ProjectView(
+    test('views are equal only when every field is', () {
+      ProjectView view({
+        int projectId = 2,
+        String title = 'Board',
+        ProjectViewKind kind = ProjectViewKind.kanban,
+        double position = 100,
+        ViewFilter? filter = const ViewFilter(filter: 'done = false'),
+        BucketConfigurationMode mode = BucketConfigurationMode.manual,
+        int defaultBucketId = 5,
+        int doneBucketId = 6,
+      }) => ProjectView(
         id: 1,
-        projectId: 2,
-        title: 'List',
-        kind: ProjectViewKind.list,
-      );
-      const b = ProjectView(
-        id: 1,
-        projectId: 2,
-        title: 'Other',
-        kind: ProjectViewKind.table,
+        projectId: projectId,
+        title: title,
+        kind: kind,
+        position: position,
+        filter: filter,
+        bucketConfigurationMode: mode,
+        defaultBucketId: defaultBucketId,
+        doneBucketId: doneBucketId,
       );
 
-      expect(a, b);
-      expect(a.hashCode, b.hashCode);
-      expect(
-        a,
-        isNot(
-          const ProjectView(
-            id: 1,
-            projectId: 3,
-            title: 'List',
-            kind: ProjectViewKind.list,
-          ),
-        ),
-      );
+      expect(view(), view());
+      expect(view().hashCode, view().hashCode);
+      for (final (name, other) in [
+        ('project', view(projectId: 3)),
+        ('title', view(title: 'Columns')),
+        ('kind', view(kind: ProjectViewKind.list)),
+        ('position', view(position: 200)),
+        ('filter', view(filter: const ViewFilter(filter: 'done = true'))),
+        ('no filter', view(filter: null)),
+        ('mode', view(mode: BucketConfigurationMode.filter)),
+        ('default column', view(defaultBucketId: 7)),
+        ('done column', view(doneBucketId: 0)),
+      ]) {
+        expect(other, isNot(view()), reason: name);
+      }
     });
   });
 

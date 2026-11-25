@@ -99,10 +99,29 @@ final class ProjectView {
 
   @override
   bool operator ==(Object other) =>
-      other is ProjectView && other.id == id && other.projectId == projectId;
+      other is ProjectView &&
+      other.id == id &&
+      other.projectId == projectId &&
+      other.title == title &&
+      other.kind == kind &&
+      other.position == position &&
+      other.filter == filter &&
+      other.bucketConfigurationMode == bucketConfigurationMode &&
+      other.defaultBucketId == defaultBucketId &&
+      other.doneBucketId == doneBucketId;
 
   @override
-  int get hashCode => Object.hash(id, projectId);
+  int get hashCode => Object.hash(
+    id,
+    projectId,
+    title,
+    kind,
+    position,
+    filter,
+    bucketConfigurationMode,
+    defaultBucketId,
+    doneBucketId,
+  );
 
   @override
   String toString() => 'ProjectView($id, ${kind.wireName})';

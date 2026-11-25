@@ -1487,7 +1487,9 @@ const _noPlacements = <MapEntry<int, BucketPlacement>>[];
 
 /// Saved filters as the server keeps them in [FakeWriteClient.
 /// serverSavedFilters]: a create takes the next id from [nextFilterId] and
-/// stamps `updated` from the client's clock, like every write; a filter
+/// stamps `updated` from the client's clock, like every write; an update
+/// keeps what its draft left unchanged, its request named without the
+/// title when that is unchanged; a filter
 /// text in `refusedFilters` fails with its failure; an unknown id is a
 /// `NotFound` code 11001, except for a delete, which counts it as deleted.
 final class FakeSavedFiltersPort implements SavedFiltersPort {
@@ -1522,15 +1524,56 @@ final class FakeSavedFiltersPort implements SavedFiltersPort {
 
   @override
   Future<SavedFilter> update(int id, SavedFilterDraft draft) async {
-    await _client._request('update filter $id ${draft.title}');
+    await _client._request(
+      draft.unchanged.contains(SavedFilterDraftField.title)
+          ? 'update filter $id'
+          : 'update filter $id ${draft.title}',
+    );
     final stored = _stored(id);
-    _checkFilter(draft.filter);
+    T pick<T>(SavedFilterDraftField field, T sent, T kept) =>
+        draft.unchanged.contains(field) ? kept : sent;
+    final filter = ViewFilter(
+      filter: pick(
+        SavedFilterDraftField.filterText,
+        draft.filter.filter,
+        stored.filter.filter,
+      ),
+      search: pick(
+        SavedFilterDraftField.search,
+        draft.filter.search,
+        stored.filter.search,
+      ),
+      sortBy: pick(
+        SavedFilterDraftField.sort,
+        draft.filter.sortBy,
+        stored.filter.sortBy,
+      ),
+      orderBy: pick(
+        SavedFilterDraftField.sort,
+        draft.filter.orderBy,
+        stored.filter.orderBy,
+      ),
+      includeNulls: pick(
+        SavedFilterDraftField.includeNulls,
+        draft.filter.includeNulls,
+        stored.filter.includeNulls,
+      ),
+    );
+    _checkFilter(filter);
     return _client.serverSavedFilters[id] = SavedFilter(
       id: id,
-      title: draft.title,
-      description: draft.description,
-      filter: draft.filter,
-      isFavorite: draft.isFavorite,
+      title: pick(SavedFilterDraftField.title, draft.title, stored.title),
+      description: pick(
+        SavedFilterDraftField.description,
+        draft.description,
+        stored.description,
+      ),
+      filter: filter,
+      isFavorite: pick(
+        SavedFilterDraftField.isFavorite,
+        draft.isFavorite,
+        stored.isFavorite,
+      ),
       timezone: stored.timezone,
       created: stored.created,
       updated: _client._clock().toUtc(),

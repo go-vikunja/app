@@ -25,7 +25,8 @@ void main() {
     });
 
     test('not under another sort, in an archived project, without a list '
-        'view, in a kanban view or a saved filter', () {
+        'view, in a kanban view or for project 0, which is no project (ids '
+        'below zero open the smart list screen)', () {
       bool reorderable({
         int projectId = 1,
         ProjectView? view,
@@ -45,7 +46,7 @@ void main() {
         reorderable(view: sampleKanbanView(id: 14, projectId: 1)),
         isFalse,
       );
-      expect(reorderable(projectId: -2, view: listView), isFalse);
+      expect(reorderable(projectId: 0, view: listView), isFalse);
     });
   });
 

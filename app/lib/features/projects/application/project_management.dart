@@ -29,15 +29,11 @@ List<ProjectTreeRow> parentCandidates(
   final excluded = movedProjectId == null
       ? const <int>{}
       : projectSubtreeIds(movedProjectId, projects);
-  // Servers before 2.6 do not archive the children of an archived project.
-  final byId = {for (final project in projects) project.id: project};
   return [
     for (final row in flattenProjectTree(
       buildProjectTree([
-        for (final project in projects)
-          if (ProjectAccess.of(project).canCreateChild &&
-              !isArchivedInTree(project.id, byId))
-            project,
+        for (final project in outsideArchivedTrees(projects))
+          if (ProjectAccess.of(project).canCreateChild) project,
       ]),
       collapsedIds: const {},
     ))

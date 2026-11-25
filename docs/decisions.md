@@ -445,7 +445,7 @@ Limits:
 
 ## Projects
 
-- **The Projects tab** lists Favorites, All projects (the tree) and Saved filters. Archived projects stay out of pickers, defaults and quick add, and their tasks are read-only.
+- **The Projects tab** lists Favorites, All projects (the tree) and Saved filters. Archived projects, and those below an archived one (servers before 2.6 let a subproject be unarchived while its parent stays archived), stay out of pickers, defaults, quick add, the share sheet and the widgets' Add, and their tasks are read-only.
 - **A project opens on the view it was last left in** (owner, 2026-11-18), saved per account. A view named in the route, such as a guest's link, wins and is not saved.
 
 ### The stored permission
@@ -456,7 +456,7 @@ Limits:
 ### Projects and views
 
 - **Managed online and applied locally at once** (why: temporary project ids would have to flow into tasks, views, columns and the outbox, and deletes and duplicates need the server's answer). Offline or on a refusal nothing changes.
-- **A view edit sends only the fields the user changed** (why: another admin's change since the last sync stays).
+- **A view or saved filter edit sends only the fields the user changed** (why: a change made elsewhere since the last sync stays, another admin's or the user's own on the web or another device). A saved filter's filter goes only with its changed keys, merged into the server's, so its search and sort stay; the form never sends the description, and reads the saved filter from the server first when its stored definition is missing or older than the listed one.
 - **The user's default project** cannot be archived or deleted.
 - **Delete counts every task it would delete,** subprojects included (why: the web's count of direct children understates a recursive delete).
 - **An identifier change rewrites the stored task identifiers** (why: the server changes them without bumping the tasks' `updated`).
@@ -475,7 +475,7 @@ Limits:
 
 - **Lists sorted "Manually" are reordered through the outbox,** with the position as its own field of the task update (why: positions do not bump `updated`, and a field of their own avoids the board's column rules).
 - **Projects are reordered and nested online.** Without admin, a project moves only among its siblings.
-- **No position below 0.1** (why: below 0.1 the server renumbers every sibling, for top-level projects those of every user on the instance). Such a move is refused, and a stored project below 0.1 is lifted to at least 0.1 with its next update.
+- **No position below 0.1** (why: below 0.1 the server renumbers every sibling, for top-level projects those of every user on the instance). Such a move is refused, at the top of a level, where the user may move the first project, with a message that moving it down makes room, also for a screen reader's Move up (the app never moves that project itself: it would be a second online write); a stored project below 0.1 is lifted to at least 0.1 with its next update.
 
 ### Table and Gantt
 
