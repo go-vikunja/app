@@ -4,7 +4,7 @@ This is the manual accessibility pass of the Vikunja app, the Android and iOS cl
 
 A sign-off goes through section 1 on the tree being signed off, section 2 on Android (TalkBack, Switch Access) for every area the change touched (all of it before a release), and section 3 once in the final iOS phase (VoiceOver). The results and the date go into the step's decision: per flow, what TalkBack (German and English) and Switch Access showed, and each finding with its screen and severity, fixed or a follow-up.
 
-**Status:** sections 2 and 3 not yet run. On 2026-10-28 the pass could not be performed on the emulator ([Accessibility]); since step 40w TalkBack and Switch Access run in the device phase together with VoiceOver, and the Accessibility Scanner is not used, on the emulator or on a device: in its place step 40w scanned the release build's screens on an emulator from `uiautomator` dumps and fixed what it found ([Accessibility]; owner, 2026-11-20 and 2026-11-21; [Q19]). *Note 2026-11-02, step 37d ([Releases]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
+**Status:** sections 2 and 3 not yet run. On 2026-10-28 the pass could not be performed on the emulator ([Accessibility]); since step 40w TalkBack and Switch Access run in the device phase together with VoiceOver, and the Accessibility Scanner is not used, on the emulator or on a device: in its place step 40w scanned the release build's screens on an emulator from `uiautomator` dumps and fixed what it found ([Accessibility]). *Note 2026-11-02, step 37d ([Releases]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
 
 ## 1. Automated
 
@@ -181,4 +181,3 @@ Once, on a device (the simulator for what it can show):
 [Look and layout]: decisions.md#look-and-layout
 [Accessibility]: decisions.md#accessibility
 [Releases]: decisions.md#releases
-[Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass

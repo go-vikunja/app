@@ -36,7 +36,7 @@ const _needsUser =
     'the server refuses what it does for anyone who is not a user';
 const _typedAddressOnly =
     "the web offers a link share the project's settings only by a typed "
-    'address, which the app does not offer, as the owner decided '
+    'address, which the app does not offer, by design '
     '(decision log: Accounts and sign-in)';
 const _labelsNeedUser =
     'the server lets only users create, edit and delete labels, and the web '

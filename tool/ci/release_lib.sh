@@ -45,7 +45,7 @@ check_apk_badging() {
 # tag: German must have every English text (decision log: Languages). A patch
 # release (x.y.z with z > 0) may go without when
 # VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN names its tag, so the override never
-# carries over to the next release (owner); the log then says how many texts
+# carries over to the next release; the log then says how many texts
 # English stands in for.
 # Refusals go to the caller's refuse MESSAGE REASON. Run from the repository.
 check_german() {

@@ -1,5 +1,5 @@
 """Tests check_german of tool/ci/release_lib.sh, the release scripts' German
-check, and its override for a patch release (owner), on a copy of the
+check, and its override for a patch release, on a copy of the
 scripts beside ARB files of the test's own (decision log: Languages)."""
 import json
 import os

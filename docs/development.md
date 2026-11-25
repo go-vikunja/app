@@ -1,6 +1,6 @@
 # Developer guide
 
-How to set up, build and test the app, and where everything is. [CONTRIBUTING.md](../CONTRIBUTING.md) has the rules for contributions; this guide has the commands. In these docs, "the owner" is the app's main maintainer, a role rather than a person.
+How to set up, build and test the app, and where everything is. [CONTRIBUTING.md](../CONTRIBUTING.md) has the rules for contributions; this guide has the commands.
 
 ## App identity
 
@@ -301,7 +301,7 @@ tool/e2e/update_test.sh --server https://try.vikunja.io emulator-5554 <old.apk> 
   ```
 
   On a new emulator, go through Chrome's first-run screens once.
-- **The APKs:** one package, a higher version code for the new one and one signing certificate for both, or `adb install -r` fails; the update test checks all three first. The old app is built from its last commit, `cdbc6e3`, in a clone of go-vikunja/app-legacy, the old app's archived repository, as 0.1.8-beta with version code 490; its release build wants an `android/key.properties` (its `storeFile` relative to `android/app`), and any key does, as both APKs are signed again. This app is built unsigned, with a higher version code such as the 1000001 of `v1.0.0-beta.1`:
+- **The APKs:** one package, a higher version code for the new one and one signing certificate for both, or `adb install -r` fails; the update test checks all three first. The old app is built from its last commit, `cdbc6e3`, in a clone of go-vikunja/app-legacy, the previous app's repository, as 0.1.8-beta with version code 490; its release build wants an `android/key.properties` (its `storeFile` relative to `android/app`), and any key does, as both APKs are signed again. This app is built unsigned, with a higher version code such as the 1000001 of `v1.0.0-beta.1`:
 
   ```sh
   git clone https://github.com/go-vikunja/app-legacy.git <the old app's clone> && git -C <the old app's clone> switch --detach cdbc6e3
@@ -324,7 +324,6 @@ tool/e2e/update_test.sh --server https://try.vikunja.io emulator-5554 <old.apk> 
 - [Drafts for vikunja.io](vikunja-io-drafts.md): the privacy section "Mobile app", the help page `/help/mobile` and the imprint's scope sentence.
 - [Glossary](glossary.md): the terms and the style of the app's texts in English and German, which every string follows.
 - [Accessibility checklist](accessibility-checklist.md): the manual pass with TalkBack, Switch Access and VoiceOver that goes with the automated accessibility sweep.
-- [Roadmap](roadmap.md): what is left before and after 1.0.
+- [Roadmap](roadmap.md): what is left before 1.0.
 - [Decisions](decisions.md): the decision log.
-- [Open questions](open-questions.md): the answered questions and those still open or deferred.
 - [Research](research/README.md): the research the architecture is based on.

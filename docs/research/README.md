@@ -4,7 +4,7 @@ The files in this directory are the research snapshot of **2026-10-08**. They we
 
 **Precedence:**
 1. Where the files disagree, **[critique.md](critique.md) wins** over the other research files.
-2. [synthesis.md](synthesis.md) already applies the critique's corrections. It is the basis for [../architecture.md](../architecture.md), [../roadmap.md](../roadmap.md), [../decisions.md](../decisions.md) and [../open-questions.md](../open-questions.md).
+2. [synthesis.md](synthesis.md) already applies the critique's corrections. It is the basis for [../architecture.md](../architecture.md), [../roadmap.md](../roadmap.md) and [../decisions.md](../decisions.md).
 3. The corrections below win over all research files.
 
 | File | Contents |

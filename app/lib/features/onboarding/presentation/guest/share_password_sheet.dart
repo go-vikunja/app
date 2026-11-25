@@ -18,7 +18,7 @@ typedef SharePasswordSubmit = Future<SharePasswordOutcome> Function(
 /// wrong one keeps the sheet open with a note, anything else closes it.
 /// Null when the user closed it. The password goes in the request [submit]
 /// makes, to [serverRoot], whose host the sheet names. Remember starts
-/// unchecked (owner), so the password is kept on the device only when the
+/// unchecked, so the password is kept on the device only when the
 /// user checks it (decision log: Accounts and sign-in).
 Future<SharePasswordOutcome?> askForSharePassword(
   BuildContext context, {

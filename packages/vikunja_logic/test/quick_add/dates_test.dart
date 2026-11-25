@@ -424,7 +424,7 @@ void main() {
       });
     }
 
-    test('a lone am before a bare dotted day stays in the title (owner)', () {
+    test('a lone am before a bare dotted day stays in the title', () {
       final result = parse('Arzt am 17.');
       expect(result.text, 'Arzt am');
       expect(result.date, DateTime(2021, 7, 17, 12));

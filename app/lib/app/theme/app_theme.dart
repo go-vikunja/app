@@ -4,7 +4,7 @@ abstract final class AppTheme {
   static const seedColor = Color(0xFF1973FF);
   static const amberSeedColor = Color(0xFFF5AE39);
 
-  /// Its neutral tones are the cool grey-blue of the owner's mockups; the
+  /// Its neutral tones are the cool grey-blue of the design mockups; the
   /// brand seed's own lean towards violet.
   static const _neutralSeedColor = Color(0xFF4285C8);
 

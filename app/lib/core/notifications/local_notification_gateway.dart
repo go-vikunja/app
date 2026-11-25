@@ -626,9 +626,9 @@ final class LocalNotificationGateway implements NotificationGateway {
       // (`cancelNotification`). Such an action also runs from a secure
       // lock screen, so Done is left out while the app lock is on.
       // Android shows at most three actions, so 10 minutes gives way
-      // (owner) to Tomorrow (decision log: Notifications and widgets).
+      // to Tomorrow (decision log: Notifications and widgets).
       // Done is also left out for a task the user may not change, and 10
-      // minutes does not take its place (owner) (decision log:
+      // minutes does not take its place (decision log:
       // Notifications and widgets).
       actions: [
         if (actions != _TaskActions.none)

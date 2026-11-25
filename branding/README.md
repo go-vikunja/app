@@ -9,7 +9,7 @@ The app is called **Vikunja** and uses Vikunja's logo, the llama on the blue dis
 [`source/logo.svg`](source/logo.svg) is the only source:
 
 - **Origin:** [go-vikunja/vikunja](https://github.com/go-vikunja/vikunja), `frontend/originalMedia/images/logo.svg`, branch `main`
-- **Downloaded:** 2026-11-13, with the owner's OK; copied byte for byte
+- **Downloaded:** 2026-11-13, with the maintainer's OK; copied byte for byte
 - **Size:** 12,004 bytes
 - **SHA-256:** `c98852b27657462d26317d2c1318a68d4666020e1758a46d523c363446a6e80b`
 

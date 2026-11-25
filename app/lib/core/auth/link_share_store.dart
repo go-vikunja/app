@@ -20,8 +20,8 @@ final class StoredLinkShare {
 }
 
 /// A guest's secrets in secure storage, apart from the OAuth tokens of
-/// users. The share's password only when the user chose to remember it
-/// (owner); otherwise a share that has one asks for it again when the hash
+/// users. The share's password only when the user chose to remember it;
+/// otherwise a share that has one asks for it again when the hash
 /// alone cannot authenticate (decision log: Accounts and sign-in).
 final class LinkShareStore {
   new(this._store);
