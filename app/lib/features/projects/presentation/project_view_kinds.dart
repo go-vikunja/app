@@ -19,8 +19,8 @@ import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/list_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_list_model.dart';
+import 'package:vikunja_mobile/features/projects/application/project_rows.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
-import 'package:vikunja_mobile/features/projects/application/table_model.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_header.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
@@ -117,6 +117,7 @@ final class ProjectViewFrame {
     required this.pendingIds,
     required this.bottomPadding,
     required this.leavingIn,
+    required this.rows,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
     required this.onDueDate,
@@ -154,6 +155,9 @@ final class ProjectViewFrame {
   /// The copies of the tasks marked done here that stay while their Undo
   /// is offered, for a list's tasks (`TaskListActions.leavingTasksIn`).
   final Map<int, Task> Function(Map<int, Task> listed) leavingIn;
+
+  /// The list model or table rows of the view, kept while unchanged.
+  final ProjectRows rows;
   final void Function(Task task, {required bool done}) onDoneChanged;
   final void Function(Task task, {required bool favorite}) onFavoriteChanged;
   final void Function(Task task) onDueDate;
@@ -315,7 +319,7 @@ final class ListViewDelegate extends ProjectViewDelegate {
   }) {
     final view = content.view;
     final preferences = content.preferences;
-    final model = buildProjectListModel(
+    final model = frame.rows.listModel(
       content.source,
       kind: content.kind,
       preferences: preferences,
@@ -356,18 +360,16 @@ final class ListViewDelegate extends ProjectViewDelegate {
       leavingIds: leaving.keys.toSet(),
       onReorder: reorderView == null || repository == null
           ? null
-          : (positions) => unawaited(
-              saveLocalChange(context, () async {
-                for (final MapEntry(key: taskId, value: position)
-                    in positions.entries) {
-                  await repository.positionTask(
-                    taskId,
-                    viewId: reorderView.id,
-                    position: position,
-                  );
-                }
-              }, action: 'Reordering a list'),
-            ),
+          : (positions) => saveLocalChange(context, () async {
+              for (final MapEntry(key: taskId, value: position)
+                  in positions.entries) {
+                await repository.positionTask(
+                  taskId,
+                  viewId: reorderView.id,
+                  position: position,
+                );
+              }
+            }, action: 'Reordering a list'),
     );
   }
 }
@@ -495,11 +497,11 @@ final class TableViewDelegate extends ProjectViewDelegate {
     return ProjectTableBody(
       projectId: frame.projectId,
       projectsById: frame.projectsById,
-      rows: buildTableRows(
+      rows: frame.rows.tableRows(
         content.source,
         kind: content.kind,
         showDone: preferences.showDone,
-        compare: (a, b) => compareTasksForTable(a, b, sort),
+        sort: sort,
         leaving: leaving,
       ),
       columns: frame.columns,
@@ -720,16 +722,6 @@ class _BoardBody extends StatelessWidget {
             body: l10n.boardDownloadingBody,
           ),
         },
-      );
-    }
-    if (source.buckets.isEmpty) {
-      return CenteredScrollView(
-        header: header,
-        child: EmptyState(
-          icon: Icons.view_kanban_outlined,
-          title: l10n.boardNoColumnsTitle,
-          body: l10n.boardNoColumnsBody,
-        ),
       );
     }
     return ProjectBoard(

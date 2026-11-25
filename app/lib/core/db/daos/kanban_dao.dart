@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/sent_view_moves.dart';
 import 'package:vikunja_mobile/core/db/tables/kanban.dart';
 import 'package:vikunja_mobile/core/db/tables/lists.dart';
 import 'package:vikunja_mobile/core/db/tables/projects.dart';
@@ -259,7 +260,8 @@ final class KanbanDao extends DatabaseAccessor<AppDatabase>
   /// entered follow, until the next download says otherwise. A placement
   /// without a position keeps the card's, and a card new to the board
   /// goes on top of its bucket, as the server keeps a task's position on a
-  /// move.
+  /// move. A download that read the board before stays behind them
+  /// ([SentViewMoves]).
   Future<void> applySentPlacements(
     int taskId,
     Map<int, BucketPlacement> placements,
@@ -284,6 +286,7 @@ final class KanbanDao extends DatabaseAccessor<AppDatabase>
           bucketId: placement.bucketId,
         ),
       );
+      SentViewMoves.of(attachedDatabase).record(viewId, taskId);
       final from = current?.bucketId;
       if (from == placement.bucketId) continue;
       await _setCount(target, target.taskCount + 1);
@@ -293,6 +296,32 @@ final class KanbanDao extends DatabaseAccessor<AppDatabase>
       }
     }
   });
+
+  /// Before [views] are stored over the stored ones: drops the downloads of
+  /// those that turn into a board or stop being one, as the board and the
+  /// list snapshot share the key `view:<id>` and the new kind then counts
+  /// as never downloaded; a former board's columns go too.
+  Future<void> forgetKindChanges(Iterable<ProjectView> views) async {
+    final isBoard = {
+      for (final view in views) view.id: view.kind == ProjectViewKind.kanban,
+    };
+    if (isBoard.isEmpty) return;
+    final kanban = ProjectViewKind.kanban.wireName;
+    final query = selectOnly(projectViews)
+      ..addColumns([projectViews.id, projectViews.kind])
+      ..where(projectViews.id.isIn(isBoard.keys));
+    final changed = [
+      for (final row in await query.get())
+        if ((row.read(projectViews.kind) == kanban) !=
+            isBoard[row.read(projectViews.id)!])
+          row.read(projectViews.id)!,
+    ];
+    if (changed.isEmpty) return;
+    final keys = [for (final viewId in changed) boardKey(viewId)];
+    await (delete(listSnapshotTasks)..where((t) => t.listKey.isIn(keys))).go();
+    await (delete(listSnapshots)..where((s) => s.listKey.isIn(keys))).go();
+    await (delete(kanbanBuckets)..where((b) => b.viewId.isIn(changed))).go();
+  }
 
   /// Removes the boards and list snapshots of views this device no longer
   /// has; the sync's project phase calls it after writing the views.

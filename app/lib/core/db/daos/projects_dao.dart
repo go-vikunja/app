@@ -50,28 +50,35 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     ];
   }
 
-  /// Pseudo projects are skipped; their views are replaced wholesale.
+  /// Pseudo projects are skipped; their views are replaced wholesale, a
+  /// view's downloads dropped when it turns into a board or stops being one
+  /// (`KanbanDao.forgetKindChanges`).
   Future<void> upsertAll(Iterable<Project> all) {
     final real = all.where((project) => !project.isPseudo).toList();
     if (real.isEmpty) return Future.value();
-    return batch((b) {
-      b
-        ..insertAllOnConflictUpdate(users, [
-          for (final project in real)
-            if (project.owner case final owner?) userRow(owner),
-        ])
-        ..insertAllOnConflictUpdate(projects, [
-          for (final project in real) projectRow(project).toCompanion(false),
-        ])
-        ..deleteWhere(
-          projectViews,
-          (v) => v.projectId.isIn([for (final project in real) project.id]),
-        )
-        ..insertAllOnConflictUpdate(projectViews, [
-          for (final project in real)
-            for (final view in project.views)
-              projectViewRow(view).toCompanion(false),
-        ]);
+    return transaction(() async {
+      await attachedDatabase.kanbanDao.forgetKindChanges([
+        for (final project in real) ...project.views,
+      ]);
+      await batch((b) {
+        b
+          ..insertAllOnConflictUpdate(users, [
+            for (final project in real)
+              if (project.owner case final owner?) userRow(owner),
+          ])
+          ..insertAllOnConflictUpdate(projects, [
+            for (final project in real) projectRow(project).toCompanion(false),
+          ])
+          ..deleteWhere(
+            projectViews,
+            (v) => v.projectId.isIn([for (final project in real) project.id]),
+          )
+          ..insertAllOnConflictUpdate(projectViews, [
+            for (final project in real)
+              for (final view in project.views)
+                projectViewRow(view).toCompanion(false),
+          ]);
+      });
     });
   }
 
@@ -187,10 +194,13 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     return (projectIds: ids, viewIds: viewIds);
   });
 
-  /// Adds or replaces the view as the server answered it.
-  Future<void> putView(ProjectView view) =>
-      into(projectViews)
-          .insertOnConflictUpdate(projectViewRow(view).toCompanion(false));
+  /// Adds or replaces the view as the server answered it, its downloads
+  /// dropped when it turns into a board or stops being one.
+  Future<void> putView(ProjectView view) => transaction(() async {
+    await attachedDatabase.kanbanDao.forgetKindChanges([view]);
+    await into(projectViews)
+        .insertOnConflictUpdate(projectViewRow(view).toCompanion(false));
+  });
 
   /// Removes the view with its board and list snapshot.
   Future<void> removeView(int viewId) => transaction(() async {

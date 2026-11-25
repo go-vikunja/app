@@ -18,6 +18,9 @@ String columnChangeFailureText(
     DeleteFailedAfterNewDefault(:final bucket, :final newDefault) =>
       l10n.boardColumnDeleteFailedNewDefault(newDefault.title, bucket.title),
     NewDefaultRefused() => l10n.boardColumnDeleteMoveTasksFirst,
+    BucketMoveOutdated(:final bucket) => l10n.boardColumnMoveOutdated(
+      bucket.title,
+    ),
     NewDefaultGone(:final bucket, :final newDefault) =>
       l10n.boardColumnDeleteNewDefaultGone(newDefault.title, bucket.title),
     _ when notSent != null => notSent,

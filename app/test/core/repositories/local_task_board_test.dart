@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -187,6 +189,84 @@ void main() {
     expect(source.snapshot.keys, containsAll([8, 1, 2, 3, 4, 5]));
     expect(counts(source.buckets), [6, 1, 1]);
     expect(await db.kanbanDao.loadedPages(80), {1: 3, 2: 1, 3: 1});
+  });
+
+  test('a download that read the board before a move was sent cannot '
+      'overwrite the one asked for after it', () async {
+    await repository.refreshBoard(7, 80);
+    await repository.loadMoreOfBucket(7, 80, 1);
+    final held = Completer<void>();
+    var holding = true;
+    read.beforeRequest = (request) async {
+      if (holding && request.startsWith('bucket 1')) {
+        holding = false;
+        await held.future;
+      }
+    };
+
+    final pull = repository.refreshBoard(7, 80);
+    await pumpEventQueue();
+    read.bucketSlots[80]![1] = (bucketId: 2, position: 1);
+    final followUp = repository.refreshBoard(7, 80);
+    await pumpEventQueue();
+    held.complete();
+    await pull;
+    await followUp;
+
+    final source = await repository.watchBoard(7, 80).first;
+    expect(source.snapshot[1], (bucketId: 2, position: 1.0));
+  });
+
+  test('a download that read the board before a move was sent keeps the '
+      'card where the sent move put it', () async {
+    await repository.refreshBoard(7, 80);
+    await repository.loadMoreOfBucket(7, 80, 1);
+    final held = Completer<void>();
+    var holding = true;
+    read.beforeRequest = (request) async {
+      if (holding && request.startsWith('bucket 1')) {
+        holding = false;
+        await held.future;
+      }
+    };
+
+    final pull = repository.refreshBoard(7, 80);
+    await pumpEventQueue();
+    read.bucketSlots[80]![1] = (bucketId: 2, position: 1);
+    await db.kanbanDao.applySentPlacements(1, {
+      80: const BucketPlacement(bucketId: 2, position: 1),
+    });
+    held.complete();
+    await pull;
+
+    final source = await repository.watchBoard(7, 80).first;
+    expect(source.snapshot[1], (bucketId: 2, position: 1.0));
+    expect(source.snapshot[2], (bucketId: 1, position: 20.0));
+  });
+
+  test('a board download that ends after the view stopped being a board '
+      'stores nothing', () async {
+    final held = Completer<void>();
+    read.beforeRequest = (request) async {
+      if (request.startsWith('board')) await held.future;
+    };
+
+    final download = repository.refreshBoard(7, 80);
+    await pumpEventQueue();
+    await db.projectsDao.putView(
+      const ProjectView(
+        id: 80,
+        projectId: 7,
+        title: 'Kanban',
+        kind: ProjectViewKind.list,
+      ),
+    );
+    held.complete();
+    await download;
+
+    final stored = await db.kanbanDao.load(80);
+    expect(stored.loadedAt, isNull);
+    expect(stored.buckets, isEmpty);
   });
 
   test('a refresh stops at the pages a bucket still has', () async {

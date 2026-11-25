@@ -884,6 +884,56 @@ void main() {
       ]);
     });
 
+    testWidgets('a card dropped above a task without a place on the board '
+        'stays there, as that task gets the place it showed at', (
+      tester,
+    ) async {
+      data.tasks.all = [...tasks(), sampleTask(id: -5, title: 'Added here')];
+      await pumpBoard(tester);
+      expect(cardsIn(tester, 'To-Do').first, 'Added here');
+
+      await dragCard(tester, 'Call Anna', aboveCard(tester, 'Added here'));
+
+      expect(data.tasks.placements, [
+        (-5, 14, const BucketPlacement(bucketId: 21, position: 50), null),
+        (2, 14, const BucketPlacement(bucketId: 21, position: 25), null),
+      ]);
+      expect(cardsIn(tester, 'To-Do'), [
+        'Call Anna',
+        'Added here',
+        'Write report',
+        'Plan trip',
+      ]);
+    });
+
+    testWidgets('a task created on the web since the download is never '
+        'placed, as the server may hold it in another column', (tester) async {
+      data.tasks.all = [
+        ...tasks(),
+        sampleTask(
+          id: 7,
+          title: 'Added on the web',
+          created: now.add(const Duration(minutes: 1)),
+        ),
+      ];
+      await pumpBoard(tester);
+      expect(cardsIn(tester, 'To-Do').first, 'Added on the web');
+
+      await dragCard(
+        tester,
+        'Call Anna',
+        aboveCard(tester, 'Added on the web'),
+      );
+
+      expect(data.tasks.placements, [
+        (2, 14, const BucketPlacement(bucketId: 21, position: 25), null),
+      ]);
+      expect(cardsIn(tester, 'To-Do').take(2), [
+        'Added on the web',
+        'Call Anna',
+      ]);
+    });
+
     testWidgets('a full column refuses the card with a heavy haptic and the '
         "web's limit text", (tester) async {
       final haptics = recordHaptics(tester);
@@ -1412,6 +1462,41 @@ void main() {
       expect(data.tasks.bucketLoads, [(1, 14, 21)]);
     });
 
+    testWidgets('after a background download that timed out while online, '
+        'a pull that gets through lets scrolling load more again', (
+      tester,
+    ) async {
+      storeManyCards();
+      storeBoard(
+        columns: [
+          bucket(21, 'To-Do', count: 40),
+          bucket(22, 'Doing'),
+          bucket(23, 'Done'),
+        ],
+        cards: manyCards(),
+        loadedAt: now.subtract(const Duration(minutes: 10)),
+      );
+      data.tasks.refreshBoardFailure = const NetworkFailure(
+        NetworkProblem.timeout,
+      );
+      await pumpBoard(tester, size: const Size(400, 800));
+      expect(data.tasks.boardRefreshes, [(1, 14)]);
+
+      await tester.drag(cardsOfColumn('To-Do'), const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      expect(data.tasks.bucketLoads, isEmpty, reason: 'as if offline');
+
+      data.tasks.refreshBoardFailure = null;
+      await tester.drag(cardsOfColumn('To-Do'), const Offset(0, 4000));
+      await tester.pumpAndSettle();
+      await pullToRefresh(tester, cardsOfColumn('To-Do'));
+      expect(data.tasks.boardRefreshes, [(1, 14), (1, 14)]);
+
+      await tester.drag(cardsOfColumn('To-Do'), const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      expect(data.tasks.bucketLoads, [(1, 14, 21)]);
+    });
+
     testWidgets('"Load more" below the cards loads the next page, also '
         'offline', (tester) async {
       storeManyCards();
@@ -1483,6 +1568,72 @@ void main() {
         (-1, 14, const BucketPlacement(bucketId: 22, position: 500), null),
       ]);
       expect(cardsIn(tester, 'Doing').first, 'Buy milk');
+    });
+
+    testWidgets('the new task goes above the tasks without a place on the '
+        'board, which get the places they showed at', (tester) async {
+      data.tasks.all = [...tasks(), sampleTask(id: -5, title: 'Added here')];
+      await pumpBoard(tester);
+
+      await addFrom(tester, 'To-Do', en.boardAddAnotherTask);
+
+      expect(data.tasks.placements, [
+        (-5, 14, const BucketPlacement(bucketId: 21, position: 50), null),
+        (-1, 14, const BucketPlacement(bucketId: 21, position: 25), null),
+      ]);
+      expect(cardsIn(tester, 'To-Do').take(3), [
+        'Buy milk',
+        'Added here',
+        'Write report',
+      ]);
+    });
+
+    testWidgets('a task without a place that left the column while the sheet '
+        'was open is not placed back', (tester) async {
+      data.tasks.all = [...tasks(), sampleTask(id: -5, title: 'Added here')];
+      await pumpBoard(tester);
+      await tester.tap(
+        find.descendant(
+          of: columnOf('To-Do'),
+          matching: find.text(en.boardAddAnotherTask),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(NewTaskSheet),
+          matching: find.byType(TextField),
+        ),
+        'Buy milk',
+      );
+      data.tasks.all = tasks();
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, en.newTaskAdd));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.placements, [
+        (-1, 14, const BucketPlacement(bucketId: 21, position: 50), null),
+      ]);
+    });
+
+    testWidgets('a task without a place that cannot be placed holds back '
+        "none of the new task's placement", (tester) async {
+      data.tasks.all = [...tasks(), sampleTask(id: -5, title: 'Added here')];
+      data.tasks.beforeWrite = () async {
+        if (data.tasks.writes.last.startsWith('place -5 ')) {
+          throw const FileSystemException('No space left on device');
+        }
+      };
+      await pumpBoard(tester);
+
+      await addFrom(tester, 'To-Do', en.boardAddAnotherTask);
+
+      expect(data.tasks.placements.last, (
+        -1,
+        14,
+        const BucketPlacement(bucketId: 21, position: 25),
+        null,
+      ));
     });
 
     testWidgets('with the sheet kept open, each task goes on top of the one '
@@ -1704,6 +1855,29 @@ void main() {
 
       expect(data.tasks.boardRefreshes, [(1, 14)]);
       expect(data.tasks.projectListRefreshes, isEmpty);
+    });
+
+    testWidgets('a board turned into a list elsewhere while it shows '
+        'downloads the list, and the list turned back into a board '
+        'downloads the board', (tester) async {
+      await pumpBoard(tester);
+      expect(data.tasks.boardRefreshes, isEmpty);
+
+      data.projects.all = [
+        work(
+          views: [
+            listView,
+            sampleListView(id: 14, projectId: 1, title: 'Kanban'),
+          ],
+        ),
+      ];
+      await tester.pumpAndSettle();
+      expect(data.tasks.projectListRefreshes, [(1, 14)]);
+
+      data.tasks.setBoard(kanban);
+      data.projects.all = [work()];
+      await tester.pumpAndSettle();
+      expect(data.tasks.boardRefreshes, [(1, 14)]);
     });
 
     testWidgets('a board stamped ahead of the clock, which was set back '

@@ -6,6 +6,8 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_table_body.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -470,6 +472,34 @@ void main() {
     await pullToRefresh(tester, find.byType(CustomScrollView));
 
     expect(data.tasks.projectListRefreshes, [(1, 13)]);
+  });
+
+  testWidgets('ticking tasks while selecting neither sorts nor nests the '
+      "list's or the table's tasks again", (tester) async {
+    for (final (viewId, rowsOf) in [
+      (
+        11,
+        (WidgetTester tester) =>
+            tester.widget<ProjectListBody>(find.byType(ProjectListBody)).model,
+      ),
+      (
+        13,
+        (WidgetTester tester) =>
+            tester.widget<ProjectTableBody>(find.byType(ProjectTableBody)).rows,
+      ),
+    ]) {
+      await pumpProject(tester, viewId: viewId);
+      await tester.longPress(find.widgetWithText(TaskRow, 'Four'));
+      await tester.pumpAndSettle();
+      expect(find.text(en.selectionCount(1)), findsOne, reason: '$viewId');
+      final built = rowsOf(tester);
+
+      await tester.tap(find.widgetWithText(TaskRow, 'Five'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.selectionCount(2)), findsOne, reason: '$viewId');
+      expect(rowsOf(tester), same(built), reason: '$viewId');
+    }
   });
 
   testWidgets('a tap on a row opens the task sheet', (tester) async {

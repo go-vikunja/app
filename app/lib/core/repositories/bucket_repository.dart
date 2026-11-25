@@ -19,7 +19,11 @@ abstract interface class BucketRepository {
 
   /// [toIndex] in the board's order after the move; the bucket gets a
   /// position between its new neighbours. Nothing is sent when it is there
-  /// already or no position would put it there ([planBucketMove]).
+  /// already or no position would put it there ([planBucketMove]). The
+  /// bucket goes past the column the board showed it passing, in the
+  /// server's order read right before; when the server no longer has that
+  /// column, or no position puts it there, nothing is sent either and it
+  /// is a [BucketMoveOutdated].
   Future<void> move(
     int projectId,
     int viewId,
@@ -48,6 +52,16 @@ abstract interface class BucketRepository {
 
   /// Null clears it. A bucket the server no longer has is stored as none.
   Future<void> setDefaultBucket(int projectId, int viewId, int? bucketId);
+}
+
+/// The move of [bucket] that the board showed is no longer possible on
+/// the server: the column it would pass was deleted elsewhere since the
+/// last board download, or no position puts it past that column. Nothing
+/// was sent, and the board downloads quietly.
+final class BucketMoveOutdated implements Exception {
+  const new({required this.bucket});
+
+  final Bucket bucket;
 }
 
 /// The server refused the new default a delete needed first, as it does

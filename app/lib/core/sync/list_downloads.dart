@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/sent_view_moves.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -132,7 +135,8 @@ Future<void> downloadViewSnapshot({
   required int projectId,
   required int viewId,
   required DateTime Function() now,
-}) async {
+}) => _inTurn(db, viewId, () async {
+  final mark = SentViewMoves.of(db).mark;
   final zone = await _timezoneSetting(db);
   final tasks = await collectPages<Task>(
     fetch: (page) => client.tasks.listInView(
@@ -147,13 +151,23 @@ Future<void> downloadViewSnapshot({
     ),
     idOf: (task) => task.id,
   );
-  await db.listSnapshotsDao.replace(
-    listKeyFor(projectId: projectId, viewId: viewId),
-    {for (final task in tasks.values) task.id: task.position},
-    loadedAt: now().toUtc(),
-  );
+  final key = listKeyFor(projectId: projectId, viewId: viewId);
+  final positions = {for (final task in tasks.values) task.id: task.position};
+  final written = await db.transaction(() async {
+    if (!await _stillOfKind(db, viewId, board: false)) return false;
+    final moved = SentViewMoves.of(db).since(viewId, mark);
+    if (moved.isNotEmpty) {
+      final stored = (await db.listSnapshotsDao.load(key)).positions;
+      for (final taskId in moved) {
+        if (stored[taskId] case final position?) positions[taskId] = position;
+      }
+    }
+    await db.listSnapshotsDao.replace(key, positions, loadedAt: now().toUtc());
+    return true;
+  });
+  if (!written) return;
   _log.fine('View $viewId of project $projectId: ${tasks.length} tasks');
-}
+});
 
 /// The server's cap on a board's page size, per bucket.
 const _boardPageLimit = 50;
@@ -172,9 +186,10 @@ Future<void> downloadBoard({
   required int projectId,
   required int viewId,
   required DateTime Function() now,
-}) async {
+}) => _inTurn(db, viewId, () async {
   // A change the server makes while the board is read counts as newer.
   final startedAt = now().toUtc();
+  final mark = SentViewMoves.of(db).mark;
   final zone = await _timezoneSetting(db);
   final size = _boardPageSize(perPage);
   final loadedBefore = await db.kanbanDao.loadedPages(viewId);
@@ -215,17 +230,72 @@ Future<void> downloadBoard({
     }
     loadedPages[bucket.id] = pages;
   }
-  await db.kanbanDao.replaceBoard(
-    viewId,
-    buckets: [for (final column in columns) column.bucket],
-    slots: slots,
-    loadedPages: loadedPages,
-    loadedAt: startedAt,
-  );
+  final written = await db.transaction(() async {
+    if (!await _stillOfKind(db, viewId, board: true)) return false;
+    final moved = SentViewMoves.of(db).since(viewId, mark);
+    if (moved.isNotEmpty) {
+      final bucketIds = {for (final column in columns) column.bucket.id};
+      final stored = (await db.kanbanDao.load(viewId)).slots;
+      for (final taskId in moved) {
+        if (stored[taskId] case final slot?
+            when bucketIds.contains(slot.bucketId)) {
+          slots[taskId] = slot;
+        }
+      }
+    }
+    await db.kanbanDao.replaceBoard(
+      viewId,
+      buckets: [for (final column in columns) column.bucket],
+      slots: slots,
+      loadedPages: loadedPages,
+      loadedAt: startedAt,
+    );
+    return true;
+  });
+  if (!written) return;
   _log.fine(
     'Board $viewId of project $projectId: ${columns.length} buckets, '
     '${slots.length} cards',
   );
+});
+
+/// Whether the stored view is still a board, or still not one, as the
+/// download read it: one whose kind changed meanwhile had its downloads
+/// dropped (`KanbanDao.forgetKindChanges`), which a download of the old
+/// kind must not bring back. A view not stored counts as unchanged.
+Future<bool> _stillOfKind(
+  AppDatabase db,
+  int viewId, {
+  required bool board,
+}) async {
+  final view = await db.projectsDao.loadView(viewId);
+  return view == null || (view.kind == ProjectViewKind.kanban) == board;
+}
+
+/// The end of the last download asked for of each view, by database;
+/// it completes also when the download fails.
+final _lastViewDownload = Expando<Map<int, Future<void>>>();
+
+/// Runs [download] of the view [viewId] once the one asked for before it
+/// is through: a download that read the server before a move was sent
+/// would otherwise write after the one that follows the move, and put the
+/// card or row back.
+Future<void> _inTurn(
+  AppDatabase db,
+  int viewId,
+  Future<void> Function() download,
+) async {
+  final last = _lastViewDownload[db] ??= {};
+  final before = last[viewId];
+  final turn = Completer<void>();
+  last[viewId] = turn.future;
+  try {
+    await before;
+    await download();
+  } finally {
+    turn.complete();
+    last.removeWhere((id, end) => id == viewId && identical(end, turn.future));
+  }
 }
 
 /// The next page of one bucket's cards onto the board. Nothing happens

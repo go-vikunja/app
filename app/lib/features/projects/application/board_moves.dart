@@ -79,20 +79,30 @@ sealed class CardMove {
 
 /// The card's placement, with the done state the move changes.
 final class PlaceCard extends CardMove {
-  const new(this.placement, {this.done});
+  const new(this.placement, {this.done, this.madeUp = const {}});
 
   final BucketPlacement placement;
   final bool? done;
 
+  /// The made-up positions the column showed its other cards at
+  /// ([madeUpPositionsOf]), in board order: they are placed there first,
+  /// as without a position they would still sort above the card, and the
+  /// server would sort them by its own rules.
+  final Map<int, double> madeUp;
+
   @override
   bool operator ==(Object other) =>
-      other is PlaceCard && other.placement == placement && other.done == done;
+      other is PlaceCard &&
+      other.placement == placement &&
+      other.done == done &&
+      mapEquals(other.madeUp, madeUp);
 
   @override
-  int get hashCode => Object.hash(placement, done);
+  int get hashCode =>
+      Object.hash(placement, done, Object.hashAllUnordered(madeUp.keys));
 
   @override
-  String toString() => 'PlaceCard($placement, done: $done)';
+  String toString() => 'PlaceCard($placement, done: $done, madeUp: $madeUp)';
 }
 
 /// A repeating task dropped into the done column: marked done and placed
@@ -187,8 +197,22 @@ CardMove? planCardMove({
   return PlaceCard(
     BucketPlacement(bucketId: to.bucket.id, position: position),
     done: intoDone ? true : (outOfDone ? false : null),
+    madeUp: madeUpPositionsOf(to, without: task.id),
   );
 }
+
+/// The made-up positions of [column]'s cards the server holds there for
+/// sure ([BoardColumn.knownHere]), but [without], by task id in board
+/// order. A card that may be in another column on the server is left out,
+/// as placing it would move it, and so is a position below the server's
+/// minimum spacing, which would make the server renumber the view.
+Map<int, double> madeUpPositionsOf(BoardColumn column, {int? without}) => {
+  for (final card in column.tasks)
+    if (card.id != without &&
+        column.knownHere.contains(card.id) &&
+        card.position >= minPositionSpacing)
+      card.id: card.position,
+};
 
 /// The positions of [count] tasks added on top of a column whose first
 /// card is at [topPosition], the first on top: spread below it (half of it
@@ -216,10 +240,39 @@ Future<void> queueCardMove(
     placement: placement,
     done: true,
   ),
-  PlaceCard(:final placement, :final done) => repository.placeTask(
-    taskId,
-    viewId: viewId,
-    placement: placement,
-    done: done,
-  ),
+  PlaceCard(:final placement, :final done, :final madeUp) => () async {
+    await placeMadeUp(
+      repository,
+      madeUp,
+      viewId: viewId,
+      bucketId: placement.bucketId,
+    );
+    await repository.placeTask(
+      taskId,
+      viewId: viewId,
+      placement: placement,
+      done: done,
+    );
+  }(),
 };
+
+/// Queues the [positions] of cards shown with a made-up one in the column
+/// of [bucketId], given in board order.
+Future<void> placeMadeUp(
+  TaskRepository repository,
+  Map<int, double> positions, {
+  required int viewId,
+  required int bucketId,
+}) async {
+  // From the lowest up: each placed card then sorts right below the ones
+  // still without a position, where it showed, so the column keeps its
+  // order while they are queued.
+  for (final MapEntry(key: taskId, value: position)
+      in positions.entries.toList().reversed) {
+    await repository.placeTask(
+      taskId,
+      viewId: viewId,
+      placement: BucketPlacement(bucketId: bucketId, position: position),
+    );
+  }
+}

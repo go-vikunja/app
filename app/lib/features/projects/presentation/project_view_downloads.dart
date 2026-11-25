@@ -28,7 +28,11 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
   int? _queuedIn;
   Set<int> _queuedIds = const {};
   Timer? _afterQueued;
-  final _quietlyRefreshed = <int>{};
+
+  /// Whether each view opened was a board: a view turned into a board or
+  /// out of one has its downloads dropped (`KanbanDao.forgetKindChanges`),
+  /// so its new kind downloads as if opened anew.
+  final _quietlyRefreshed = <int, bool>{};
   final _quietlyRefreshing = <int>{};
   final _quietAgain = <int>{};
   final _quietFailures = <int, Object>{};
@@ -44,8 +48,22 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
   ProjectViewContent? get lastShownContent;
 
   @override
-  Future<void>? startRefresh() =>
-      _download(currentViewId, board: currentViewIsBoard, inNewRun: true);
+  Future<void>? startRefresh() {
+    final viewId = currentViewId;
+    return _download(
+      viewId,
+      board: currentViewIsBoard,
+      inNewRun: true,
+    )?.then((_) => _downloaded(viewId));
+  }
+
+  /// A download of the view got through: its quiet one's failure no longer
+  /// stands, which would keep it acting as if offline.
+  void _downloaded(int viewId) {
+    if (mounted && _quietFailures.containsKey(viewId)) {
+      setState(() => _quietFailures.remove(viewId));
+    }
+  }
 
   @override
   void onRepositoryReplaced() {
@@ -103,7 +121,8 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
   }) {
     final viewId = view?.id ?? 0;
     if (viewId == 0 || !(board || downloadsSnapshot(view!))) return;
-    if (!_quietlyRefreshed.add(viewId)) return;
+    if (_quietlyRefreshed[viewId] == board) return;
+    _quietlyRefreshed[viewId] = board;
     if (!_isStale(loadedAt)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_refreshQuietly(viewId, board: board));
@@ -134,7 +153,7 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
   /// that never comes.
   void refreshAfterReconnect() {
     final viewId = currentViewId;
-    if (!_quietlyRefreshed.contains(viewId) ||
+    if (_quietlyRefreshed[viewId] != currentViewIsBoard ||
         _quietlyRefreshing.contains(viewId) ||
         refreshing) {
       return;
@@ -162,6 +181,7 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
     }
     try {
       await _download(viewId, board: board);
+      _downloaded(viewId);
     } on Object catch (error) {
       if (mounted) setState(() => _quietFailures[viewId] = error);
     } finally {

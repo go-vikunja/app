@@ -13,6 +13,8 @@ final class BoardColumn {
     required this.tasks,
     required this.shownCount,
     required this.hasMore,
+    this.madeUp = const {},
+    this.knownHere = const {},
   });
 
   final Bucket bucket;
@@ -29,6 +31,17 @@ final class BoardColumn {
 
   /// The server holds more tasks in this bucket than were downloaded.
   final bool hasMore;
+
+  /// The ids of the cards on top whose position in [tasks] is made up.
+  final Set<int> madeUp;
+
+  /// Of [madeUp], the cards the server holds in this column for sure: a
+  /// task whose create has not left the device, one moved into the
+  /// project here, or one placed here without a position. One created or
+  /// updated elsewhere since the download may be in any column on the
+  /// server (created there on the web, on a page not downloaded, or newly
+  /// matching the view's filter).
+  final Set<int> knownHere;
 }
 
 typedef _Listed = ({int bucketId, double position});
@@ -98,7 +111,13 @@ List<BoardColumn> buildBoard({
     }
     if (queued[task.id] case final placement?
         when columnIds.contains(placement.bucketId)) {
-      return _Card(task, placement.bucketId, placement.position, listed);
+      return _Card(
+        task,
+        placement.bucketId,
+        placement.position,
+        listed,
+        knownHere: true,
+      );
     }
     if (listed == null) {
       if ((matchingIds == null && filter == ViewFilterKind.other) ||
@@ -110,6 +129,7 @@ List<BoardColumn> buildBoard({
         task.done ? doneId ?? defaultId : defaultId,
         null,
         null,
+        knownHere: task.id < 0 || movedHere.contains(task.id),
       );
     }
     final doneMayHaveChanged =
@@ -153,6 +173,14 @@ BoardColumn _column(Bucket bucket, List<_Card> cards, int downloaded) {
     tasks: List.unmodifiable(_withPositions(cards)),
     shownCount: math.max(bucket.count + movedIn - movedOut, cards.length),
     hasMore: bucket.count > downloaded,
+    madeUp: Set.unmodifiable({
+      for (final card in cards)
+        if (card.position == null) card.task.id,
+    }),
+    knownHere: Set.unmodifiable({
+      for (final card in cards)
+        if (card.position == null && card.knownHere) card.task.id,
+    }),
   );
 }
 
@@ -209,11 +237,17 @@ int _compareCards(_Card a, _Card b) => switch ((a.position, b.position)) {
 };
 
 final class _Card {
-  new(this.task, this.bucketId, this.position, _Listed? listed)
-    : listedIn = listed?.bucketId;
+  new(
+    this.task,
+    this.bucketId,
+    this.position,
+    _Listed? listed, {
+    this.knownHere = false,
+  }) : listedIn = listed?.bucketId;
 
   final Task task;
   final int bucketId;
   final double? position;
   final int? listedIn;
+  final bool knownHere;
 }

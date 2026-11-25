@@ -14,6 +14,8 @@ import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dar
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
+import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
@@ -51,7 +53,8 @@ typedef _ColumnChangeSent = ({int? bucketId});
 /// screen readers move cards with the card's actions, and each column adds
 /// tasks on its top. Moves queue through the repository like every write.
 /// The columns themselves change online, one change at a time, through
-/// each header's menu and a "Create a column" tile after the last column.
+/// each header's menu and a "Create a column" tile after the last column,
+/// or the empty state's button on a board without columns.
 class ProjectBoard extends ConsumerStatefulWidget {
   const new({
     required this.projectId,
@@ -504,7 +507,23 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
           viewId: view.id,
           bucketId: column.bucket.id,
           defaultBucket: defaultBucket,
-          topPosition: column.tasks.firstOrNull?.position,
+          top: () {
+            if (!mounted) {
+              return (
+                position: column.tasks.firstOrNull?.position,
+                madeUp: const <int, double>{},
+              );
+            }
+            final current = _board
+                .where((shown) => shown.bucket.id == column.bucket.id)
+                .firstOrNull;
+            return (
+              position: current?.tasks.firstOrNull?.position,
+              madeUp: current == null
+                  ? const <int, double>{}
+                  : madeUpPositionsOf(current),
+            );
+          },
           done: view.doneBucketId != 0 && column.bucket.id == view.doneBucketId,
           // The server puts new tasks into the default column whatever its
           // limit, and moving them there is then no move.
@@ -825,9 +844,40 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     );
   }
 
+  /// A board without columns, such as a list turned into a board on a
+  /// server before 2.5, which creates none then.
+  Widget _withoutColumns(BuildContext context) {
+    final l10n = context.l10n;
+    final creating = _columnChange != null;
+    return CenteredScrollView(
+      header: widget.header,
+      child: EmptyState(
+        icon: Icons.view_kanban_outlined,
+        title: l10n.boardNoColumnsTitle,
+        body: l10n.boardNoColumnsBody,
+        action: widget.readOnly
+            ? null
+            : FilledButton.tonalIcon(
+                onPressed: creating ? null : () => unawaited(_createColumn()),
+                icon: creating
+                    ? SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          semanticsLabel: l10n.boardColumnSaving,
+                        ),
+                      )
+                    : const Icon(Icons.add),
+                label: Text(l10n.boardCreateColumn),
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final columns = _board;
+    if (columns.isEmpty) return _withoutColumns(context);
     final view = widget.view;
     final manages = !widget.readOnly;
     final insets = MediaQuery.paddingOf(context);

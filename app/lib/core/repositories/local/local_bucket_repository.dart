@@ -121,12 +121,16 @@ final class LocalBucketRepository implements BucketRepository {
     final fresh = await _freshBuckets(projectId, viewId);
     final bucket = _freshOne(fresh, projectId, viewId, bucketId);
     final freshIndex = _pastSameColumn(shown, fresh, bucketId, toIndex);
+    if (freshIndex != null && _indexIn(fresh, bucketId) == freshIndex) {
+      _settle(projectId, viewId, 'Bucket $bucketId in place on the server');
+      return;
+    }
     final position = freshIndex == null
         ? null
         : planBucketMove(fresh, bucketId, freshIndex);
     if (position == null) {
       _settle(projectId, viewId, 'Bucket $bucketId not moved after a read');
-      return;
+      throw BucketMoveOutdated(bucket: _find(shown, bucketId));
     }
     await _update(
       projectId,
@@ -421,6 +425,10 @@ final class LocalBucketRepository implements BucketRepository {
     if (index < 0) return null;
     return to < from ? index : index + 1;
   }
+
+  static int _indexIn(List<Bucket> buckets, int bucketId) => ([
+    ...buckets,
+  ]..sort(compareBucketOrder)).indexWhere((bucket) => bucket.id == bucketId);
 
   Future<Bucket> _stored(int viewId, int bucketId) async =>
       _find(await _db.kanbanDao.buckets(viewId), bucketId);

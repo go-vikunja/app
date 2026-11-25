@@ -596,6 +596,27 @@ void main() {
       expect(refreshes, [(7, 80)]);
     });
 
+    test('past a bucket deleted elsewhere since the download is a '
+        'BucketMoveOutdated without a write, and the board '
+        'downloads', () async {
+      await seed();
+      deleteDoingElsewhere();
+
+      await expectLater(
+        repository.move(7, 80, 1, toIndex: 1),
+        throwsA(
+          isA<BucketMoveOutdated>().having(
+            (e) => e.bucket.title,
+            'bucket',
+            'To-Do',
+          ),
+        ),
+      );
+
+      expect(write.requests, isEmpty);
+      expect(refreshes, [(7, 80)]);
+    });
+
     test('a bucket the server no longer has is its NotFound 10001 without '
         'a write', () async {
       await seed();

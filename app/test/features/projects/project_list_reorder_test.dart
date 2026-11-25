@@ -193,7 +193,9 @@ void main() {
       ]);
     });
 
-    testWidgets('a drop the device cannot store says so', (tester) async {
+    testWidgets('a drop the device cannot store says so, and only that', (
+      tester,
+    ) async {
       await pumpProject(tester);
       data.tasks.beforeWrite = () async =>
           throw const FileSystemException('No space left on device');
@@ -202,6 +204,7 @@ void main() {
 
       expect(data.tasks.positions, [(1, 11, 350)]);
       expect(find.text(en.localChangeFailed), findsOneWidget);
+      expect(tester.takeAnnouncements(), isEmpty);
       expect(tester.takeException(), isNull);
     });
 

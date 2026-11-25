@@ -593,6 +593,30 @@ void main() {
         [for (final t in _column(board, _toDo).tasks) t.position],
         [100 / 3, 200 / 3, 100, 200, 300],
       );
+      expect(_column(board, _toDo).madeUp, {-1, -2});
+      expect(_column(board, _doing).madeUp, isEmpty);
+    });
+
+    test('are known to be in their column on the server only for a task '
+        'created here, one moved here, or one placed there without a '
+        'position; one created or updated elsewhere since the download may '
+        'be in any column', () {
+      final board = _build(
+        tasks: [
+          ..._downloadedTasks,
+          task(-1),
+          task(9, created: _after),
+          task(10, created: _before, updated: _after),
+          task(11, created: _before, updated: _after),
+          task(12, created: _before, updated: _after),
+        ],
+        movedHere: {11},
+        queued: {12: const BucketPlacement(bucketId: _toDo)},
+      );
+
+      final toDo = _column(board, _toDo);
+      expect(toDo.madeUp, {-1, 9, 10, 11, 12});
+      expect(toDo.knownHere, {-1, 11, 12});
     });
 
     test('are multiples of 2^16 in a column of cards without positions', () {

@@ -120,7 +120,7 @@ final class NewTaskColumn {
     required this.viewId,
     required this.bucketId,
     required this.defaultBucket,
-    this.topPosition,
+    required this.top,
     this.done = false,
     this.room,
   });
@@ -132,8 +132,11 @@ final class NewTaskColumn {
   /// reopens a repeating task marked done.
   final Bucket defaultBucket;
 
-  /// The position of the column's first card; null when it is empty.
-  final double? topPosition;
+  /// The column's top as the board shows it when the tasks are placed:
+  /// the position of its first card (null when it is empty), and the
+  /// positions it shows its cards without a place at, which are placed
+  /// there before the new tasks go above them (`madeUpPositionsOf`).
+  final ({double? position, Map<int, double> madeUp}) Function() top;
 
   /// The view's done column, whose tasks are done.
   final bool done;
@@ -226,7 +229,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
 
   // After a partly failed add the sheet stays open for the rest, which
   // goes above what was placed and into the room that is left.
-  late double? _columnTop = widget.column?.topPosition;
+  double? _placedTop;
   late int? _columnRoom = widget.column?.room;
 
   // The plans of the lines typed so far, valid for what they were made with.
@@ -788,7 +791,23 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           placed.add(id);
         }
       }
-      final positions = positionsOnTop(_columnTop, count: placed.length);
+      final top = _placedTop == null ? column.top() : null;
+      final positions = positionsOnTop(
+        _placedTop ?? top?.position,
+        count: placed.length,
+      );
+      if (placed.isNotEmpty && top != null) {
+        try {
+          await placeMadeUp(
+            repository,
+            top.madeUp,
+            viewId: column.viewId,
+            bucketId: column.bucketId,
+          );
+        } on Object catch (error) {
+          _log.warning('Placing the cards on top failed: ${error.runtimeType}');
+        }
+      }
       for (final (index, id) in placed.indexed) {
         await repository.placeTask(
           id,
@@ -808,7 +827,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           done: true,
         );
       }
-      _columnTop = positions.firstOrNull ?? _columnTop;
+      _placedTop = positions.firstOrNull ?? _placedTop;
       if (_columnRoom case final room?) _columnRoom = room - placed.length;
     } on Object catch (error) {
       // The tasks are queued; without the placement they land in the

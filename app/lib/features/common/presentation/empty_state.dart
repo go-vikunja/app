@@ -6,6 +6,7 @@ class EmptyState extends StatelessWidget {
     required this.title,
     required this.body,
     this.isScreenTitle = false,
+    this.action,
     super.key,
   });
 
@@ -17,6 +18,9 @@ class EmptyState extends StatelessWidget {
   /// heading that also names the route on Android, as an app bar's title
   /// does. Otherwise a level-2 heading.
   final bool isScreenTitle;
+
+  /// Below [body], e.g. a button that fills what is empty.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +56,10 @@ class EmptyState extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
+          if (action case final action?) ...[
+            const SizedBox(height: 24),
+            action,
+          ],
         ],
       ),
     );

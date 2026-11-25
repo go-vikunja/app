@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -219,6 +221,93 @@ void main() {
         read.tasks.queries.single.sort.single.field,
         TaskSortField.position,
       );
+    });
+
+    test('a download that read the view before a move was sent cannot '
+        'overwrite the one asked for after it', () async {
+      final open = [
+        for (var id = 1; id <= 3; id++)
+          sampleTask(id: id, title: 'Task $id', projectId: 7),
+      ];
+      read
+        ..allTasks = open
+        ..viewPositions[70] = {1: 10, 2: 20, 3: 30};
+      final held = Completer<void>();
+      var holding = true;
+      read.beforeRequest = (request) async {
+        if (holding && request.endsWith(' page=2')) {
+          holding = false;
+          await held.future;
+        }
+      };
+
+      final pull = repository.refreshProjectList(7, viewId: 70);
+      await pumpEventQueue();
+      read.viewPositions[70] = {1: 10, 2: 5, 3: 30};
+      final followUp = repository.refreshProjectList(7, viewId: 70);
+      await pumpEventQueue();
+      held.complete();
+      await pull;
+      await followUp;
+
+      expect((await db.listSnapshotsDao.load('view:70')).positions, {
+        2: 5,
+        1: 10,
+        3: 30,
+      });
+    });
+
+    test('a download that read the view before a move was sent keeps the '
+        'position the sent move gave', () async {
+      final open = [
+        for (var id = 1; id <= 3; id++)
+          sampleTask(id: id, title: 'Task $id', projectId: 7),
+      ];
+      read
+        ..allTasks = open
+        ..viewPositions[70] = {1: 10, 2: 20, 3: 30};
+      await repository.refreshProjectList(7, viewId: 70);
+      final held = Completer<void>();
+      var holding = true;
+      read.beforeRequest = (request) async {
+        if (holding && request.endsWith(' page=2')) {
+          holding = false;
+          await held.future;
+        }
+      };
+
+      final pull = repository.refreshProjectList(7, viewId: 70);
+      await pumpEventQueue();
+      read.viewPositions[70] = {1: 10, 2: 5, 3: 30};
+      await db.listSnapshotsDao.applySentPositions(2, {70: 5});
+      held.complete();
+      await pull;
+
+      expect((await db.listSnapshotsDao.load('view:70')).positions, {
+        2: 5,
+        1: 10,
+        3: 30,
+      });
+    });
+
+    test('a view download that ends after the view became a board stores '
+        'nothing', () async {
+      read.viewPositions[70] = {1: 10, 2: 20};
+      final held = Completer<void>();
+      read.beforeRequest = (request) async {
+        if (request.startsWith('project 7 view 70')) await held.future;
+      };
+
+      final download = repository.refreshProjectList(7, viewId: 70);
+      await pumpEventQueue();
+      await db.projectsDao.putView(
+        sampleKanbanView(id: 70, projectId: 7, title: 'List'),
+      );
+      held.complete();
+      await download;
+
+      expect((await db.listSnapshotsDao.load('view:70')).loadedAt, isNull);
+      expect((await db.kanbanDao.load(70)).loadedAt, isNull);
     });
 
     test("a view's relative dates are rounded in the user's time zone "

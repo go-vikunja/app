@@ -873,6 +873,7 @@
   "boardColumnUnconfirmed": "Die Änderung ließ sich nicht bestätigen. Prüf deine Verbindung und zieh nach unten, um das Board neu zu laden.",
   "boardColumnAdminOnly": "Nur Projekt-Admins können die Erledigt- oder Standardspalte festlegen.",
   "boardColumnDeleteFailedNewDefault": "„{newDefault}“ ist jetzt die Standardspalte, aber „{column}“ ließ sich nicht löschen.",
+  "boardColumnMoveOutdated": "Die Spalten wurden anderswo geändert, deshalb wurde „{column}“ nicht verschoben. Das Board zeigt sie jetzt so, wie sie sind.",
   "boardColumnDeleteNewDefaultGone": "„{newDefault}“ gibt es nicht mehr, deshalb wurde „{column}“ nicht gelöscht.",
   "boardColumnForbidden": "Du darfst die Spalten dieses Boards nicht ändern.",
   "boardColumnLastOne": "Ein Board braucht mindestens eine Spalte.",

@@ -847,6 +847,22 @@ void main() {
       expect(doing.left, greaterThanOrEqualTo(board.left));
     });
 
+    testWidgets('a move the columns changed elsewhere no longer allow says '
+        'so, and neither announces a move nor follows the column', (
+      tester,
+    ) async {
+      data.buckets.failures['move'] = BucketMoveOutdated(
+        bucket: bucket(21, 'Backlog', count: 3),
+      );
+      await pumpBoard(tester);
+
+      await choose(tester, 'Backlog', ColumnAction.moveRight);
+
+      expect(find.text(en.boardColumnMoveOutdated('Backlog')), findsOne);
+      expect(columnTitles(tester), ['Backlog', 'Doing', 'Complete']);
+      expect(tester.takeAnnouncements(), isEmpty);
+    });
+
     testWidgets('a move no position can make is not offered', (tester) async {
       final semantics = tester.ensureSemantics();
       Bucket atZero(int id, String title) =>
@@ -1026,6 +1042,44 @@ void main() {
       expect(tester.takeAnnouncements(), [
         isAccessibilityAnnouncement(en.boardColumnCreated),
       ]);
+    });
+
+    testWidgets('a board without columns offers to create one in its empty '
+        'state, after which the board shows it', (tester) async {
+      data.tasks.all = [];
+      storeBoard(columns: const [], cards: const {});
+      await pumpBoard(tester);
+
+      expect(find.text(en.boardNoColumnsTitle), findsOne);
+      await tester.tap(find.text(en.boardCreateColumn));
+      await tester.pumpAndSettle();
+      await tester.enterText(sheetField(), 'To do');
+      await tester.pump();
+      await tester.tap(
+        find.widgetWithText(TextButton, en.boardNewColumnCreate),
+      );
+      await tester.pumpAndSettle();
+
+      expect(data.buckets.calls, ['create 1 14 To do']);
+      expect(columnTitles(tester), ['To do']);
+      expect(find.text(en.boardNoColumnsTitle), findsNothing);
+      expect(tester.takeAnnouncements(), [
+        isAccessibilityAnnouncement(en.boardColumnCreated),
+      ]);
+    });
+
+    testWidgets('a board without columns that cannot be written offers '
+        'nothing', (tester) async {
+      data.tasks.all = [];
+      storeBoard(
+        columns: const [],
+        cards: const {},
+        permission: Permission.read,
+      );
+      await pumpBoard(tester);
+
+      expect(find.text(en.boardNoColumnsTitle), findsOne);
+      expect(find.text(en.boardCreateColumn), findsNothing);
     });
 
     testWidgets('a blank title creates nothing', (tester) async {
@@ -1250,6 +1304,23 @@ void main() {
           ColumnChange.delete,
         ),
         "“Doing” no longer exists, so “Backlog” wasn't deleted.",
+      );
+      expect(
+        text(
+          BucketMoveOutdated(bucket: bucket(21, 'Backlog')),
+          ColumnChange.move,
+        ),
+        "The columns changed elsewhere, so “Backlog” wasn't moved. The "
+        'board now shows them as they are.',
+      );
+      expect(
+        columnChangeFailureText(
+          de,
+          BucketMoveOutdated(bucket: bucket(21, 'Backlog')),
+          ColumnChange.move,
+        ),
+        'Die Spalten wurden anderswo geändert, deshalb wurde „Backlog“ nicht '
+        'verschoben. Das Board zeigt sie jetzt so, wie sie sind.',
       );
       expect(
         text(const DomainError(412, code: 10003), ColumnChange.delete),

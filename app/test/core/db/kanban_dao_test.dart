@@ -454,6 +454,77 @@ void main() {
     expect((await db.listSnapshotsDao.load('filter:-2')).loadedAt, now);
   });
 
+  group('a view whose kind changes', () {
+    final list = sampleListView(id: 70, projectId: 7);
+    ProjectView asKind(
+      ProjectView view,
+      ProjectViewKind kind, {
+      String? title,
+    }) => ProjectView(
+      id: view.id,
+      projectId: view.projectId,
+      title: title ?? view.title,
+      kind: kind,
+      position: view.position,
+      filter: view.filter,
+      bucketConfigurationMode: view.bucketConfigurationMode,
+      defaultBucketId: view.defaultBucketId,
+      doneBucketId: view.doneBucketId,
+    );
+
+    test('from Kanban drops the board, so neither its download nor its '
+        'columns stay', () async {
+      await download();
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 7,
+          title: 'Work',
+          views: [list, asKind(board, ProjectViewKind.list)],
+        ),
+      ]);
+
+      final stored = await db.kanbanDao.load(80);
+      expect(stored.buckets, isEmpty);
+      expect(stored.slots, isEmpty);
+      expect(stored.loadedAt, isNull);
+      expect((await db.listSnapshotsDao.load('view:80')).loadedAt, isNull);
+    });
+
+    test('to Kanban drops the list snapshot, so the board counts as never '
+        'downloaded', () async {
+      await db.listSnapshotsDao.replace('view:70', {1: 1}, loadedAt: now);
+
+      await db.projectsDao.putView(asKind(list, ProjectViewKind.kanban));
+
+      expect((await db.kanbanDao.load(70)).loadedAt, isNull);
+      expect((await db.listSnapshotsDao.load('view:70')).loadedAt, isNull);
+    });
+
+    test('keeps the downloads of views that stay a board or a list, also '
+        'between list kinds', () async {
+      await download();
+      await db.listSnapshotsDao.replace('view:70', {1: 1}, loadedAt: now);
+
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 7,
+          title: 'Work',
+          views: [
+            asKind(list, ProjectViewKind.table),
+            asKind(board, ProjectViewKind.kanban, title: 'Renamed'),
+          ],
+        ),
+      ]);
+      await db.projectsDao.putView(
+        asKind(board, ProjectViewKind.kanban, title: 'Again'),
+      );
+
+      expect((await db.kanbanDao.load(80)).buckets, hasLength(3));
+      expect((await db.kanbanDao.load(80)).loadedAt, now);
+      expect((await db.listSnapshotsDao.load('view:70')).loadedAt, now);
+    });
+  });
+
   group('the board source', () {
     final old = DateTime.utc(2026, 10, 2);
     setUp(() async {

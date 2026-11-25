@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/sent_view_moves.dart';
 import 'package:vikunja_mobile/core/db/tables/lists.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -63,7 +64,8 @@ final class ListSnapshotsDao extends DatabaseAccessor<AppDatabase>
   /// The server accepted these list positions of the task, by view id:
   /// each downloaded view takes its position until the next download,
   /// which brings the server's (it may have spread equal positions apart).
-  /// A view never downloaded is left alone.
+  /// A view never downloaded is left alone. A download that read the view
+  /// before stays behind them ([SentViewMoves]).
   Future<void> applySentPositions(int taskId, Map<int, double> positions) =>
       transaction(() async {
         for (final MapEntry(key: viewId, value: position)
@@ -83,6 +85,7 @@ final class ListSnapshotsDao extends DatabaseAccessor<AppDatabase>
               (_) => ListSnapshotTasksCompanion(position: Value(position)),
             ),
           );
+          SentViewMoves.of(attachedDatabase).record(viewId, taskId);
         }
       });
 

@@ -138,6 +138,7 @@ void main() {
       String title,
       List<Task> tasks, {
       int limit = 0,
+      Set<int> madeUp = const {},
     }) => BoardColumn(
       bucket: Bucket(
         id: bucketId,
@@ -150,6 +151,8 @@ void main() {
       tasks: tasks,
       shownCount: tasks.length,
       hasMore: false,
+      madeUp: madeUp,
+      knownHere: madeUp,
     );
 
     final report = card(1, 100);
@@ -261,6 +264,33 @@ void main() {
       expect(messages, [en.boardMovedTo('Later (2)')]);
       expect(haptics, ['HapticFeedbackType.selectionClick']);
       expect(find.byType(BottomSheet), findsNothing);
+    });
+
+    testWidgets('a pick puts the card above the tasks the column shows '
+        'without a place, which get the places they showed at', (tester) async {
+      await pumpApp(tester);
+      board = null;
+      final withNew = [
+        columns[0],
+        column(2, 'Later', [card(6, 500), card(4, 1000)], madeUp: {6}),
+        ...columns.skip(2),
+      ];
+      moving = moveToColumn(
+        tester.element(find.byType(Scaffold).first),
+        repository: data.tasks,
+        task: report,
+        choice: () => choiceOf(report, withNew),
+        showMessage: messages.add,
+      );
+      await tester.pumpAndSettle();
+
+      await pick(tester, 'Later (2)');
+      await moving;
+
+      expect(data.tasks.placements, [
+        (6, 5, const BucketPlacement(bucketId: 2, position: 500), null),
+        (1, 5, const BucketPlacement(bucketId: 2, position: 250), null),
+      ]);
     });
 
     testWidgets('into the done column the task is done, out of it open '

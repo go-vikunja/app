@@ -90,8 +90,9 @@ class ProjectListBody extends StatefulWidget {
   final Set<int> leavingIds;
 
   /// Puts top-level tasks at positions of the view, by task id, in the
-  /// map's order; null while the list cannot be put in order by hand.
-  final void Function(Map<int, double> positions)? onReorder;
+  /// map's order, and completes with whether the device stored them; null
+  /// while the list cannot be put in order by hand.
+  final Future<bool> Function(Map<int, double> positions)? onReorder;
   final void Function(Task task)? onDueDate;
   final void Function(Task task)? onSelect;
 
@@ -110,6 +111,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
   late final _edgeScroller = DragEdgeScroller(onScrolled: _followPointer);
 
   List<ListGroup> _groups = const [];
+  ({ProjectListModel model, ProjectListSource source})? _groupedFrom;
   int? _held;
   Offset? _pointer;
   int? _dropIndex;
@@ -141,6 +143,19 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     super.dispose();
   }
 
+  /// Again only for another model or source: the screen builds on every
+  /// selection tap and clock tick, which change neither.
+  List<ListGroup> _groupsOf(ProjectListModel model, ProjectListSource source) {
+    if (_groupedFrom case (model: final last, source: final lastSource)
+        when identical(last, model) &&
+            identical(lastSource, source) &&
+            _groups.isNotEmpty) {
+      return _groups;
+    }
+    _groupedFrom = (model: model, source: source);
+    return listGroupsOf(model.rows, effectivePositionsOf(source));
+  }
+
   int _groupIndexOf(int taskId) =>
       _groups.indexWhere((group) => group.task.id == taskId);
 
@@ -152,14 +167,14 @@ class _ProjectListBodyState extends State<ProjectListBody> {
 
   /// Puts [task]'s group at [index] of the groups, counted without it, and
   /// announces [moved] once it is queued.
-  void _move(Task task, int index, {required String moved}) {
+  Future<void> _move(Task task, int index, {required String moved}) async {
     final onReorder = widget.onReorder;
     if (onReorder == null) return;
     final positions = planListMove(_groups, task.id, index);
     if (positions == null) return;
     unawaited(HapticFeedback.selectionClick());
-    announce(context, moved);
-    onReorder(positions);
+    final announcer = Announcer.of(context);
+    if (await onReorder(positions)) announcer.say(moved);
   }
 
   Map<CustomSemanticsAction, VoidCallback> _actionsFor(int index) {
@@ -168,11 +183,11 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     return {
       if (index > 0 && planListMove(_groups, task.id, index - 1) != null)
         CustomSemanticsAction(label: l10n.moveUp): () =>
-            _move(task, index - 1, moved: l10n.movedUp),
+            unawaited(_move(task, index - 1, moved: l10n.movedUp)),
       if (index < _groups.length - 1 &&
           planListMove(_groups, task.id, index + 1) != null)
         CustomSemanticsAction(label: l10n.moveDown): () =>
-            _move(task, index + 1, moved: l10n.movedDown),
+            unawaited(_move(task, index + 1, moved: l10n.movedDown)),
     };
   }
 
@@ -273,10 +288,12 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     _endDrag();
     if (drop == null) return;
     final l10n = context.l10n;
-    _move(
-      _groups[drop.from].task,
-      drop.to,
-      moved: drop.to < drop.from ? l10n.movedUp : l10n.movedDown,
+    unawaited(
+      _move(
+        _groups[drop.from].task,
+        drop.to,
+        moved: drop.to < drop.from ? l10n.movedUp : l10n.movedDown,
+      ),
     );
   }
 
@@ -300,9 +317,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       );
     }
     final reorderable = widget.onReorder != null && model.rows.isNotEmpty;
-    _groups = reorderable
-        ? listGroupsOf(model.rows, effectivePositionsOf(widget.source))
-        : const [];
+    _groups = reorderable ? _groupsOf(model, widget.source) : const [];
     final doneRows = model.doneRows ?? const [];
     final doneCount = doneRows.where((row) => row.depth == 0).length;
     return ReadableWidth.builder(

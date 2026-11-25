@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
@@ -26,9 +27,9 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_list_model.dart';
+import 'package:vikunja_mobile/features/projects/application/project_rows.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
-import 'package:vikunja_mobile/features/projects/application/table_model.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_header.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
@@ -109,6 +110,17 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     optOuts: () => ref.read(activeServerHasFollowOptOutsProvider),
   );
 
+  final _rows = ProjectRows();
+
+  /// The selectable tasks of the last rows, again only when the rows, the
+  /// projects or the copies kept for an Undo changed.
+  ({
+    Object rows,
+    Object? projects,
+    Map<int, Task> leaving,
+    List<Task> selectable,
+  })?
+  _selectableFrom;
   var _seen = false;
   late int? _chosenViewId = widget.viewId;
   var _viewId = 0;
@@ -183,43 +195,62 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     ProjectViewContent? content, {
     required Set<TableColumn> columns,
     required Map<int, Project> projectsById,
+    required Object? projects,
   }) {
     final Map<int, Task> leaving;
-    final List<Task> shown;
+    final Object rows;
     // A task's copy that stays on screen while its done's Undo is offered
     // is not the task to act on.
     switch (content) {
       case TableViewContent(:final source, :final kind, :final preferences):
         leaving = leavingTasksIn(source.tasksById);
-        final sort = preferences.tableSort.forColumns(columns);
-        shown = buildTableRows(
+        rows = _rows.tableRows(
           source,
           kind: kind,
           showDone: preferences.showDone,
-          compare: (a, b) => compareTasksForTable(a, b, sort),
+          sort: preferences.tableSort.forColumns(columns),
           leaving: leaving,
         );
       case ListViewContent(:final source, :final kind, :final preferences):
         leaving = leavingTasksIn(source.tasksById);
-        final model = buildProjectListModel(
+        rows = _rows.listModel(
           source,
           kind: kind,
           preferences: preferences,
           leaving: leaving,
         );
-        final seen = <int>{};
-        shown = [
-          for (final row in [...model.rows, ...?model.doneRows])
-            if (seen.add(row.task.id)) row.task,
-        ];
       case TimelineViewContent() || BoardViewContent() || null:
         return const [];
     }
-    return [
+    if (_selectableFrom case final last?
+        when identical(last.rows, rows) &&
+            identical(last.projects, projects) &&
+            mapEquals(last.leaving, leaving)) {
+      return last.selectable;
+    }
+    final shown = switch (rows) {
+      final ProjectListModel model => () {
+        final seen = <int>{};
+        return [
+          for (final row in [...model.rows, ...?model.doneRows])
+            if (seen.add(row.task.id)) row.task,
+        ];
+      }(),
+      final List<Task> tasks => tasks,
+      _ => const <Task>[],
+    };
+    final selectable = [
       for (final task in shown)
         if (!leaving.containsKey(task.id) && taskChangeable(task, projectsById))
           task,
     ];
+    _selectableFrom = (
+      rows: rows,
+      projects: projects,
+      leaving: leaving,
+      selectable: selectable,
+    );
+    return selectable;
   }
 
   void _toggleShowDone(String listKey, ViewPreferences current) {
@@ -411,6 +442,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             showing.content,
             columns: columns,
             projectsById: projectsById,
+            projects: projects.value,
           )
         : const <Task>[];
     final selectableIds = {for (final task in selectable) task.id};
@@ -560,6 +592,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
                 pendingIds: pendingIds,
                 bottomPadding: addsTasks ? _fabRoom : 0,
                 leavingIn: leavingTasksIn,
+                rows: _rows,
                 onDoneChanged: (task, {required done}) =>
                     unawaited(setTaskDone(task, done: done)),
                 onFavoriteChanged: (task, {required favorite}) =>

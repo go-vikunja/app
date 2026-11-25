@@ -3833,6 +3833,16 @@
       }
     }
   },
+  "boardColumnMoveOutdated": "The columns changed elsewhere, so “{column}” wasn't moved. The board now shows them as they are.",
+  "@boardColumnMoveOutdated": {
+    "description": "Moving a kanban column left or right was stopped before anything changed: the column it would move past was deleted elsewhere, or reordered so that it no longer fits there, since the board was last downloaded. The board then downloads again. column is the title of the column that was not moved.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "Backlog"
+      }
+    }
+  },
   "boardColumnDeleteNewDefaultGone": "“{newDefault}” no longer exists, so “{column}” wasn't deleted.",
   "@boardColumnDeleteNewDefaultGone": {
     "description": "Deleting a kanban column was stopped before anything changed: the column the app was about to make the default first, so that the deleted column's tasks don't end up in no column, was deleted elsewhere since the board was last downloaded. The board then downloads again. newDefault is the title of that column, column the title of the column that was not deleted.",

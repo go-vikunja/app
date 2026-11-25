@@ -28,6 +28,8 @@ void main() {
     int limit = 0,
     int? count,
     bool hasMore = false,
+    Set<int> madeUp = const {},
+    Set<int>? knownHere,
   }) => BoardColumn(
     bucket: Bucket(
       id: bucketId,
@@ -40,6 +42,8 @@ void main() {
     tasks: tasks,
     shownCount: count ?? tasks.length,
     hasMore: hasMore,
+    madeUp: madeUp,
+    knownHere: knownHere ?? madeUp,
   );
 
   final todo = column(1, [card(1, 100), card(2, 200), card(3, 300)]);
@@ -61,9 +65,15 @@ void main() {
     index: index,
   );
 
-  PlaceCard placed(int bucketId, double position, {bool? done}) => PlaceCard(
+  PlaceCard placed(
+    int bucketId,
+    double position, {
+    bool? done,
+    Map<int, double> madeUp = const {},
+  }) => PlaceCard(
     BucketPlacement(bucketId: bucketId, position: position),
     done: done,
+    madeUp: madeUp,
   );
 
   group('within a column', () {
@@ -266,6 +276,207 @@ void main() {
     });
   });
 
+  group('next to cards without a position', () {
+    final topNew = column(
+      1,
+      [card(9, 50), card(1, 100), card(2, 200)],
+      madeUp: {9},
+    );
+    final twoNew = column(
+      1,
+      [card(8, 100 / 3), card(9, 200 / 3), card(1, 100)],
+      madeUp: {8, 9},
+    );
+
+    test('a card dropped above them also places them where they show', () {
+      final moved = move(topNew.tasks[2], 1, 0, on: [topNew, doing, done]);
+      expect(moved, placed(1, 25, madeUp: {9: 50}));
+    });
+
+    test('a card moved to the top of their column places them too', () {
+      expect(
+        move(doing.tasks[0], 1, 0, on: [topNew, doing, done]),
+        placed(1, 25, madeUp: {9: 50}),
+      );
+    });
+
+    test('those above the drop are placed too, so the server cannot sort '
+        'them below it', () {
+      expect(
+        move(topNew.tasks[2], 1, 1, on: [topNew, doing, done]),
+        placed(1, 75, madeUp: {9: 50}),
+      );
+      expect(
+        move(twoNew.tasks[2], 1, 1, on: [twoNew, doing, done]),
+        placed(1, 50, madeUp: {8: 100 / 3, 9: 200 / 3}),
+      );
+      expect(
+        move(twoNew.tasks[0], 1, 1, on: [twoNew, doing, done]),
+        placed(1, (200 / 3 + 100) / 2, madeUp: {9: 200 / 3}),
+      );
+    });
+
+    test('only those the server holds in the column for sure are placed', () {
+      final partly = column(1, twoNew.tasks, madeUp: {8, 9}, knownHere: {9});
+      expect(
+        move(doing.tasks[0], 1, 0, on: [partly, doing, done]),
+        placed(1, 50 / 3, madeUp: {9: 200 / 3}),
+      );
+    });
+
+    test("a made-up position below the server's minimum spacing is not "
+        'placed, as it would make the server renumber the view', () {
+      final tiny = column(
+        1,
+        [card(8, 0.0075), card(9, 0.015), card(1, 0.03)],
+        madeUp: {8, 9},
+      );
+      expect(
+        move(doing.tasks[0], 1, 2, on: [tiny, doing, done]),
+        placed(1, 0.0225, madeUp: {9: 0.015}),
+      );
+    });
+
+    group('the board then shows the card where it was dropped', () {
+      List<int> ids(List<Task> tasks) => [for (final task in tasks) task.id];
+      final loadedAt = DateTime.utc(2026, 10, 10, 12);
+      final after = DateTime.utc(2026, 10, 11);
+      const snapshot = <int, BoardSlot>{
+        1: (bucketId: 1, position: 100),
+        2: (bucketId: 1, position: 200),
+      };
+
+      List<BoardColumn> board(
+        List<Task> tasks,
+        Map<int, BucketPlacement> queued, {
+        ProjectView? of,
+        int toDoCount = 2,
+        Set<int>? matchingIds,
+      }) => buildBoard(
+        view: of ?? view,
+        buckets: [
+          Bucket(
+            id: 1,
+            viewId: 5,
+            title: 'To do',
+            position: 100,
+            count: toDoCount,
+          ),
+          const Bucket(id: 2, viewId: 5, title: 'Doing', position: 200),
+          const Bucket(id: 3, viewId: 5, title: 'Done', position: 300),
+        ],
+        snapshot: snapshot,
+        loadedAt: loadedAt,
+        projectTasks: tasks,
+        queued: queued,
+        matchingIds: matchingIds,
+      );
+
+      Map<int, BucketPlacement> queuedBy(PlaceCard moved, int taskId) => {
+        for (final MapEntry(:key, :value) in moved.madeUp.entries)
+          key: BucketPlacement(bucketId: 1, position: value),
+        taskId: moved.placement,
+      };
+
+      test('next to tasks created here or since the download', () {
+        final tasks = [
+          sampleTask(id: 1, title: 'A'),
+          sampleTask(id: 2, title: 'B'),
+          sampleTask(id: -1, title: 'New'),
+          sampleTask(id: -2, title: 'Newer', created: after),
+        ];
+        final before = board(tasks, const {});
+        expect(ids(before.first.tasks), [-2, -1, 1, 2]);
+        for (final (taskId, index, expected) in [
+          (2, 0, [2, -2, -1, 1]),
+          (2, 1, [-2, 2, -1, 1]),
+          (2, 2, [-2, -1, 2, 1]),
+          (-2, 1, [-1, -2, 1, 2]),
+        ]) {
+          final task = before.first.tasks.firstWhere((t) => t.id == taskId);
+          final moved =
+              planCardMove(
+                    view: view,
+                    columns: before,
+                    task: task,
+                    toBucketId: 1,
+                    index: index,
+                  )!
+                  as PlaceCard;
+          expect(
+            ids(board(tasks, queuedBy(moved, taskId)).first.tasks),
+            expected,
+            reason: '$taskId to $index',
+          );
+        }
+      });
+
+      test('a task created on the web in another column since the download '
+          'is never placed', () {
+        final tasks = [
+          sampleTask(id: 1, title: 'A'),
+          sampleTask(id: 2, title: 'B'),
+          sampleTask(
+            id: 8,
+            title: 'Added to Doing on the web',
+            created: after,
+            updated: after,
+          ),
+        ];
+        final columns = board(tasks, const {});
+        expect(ids(columns.first.tasks), [8, 1, 2]);
+        expect(columns.first.knownHere, isEmpty);
+
+        final moved =
+            planCardMove(
+                  view: view,
+                  columns: columns,
+                  task: columns.first.tasks.last,
+                  toBucketId: 1,
+                  index: 0,
+                )!
+                as PlaceCard;
+        expect(moved.madeUp, isEmpty);
+      });
+
+      test('a task only updated since the download is never placed, on a '
+          'column with more pages or on a filtered board', () {
+        final tasks = [
+          sampleTask(id: 1, title: 'A'),
+          sampleTask(id: 2, title: 'B'),
+          sampleTask(id: 7, title: 'Updated elsewhere', updated: after),
+        ];
+        final filtered = sampleKanbanView(
+          id: 5,
+          projectId: 1,
+          defaultBucketId: 1,
+          doneBucketId: 3,
+          filter: const ViewFilter(filter: 'priority >= 3'),
+        );
+        for (final (label, columns) in [
+          ('more pages', board(tasks, const {}, toDoCount: 40)),
+          (
+            'filtered',
+            board(tasks, const {}, of: filtered, matchingIds: {1, 2, 7}),
+          ),
+        ]) {
+          expect(ids(columns.first.tasks).first, 7, reason: label);
+          expect(columns.first.knownHere, isEmpty, reason: label);
+          final moved =
+              planCardMove(
+                    view: view,
+                    columns: columns,
+                    task: columns.first.tasks.last,
+                    toBucketId: 1,
+                    index: 0,
+                  )!
+                  as PlaceCard;
+          expect(moved.madeUp, isEmpty, reason: label);
+        }
+      });
+    });
+  });
+
   group('tasks added on top', () {
     test('one goes to half the top position', () {
       expect(positionsOnTop(1000, count: 1), [500]);
@@ -452,6 +663,25 @@ void main() {
         (1, 5, placement, true),
         (1, 5, const BucketPlacement(bucketId: 1, position: 10), null),
         (1, 5, placement, false),
+      ]);
+    });
+
+    test('places the cards shown without a position first, from the lowest '
+        'up', () async {
+      await queueCardMove(
+        data.tasks,
+        1,
+        viewId: 5,
+        move: const PlaceCard(
+          BucketPlacement(bucketId: 2, position: 25),
+          madeUp: {9: 50, 8: 75},
+        ),
+      );
+
+      expect(data.tasks.placements, [
+        (8, 5, const BucketPlacement(bucketId: 2, position: 75), null),
+        (9, 5, const BucketPlacement(bucketId: 2, position: 50), null),
+        (1, 5, const BucketPlacement(bucketId: 2, position: 25), null),
       ]);
     });
 
