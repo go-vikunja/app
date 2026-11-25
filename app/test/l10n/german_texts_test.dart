@@ -38,6 +38,14 @@ List<File> _storeFiles() => [
         .where((file) => file.path.endsWith('.txt')),
 ];
 
+// Signing in again is „erneut anmelden“.
+final signInAgainOtherwise = RegExp(
+  'dich (?:[^.]*? )?(?:neu|wieder|noch einmal) '
+  r'(?:anmeld|(?:bei \S+ )?an(?!\p{L}))',
+  caseSensitive: false,
+  unicode: true,
+);
+
 // docs/glossary.md, German.
 void main() {
   final german = jsonDecode(
@@ -133,6 +141,60 @@ void main() {
     expect(
       keysWhere((text) => RegExp(r'(^|\s)zeigen$').hasMatch(text)),
       isEmpty,
+    );
+  });
+
+  test('one word each for signing in again, a self-signed certificate, link '
+      "sharing, a custom range, a feature off on the server and Android's "
+      'background usage', () {
+    expect(de.actionFailureSessionEnded, contains('Melde dich'));
+    expect(de.actionFailureSessionEnded, contains('erneut an.'));
+    expect(de.connectionSelfSigned, 'Selbst signiert');
+    expect(de.featureLinkSharing, 'Linkfreigaben');
+    expect(de.upcomingRangeCustomEntry, 'Eigener Zeitraum …');
+    expect(de.shareFailureLinkSharingOff, contains('deaktiviert'));
+    expect(de.apiTokenFormPresets, 'Vorlagen');
+    expect(de.accountSettingsDefaults, isNot(de.apiTokenFormPresets));
+    expect(textsMatching(signInAgainOtherwise), isEmpty);
+    expect(
+      textsMatching(
+        RegExp(
+          'selbstsigniert|Teilen per Link|Hintergrundaktivität'
+          '|Benutzerdefiniert',
+          caseSensitive: false,
+        ),
+      ),
+      isEmpty,
+    );
+  });
+
+  test('the check for signing in again catches only signing in', () {
+    for (final text in [
+      'Melde dich im Tab „Account“ neu an.',
+      'Melde dich wieder bei tasks.example.org an',
+      'Bitte melde dich noch einmal an.',
+      'wenn du dich neu anmeldest.',
+      'Du kannst dich jederzeit wieder anmelden.',
+    ]) {
+      expect(signInAgainOtherwise.hasMatch(text), isTrue, reason: text);
+    }
+    for (final text in [
+      'Melde dich erneut bei tasks.example.org an',
+      'Lege die Spalte neu an.',
+      'Melde dich an, um wieder anzufangen.',
+    ]) {
+      expect(signInAgainOtherwise.hasMatch(text), isFalse, reason: text);
+    }
+  });
+
+  test('a date range is spoken by its name, without „Zeitraum“ before it', () {
+    expect(
+      de.upcomingRangeSemantics(de.rangeNext7Days, '13. Okt. – 20. Okt.'),
+      '${de.rangeNext7Days}, 13. Okt. – 20. Okt.',
+    );
+    expect(
+      de.sessionEndedNotificationTitle('tasks.example.org'),
+      'Melde dich erneut bei tasks.example.org an',
     );
   });
 

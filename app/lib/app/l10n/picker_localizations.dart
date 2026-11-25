@@ -4,8 +4,8 @@ import 'package:vikunja_mobile/app/layout/readable_width.dart';
 
 /// A builder for `showDatePicker` and `showTimePicker` that starts the
 /// calendar grid on [firstDayOfWeekIndex] (0 = Sunday) and shows the clock
-/// in 24 or 12 hours as [use24HourFormat] says; null keeps the device
-/// locale's choice. It also gives the picker back the framework's dialog
+/// in 24 or 12 hours as [use24HourFormat] says; null keeps the device's
+/// 24-hour switch. It also gives the picker back the framework's dialog
 /// width, which the app caps for its other dialogs on large windows: the
 /// landscape pickers are wider than the cap.
 TransitionBuilder pickerFormatsBuilder({
@@ -139,17 +139,14 @@ mixin _AppOverrides on GlobalMaterialLocalizations {
   @override
   String get dateHelpText => regional.dateHelpText;
 
+  // The device's switch already holds the region's default, so it decides
+  // alone: the language's clock would override a 12-hour choice (German's
+  // is HH:mm).
   @override
   TimeOfDayFormat timeOfDayFormat({bool alwaysUse24HourFormat = false}) =>
-      switch (use24Hour) {
-        true => TimeOfDayFormat.HH_colon_mm,
-        false => TimeOfDayFormat.h_colon_mm_space_a,
-        // The device's switch already holds the region's default; the
-        // regional clock would override a 12-hour choice (en_GB's is HH:mm).
-        null => super.timeOfDayFormat(
-          alwaysUse24HourFormat: alwaysUse24HourFormat,
-        ),
-      };
+      (use24Hour ?? alwaysUse24HourFormat)
+      ? TimeOfDayFormat.HH_colon_mm
+      : TimeOfDayFormat.h_colon_mm_space_a;
 }
 
 final class _EnglishLocalizations extends MaterialLocalizationEn

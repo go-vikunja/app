@@ -6,7 +6,9 @@ import 'package:vikunja_mobile/core/legal/app_licenses.dart';
 
 final _british = RegExp(
   'colour|favourit|licenc|organis|recognis|centre|behaviour|neighbour'
-  r'|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop|\btyres?\b',
+  r'|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop|\btyres?\b'
+  // "any more" as "anymore" ends its clause; "add any more tasks" is fine.
+  r'|\bany more\b(?=\s*(?:[.,;:!?)”"]|$))',
   caseSensitive: false,
 );
 
@@ -64,6 +66,15 @@ bool _isBritish(String text) =>
     _british.hasMatch(text.replaceAll(_identifier, ''));
 
 void main() {
+  test('"any more" for no longer is British, "many more" and "any more '
+      'tasks" are not', () {
+    expect(_isBritish("It isn't stored any more."), isTrue);
+    expect(_isBritish('Nobody could change it Any More'), isTrue);
+    expect(_isBritish('It is no longer stored, not anymore.'), isFalse);
+    expect(_isBritish('and many more'), isFalse);
+    expect(_isBritish("Don't add any more tasks."), isFalse);
+  });
+
   test("English messages and descriptions use US spelling and the web's "
       'terms', () {
     final british = {

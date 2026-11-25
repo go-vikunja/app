@@ -206,6 +206,13 @@ class CheckerTest(unittest.TestCase):
                 self.assertEqual(tree.check(),
                                  [f"fastlane/metadata/{name}: not the US spelling or the glossary's term: {found}"])
 
+    def test_any_more_counts_only_at_the_end_of_a_clause(self):
+        self.tree.write('fastlane/metadata/en-US/description.txt',
+                        "Widgets, sharing and many more. Add any more tasks you like.\n"
+                        "Tasks go to the trash once you don't need them any more.\n")
+        self.assertEqual(self.errors(),
+                         ["fastlane/metadata/en-US/description.txt: not the US spelling or the glossary's term: any more"])
+
     def test_the_german_texts_keep_their_spelling(self):
         self.tree.write('fastlane/metadata/android/de-DE/full_description.txt',
                         'Der Server deiner Organisation, mit Farben und Favoriten.\n')

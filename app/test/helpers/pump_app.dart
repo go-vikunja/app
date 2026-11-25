@@ -35,6 +35,13 @@ void useLocale(WidgetTester tester, Locale locale) {
   addTearDown(tester.platformDispatcher.clearLocalesTestValue);
 }
 
+/// The device's 24-hour switch on, as a German device has it unless the
+/// user turned it off; tests run with it off.
+void useDevice24HourClock(WidgetTester tester) {
+  tester.platformDispatcher.alwaysUse24HourFormatTestValue = true;
+  addTearDown(tester.platformDispatcher.clearAlwaysUse24HourTestValue);
+}
+
 void useAccessibilityExtremes(WidgetTester tester) {
   tester.platformDispatcher
     ..textScaleFactorTestValue = 2

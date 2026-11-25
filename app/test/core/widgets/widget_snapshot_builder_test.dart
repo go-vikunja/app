@@ -822,6 +822,16 @@ void main() {
       expect(german.rows.first.absoluteDueLabel, '25. Okt., 09:00');
       expect(german.rows.last.dueLabel, 'Sa, 18:00');
       expect(german.rows.last.absoluteDueLabel, '31. Okt., 18:00');
+
+      final germanTwelveHour = await one(
+        const UpcomingKind(14),
+        using: await WidgetTexts.load(
+          lookupAppLocalizations(const Locale('de')),
+          alwaysUse24HourFormat: false,
+        ),
+      );
+      expect(germanTwelveHour.rows.first.dueLabel, 'Gestern, 9:00 AM');
+      expect(germanTwelveHour.rows.last.absoluteDueLabel, '31. Okt., 6:00 PM');
     });
 
     test('name the date for after midnight where they name a day', () {

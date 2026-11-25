@@ -213,7 +213,7 @@ Descriptions are edited in the web's own editor, TipTap, so the HTML stays what 
 
 ## 8. Cross-cutting
 
-- **Localisation:** English ARB strings are the source; other languages come through Vikunja's Crowdin project, and contributors change only the English ([Languages](decisions.md#languages)).
+- **Localisation:** English ARB strings are the source; other languages come through Vikunja's Crowdin project, and contributors change only the English, except that a pull request which removes or renames a text, or changes its placeholders, also deletes it from the other language files ([Languages](decisions.md#languages)).
 - **Logging:** `package:logging` throughout. A record is redacted when it is made; the diagnostics log the user can add to a support request keeps warnings and errors, an error only by its type and a stack only by the app's own frames.
 - **Crash reports:** only in a build made with the Vikunja project's Sentry key and only after the user allows them, `core/crash_reports/` hands uncaught errors and the log's errors to Sentry, with its warnings as breadcrumbs, scrubbed on the device; on Android the app starts Sentry's native SDK itself so that its own reports are scrubbed too, while on iOS the native SDK reports nothing of its own; background isolates use Sentry's Dart SDK alone and read the stored choice before each report ([Diagnostics](decisions.md#diagnostics)).
 - **Privacy:** app lock and screen protection over the UI, lock-screen privacy for notifications, the app's folders kept out of backups ([Security and privacy](decisions.md#security-and-privacy)).

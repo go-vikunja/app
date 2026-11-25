@@ -25,7 +25,7 @@ void main() {
     );
     expect(
       de.actionFailureSessionEnded,
-      'Deine Sitzung ist beendet. Melde dich im Tab „Account“ neu an.',
+      'Deine Sitzung ist beendet. Melde dich im Tab „Account“ erneut an.',
     );
     expect(
       en.actionFailureRateLimited,

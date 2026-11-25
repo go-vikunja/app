@@ -1191,6 +1191,36 @@ void main() {
       expect(addButton(2), findsOneWidget);
     });
 
+    testWidgets('an add that fails after the first line says that one task '
+        'was added', (tester) async {
+      harness.service.submitError = const QuickAddPartlyFailed(
+        createdTaskIds: [-1],
+        lineCount: 3,
+        remainingText: 'Two\nThree',
+        cause: Forbidden(message: 'No access'),
+      );
+      await harness.open(tester);
+      await typeLine(tester, 'One\nTwo\nThree');
+      await tester.tap(addButton(3));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          '1 of 3 tasks was added; the others are still here. '
+          '${en.newTaskAddFailed('No access')}',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        de.newTaskAddedPartly(1, 3),
+        '1 von 3 Aufgaben wurde hinzugefügt; die übrigen stehen noch hier.',
+      );
+      expect(
+        de.newTaskAddedPartly(2, 3),
+        '2 von 3 Aufgaben wurden hinzugefügt; die übrigen stehen noch hier.',
+      );
+    });
+
     testWidgets('the confirmation names labels kept in the title, labels of '
         'the sheet not created and people not found', (tester) async {
       harness.service.result = const QuickAddResult(

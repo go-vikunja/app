@@ -311,26 +311,30 @@ void main() {
       expect(find.text('AM'), findsOneWidget);
     });
 
-    for (final (device24Hour, account, amPm) in [
-      (false, null, findsOneWidget),
-      (true, null, findsNothing),
-      (false, TimeFormat.twentyFourHour, findsNothing),
-      (true, TimeFormat.twelveHour, findsOneWidget),
+    for (final (locale, name) in [
+      (const Locale('en', 'GB'), 'British'),
+      (const Locale('de', 'DE'), 'German'),
     ]) {
-      testWidgets('on a British device with the 24-hour switch '
-          "${device24Hour ? 'on' : 'off'}, ${account?.name ?? 'never set'}", (
-        tester,
-      ) async {
-        await openDateTime(
-          tester,
-          display: DisplaySettings(timeFormat: account),
-          locale: const Locale('en', 'GB'),
-          device24Hour: device24Hour,
-        );
-        await toTimePicker(tester);
+      for (final (device24Hour, account, amPm) in [
+        (false, null, findsOneWidget),
+        (true, null, findsNothing),
+        (false, TimeFormat.twentyFourHour, findsNothing),
+        (true, TimeFormat.twelveHour, findsOneWidget),
+      ]) {
+        testWidgets('on a $name device with the 24-hour switch '
+            "${device24Hour ? 'on' : 'off'}, "
+            "${account?.name ?? 'never set'}", (tester) async {
+          await openDateTime(
+            tester,
+            display: DisplaySettings(timeFormat: account),
+            locale: locale,
+            device24Hour: device24Hour,
+          );
+          await toTimePicker(tester);
 
-        expect(find.text('AM'), amPm);
-      });
+          expect(find.text('AM'), amPm);
+        });
+      }
     }
 
     testWidgets('picking in 12 hours returns the right instant', (

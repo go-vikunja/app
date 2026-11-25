@@ -40,6 +40,7 @@ The app ships third-party material under its own licences, and shows all of thei
 - The Material Icons font and the Material icon shapes in the Android and iOS resources: `app/assets/legal/material_icons.md`.
 - The Android libraries the app is built with: `app/assets/legal/android.md`, generated from `app/android/app/gradle.lockfile` by `tool/build_android_notices.py`, with the code of other projects that the embedded Cronet library contains, as listed in the licence files of its AARs (copied into `tool/android_notices/cronet/third_party_licenses.txt`), and libc++, libc++abi, libunwind and the Rust standard library, which its native library links statically but those files do not name.
 - One of those libraries, desugar_jdk_libs, is OpenJDK code under the GPL-2.0 with the Classpath exception. Its entry on the licence page carries the written offer for its source code that the GPL-2.0 asks for, and every Android release keeps that source with its own.
+- The Swift packages the iOS app links, which plugins fetch by URL (today sentry-apple-binaries, the Sentry SDK sentry-cocoa, under the MIT License, for the opt-in crash reports): `app/assets/legal/ios.md`, written by hand and checked against the build by `tool/ci/ios_notices.py`.
 
 These tests and test fixtures contain test vectors from Vikunja's test suites (Copyright 2018-present Vikunja and contributors, AGPL-3.0-or-later). They stay under the AGPL-3.0-or-later, not the MIT License, and they never ship with the app:
 

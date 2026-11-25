@@ -8,8 +8,8 @@ The terms and the style of the app's texts in English and German ([Languages](de
   - brand and server names: Vikunja, CalDAV, TOTP, Cloudflare Access, Gravatar, Todoist, the feature name Quick Add Magic;
   - the Quick Add syntax words and prefixes;
   - filter syntax and operators (`done = false && labels in Work`, `&&`, `||`, `not in`);
-  - date-format patterns (DD/MM/YYYY);
   - the server's untranslated permission names and error details.
+- **Date-format choices** keep their order and separators; English writes them with its letters (DD/MM/YYYY), German with its own (TT/MM/JJJJ), as the Vikunja web does.
 - The server's default names (Inbox, Favorites, My Open Tasks, List, Gantt, Table, Kanban) are translated for display only ([Look and layout](decisions.md#look-and-layout)).
 - Placeholders keep their names. Sentences are not assembled from fragments unless the description says so (for example `assigneePickerFallback`).
 - **The app's name** ([Languages](decisions.md#languages)):
@@ -41,6 +41,7 @@ The terms and the style of the app's texts in English and German ([Languages](de
   - checklist item for a checkbox in a task's description, which is checked or unchecked ("2 of 5 checked", "All 5 checked"); never "task" or "subtask", which name tasks of their own;
   - sharing: link share (what an admin creates) vs shared link (what a guest opens); guest access;
   - device settings: connection settings; access headers; app lock;
+  - background usage for Android's battery switch, as Android names it ("allow background usage in the app's battery settings"); never "background activity";
   - the app's pages on the website: help (the support page, "Help and bug reports"), privacy policy, legal notice (the Impressum); a server's own are its privacy policy and imprint;
   - bug for a fault in the app that someone reports ("report a bug").
   - license ([Identity and scope](decisions.md#identity-and-scope)): "the MIT License", its name, with a capital L; the app "is open source under the MIT License"; the name and the logo "belong to the Vikunja project" and are "not licensed under the MIT License". No text puts the app under the AGPL.
@@ -96,13 +97,18 @@ The terms and the style of the app's texts in English and German ([Languages](de
   - boards: Spalte (bucket), Board (kanban view), Karte;
   - Bezeichner for an identifier (not Kennung);
   - Zugriff for access and Berechtigung for permission, not Rechte;
-  - accounts: Account, as in Vikunja's German translation instructions (der Account, die Accounts, Account-Einstellungen, Account-Passwort), never Konto; Anmeldename for the username, never Benutzername (both checked by `app/test/l10n/german_texts_test.dart`); anmelden/Anmeldung, abmelden; a session the server ended is "beendet", not "abgelaufen";
+  - accounts: Account, as in Vikunja's German translation instructions (der Account, die Accounts, Account-Einstellungen, Account-Passwort), never Konto; Anmeldename for the username, never Benutzername (both checked by `app/test/l10n/german_texts_test.dart`); anmelden/Anmeldung, abmelden; signing in again is „erneut anmelden“ („Melde dich erneut an.“), never „neu“, „wieder“ or „noch einmal anmelden“ (released store changelogs stay as published); a session the server ended is "beendet", not "abgelaufen";
   - Synchronisierung; „Synchronisierung im Hintergrund“, never „Hintergrundsynchronisierung“; one background run is a „Durchlauf“, which the system „abgebrochen“ or the app „zurückgestellt“ has (never „verschoben“, which stays for moving);
   - „der sichere Speicher deines Geräts“ for the Keychain or Keystore; the stored sign-in is „die Anmeldung“ (bei {host}), which the app „erneuert“ („Erneuerung“);
-  - Zeitraum for a date range („Zeitraum wählen“), never Datumsbereich; Standort for where a photo or video was taken;
+  - Zeitraum for a date range („Zeitraum wählen“), never Datumsbereich; „Eigener Zeitraum …“ for a custom one, never „Benutzerdefiniert“; Standort for where a photo or video was taken;
   - retry buttons: „Noch einmal versuchen“, „Alle noch einmal versuchen“;
   - Aktivitäten for the notification category, its switch and the page the bell opens („Aktivitäten“, „Keine neuen Aktivitäten“); Benachrichtigungen only for what the device shows and their settings;
   - working through several tasks: Auswählen („Aufgaben auswählen“, „Alle auswählen“), „{count} ausgewählt“, „Auswahl beenden“; Neu planen for reschedule („Neu planen“, „{count} überfällige Aufgaben neu planen“), never Verschieben, which stays for move („Verschieben“, „In Spalte verschieben …“); Erledigt and Nicht erledigt for the actions Done and Not done;
+  - „deaktiviert“ for a feature turned off on the server („Anhänge sind auf diesem Server deaktiviert.“), never „abgeschaltet“ or „ausgeschaltet“ there;
+  - „selbst signiert“ for a self-signed certificate („Selbst signiert“ as a label), never „selbstsigniert“;
+  - Linkfreigabe(n) for a link share and the server's link sharing; „geteilter Link“ for what a guest opens;
+  - Voreinstellungen for the account defaults, Vorlagen for the API token presets;
+  - Hintergrundnutzung for Android's battery switch, as Android names it („erlaube … die Hintergrundnutzung“), never „Hintergrundaktivität“; iOS's Background App Refresh is „Hintergrundaktualisierung“;
   - Gerät for the device, also in the connect tagline; Smartphone for another phone (`linkShareQrHint`); never Handy (`german_texts_test.dart`);
   - Startbildschirm (Home-Bildschirm only in iOS steps);
   - 12-/24-Stunden-Format;

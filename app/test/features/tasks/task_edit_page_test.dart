@@ -1175,6 +1175,7 @@ void main() {
 
   testWidgets('is in German', (tester) async {
     useLocale(tester, const Locale('de'));
+    useDevice24HourClock(tester);
     await openEditPage(tester, 1);
 
     expect(find.text(de.taskEditTitle), findsOneWidget);

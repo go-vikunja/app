@@ -33,7 +33,7 @@ final class MomentFormatter {
   final MaterialLocalizations material;
   final DisplaySettings settings;
 
-  /// The device's 24-hour switch; off means the locale's clock.
+  /// The device's 24-hour switch, which holds the region's default.
   final bool alwaysUse24HourFormat;
 
   bool get uses24HourFormat =>

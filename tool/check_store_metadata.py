@@ -54,8 +54,9 @@ APP_NAME = 'Vikunja'
 UNOFFICIAL = re.compile(r'(?i)\bunofficial\b|not affiliated with|inoffiziell|gehört nicht zum Vikunja-Projekt')
 # docs/glossary.md: US spelling, and tasks are checked off, never ticked off.
 # The review notes are English too.
-BRITISH = re.compile(r'(?i)colour|favourit|licenc|organis|recognis|prioritis|synchronis|customis|categoris|centre'
-                     r'|behaviour|neighbour|catalogue|tyre|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop')
+BRITISH = re.compile(r'(?im)colour|favourit|licenc|organis|recognis|prioritis|synchronis|customis|categoris|centre'
+                     r'|behaviour|neighbour|catalogue|tyre|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop'
+                     r'|\bany more\b(?=[ \t]*(?:[.,;:!?)”"]|$))')
 ENGLISH_SHARED = {'notes.txt'}
 # The name fields and the keywords must not name other apps or companies
 # (App Store Connect, keywords).

@@ -545,7 +545,7 @@
   },
   "reauthTitleOnDevice": "Signed out on this device",
   "@reauthTitleOnDevice": {
-    "description": "Title of the Account tab's banner when the account's session ended on this device, not on the server: its secure storage held no sign-in any more or could not read it for a day (the reason follows in the banner)."
+    "description": "Title of the Account tab's banner when the account's session ended on this device, not on the server: its secure storage no longer held a sign-in or could not read it for a day (the reason follows in the banner)."
   },
   "reauthBodyOnDevice": "The sign-in to {host} on this device ended. Sign in again to keep your tasks in sync. Nothing on this device is lost.",
   "@reauthBodyOnDevice": {
@@ -911,7 +911,7 @@
   },
   "projectTasksLoading": "Loading tasks…",
   "projectTasksEmptyTitle": "No open tasks",
-  "projectTasksEmptyBody": "Everything in this project is done. Turn on “Show done” to see them.",
+  "projectTasksEmptyBody": "Everything in this project is done. Turn on “Show done” to see the done tasks.",
   "@projectTasksEmptyBody": {
     "description": "Body of a project's empty state when all its tasks are done and done tasks are hidden. Show done is the name of the chip that shows them."
   },
@@ -1236,7 +1236,7 @@
     "placeholders": {
       "count": {
         "type": "int",
-        "example": "30"
+        "example": "3"
       }
     }
   },
@@ -1487,7 +1487,7 @@
   },
   "accountBackgroundTurnSessionEnded": "the session ended",
   "@accountBackgroundTurnSessionEnded": {
-    "description": "Outcome in accountBackgroundTurn: the account's session ended during this attempt (the server refused it, or no sign-in was stored any more)."
+    "description": "Outcome in accountBackgroundTurn: the account's session ended during this attempt (the server refused it, or no sign-in was stored anymore)."
   },
   "accountBackgroundTurnSignInNeeded": "waiting for a new sign-in",
   "@accountBackgroundTurnSignInNeeded": {
@@ -1517,7 +1517,7 @@
   "@accountBackgroundTurnOutOfTime": {
     "description": "Outcome in accountBackgroundTurn: the background run reached its own time limit (9 minutes on Android, 25 seconds on iOS) during this account's turn; the system did not stop it."
   },
-  "accountBackgroundSyncIdle": "The system has not let the background sync run for over a day. Open the app now and then, or allow it background activity in the battery settings.",
+  "accountBackgroundSyncIdle": "The system has not let the background sync run for over a day. Open the app now and then, or allow background usage in the app's battery settings.",
   "@accountBackgroundSyncIdle": {
     "description": "In the Account tab's Sync section on Android, when no background run came for over a day (or none since the account was added)."
   },
@@ -1579,7 +1579,7 @@
   "@sessionEndCauseLocked": {
     "description": "Why a session ended: the server reports the user account as locked."
   },
-  "sessionEndCauseMissingTokens": "No sign-in was stored on this device any more.",
+  "sessionEndCauseMissingTokens": "No sign-in was stored on this device anymore.",
   "@sessionEndCauseMissingTokens": {
     "description": "Why a session ended: the device's secure storage held no sign-in for the account."
   },
@@ -1795,7 +1795,7 @@
   "syncProblemUnexpected": "The server answered in an unexpected way.",
   "syncProblemServerKeptFailing": "The server kept answering with an error; try again later.",
   "@syncProblemServerKeptFailing": {
-    "description": "Entry in the Sync problems section of the Account tab, after the sentence that says what could not be saved: the server answered the change with an error (HTTP 5xx) many times in a row, usually over an hour or two, so the app stopped sending it until the user taps Retry."
+    "description": "Entry in the Sync problems section of the Account tab, after the sentence that says what could not be saved: the server answered the change with an error (HTTP 5xx) many times in a row, usually over an hour or two, so the app stopped sending it until the user taps Try again."
   },
   "syncProblemFailedAt": "Failed {when}",
   "@syncProblemFailedAt": {
@@ -2073,9 +2073,9 @@
       }
     }
   },
-  "newTaskAddedPartly": "{added} of {total} tasks were added; the others are still here.",
+  "newTaskAddedPartly": "{added, plural, one{{added} of {total} tasks was added; the others are still here.} other{{added} of {total} tasks were added; the others are still here.}}",
   "@newTaskAddedPartly": {
-    "description": "Error under the field when adding several lines failed partway; the lines added are removed from the text.",
+    "description": "Error under the field when adding several lines failed partway; the lines added are removed from the text. added is how many lines were added as tasks, for example 2, and total how many lines there were, for example 5; added is always less than total. Worded like tasksChangedPartly.",
     "placeholders": {
       "added": {
         "type": "int",
@@ -3234,11 +3234,11 @@
   },
   "upcomingRangeSemantics": "Date range {name}, {dates}",
   "@upcomingRangeSemantics": {
-    "description": "Screen reader: the date range button of the Upcoming screen; name is the range's name, for example Next 7 Days, and dates are its first and last day, for example Oct 13 – Oct 20.",
+    "description": "Screen reader: the date range button of the Upcoming screen; name is the range's name, for example Next 7 days, and dates are its first and last day, for example Oct 13 – Oct 20.",
     "placeholders": {
       "name": {
         "type": "String",
-        "example": "Next 7 Days"
+        "example": "Next 7 days"
       },
       "dates": {
         "type": "String",
@@ -3301,7 +3301,7 @@
   "sectionTomorrow": "Tomorrow",
   "overviewFilterSubtitle": "Filter: {title}",
   "@overviewFilterSubtitle": {
-    "description": "Under the Overview's title when it shows the saved filter picked for it on the web.",
+    "description": "Under the Overview's title when it shows the saved filter picked for it in the account settings (accountSettingsOverviewFilter, also set on the web).",
     "placeholders": {
       "title": {
         "type": "String",
@@ -3517,7 +3517,7 @@
   },
   "overviewFilterNotice": "Filter: {title}, as of {when}. Tasks created here show after the next sync.",
   "@overviewFilterNotice": {
-    "description": "Above the Overview when it shows the last download of the saved filter picked for it on the web.",
+    "description": "Above the Overview when it shows the last download of the saved filter picked for it in the account settings (accountSettingsOverviewFilter, also set on the web).",
     "placeholders": {
       "title": {
         "type": "String",
@@ -3946,7 +3946,7 @@
   },
   "richTextReplyTo": "Reply to {author}",
   "@richTextReplyTo": {
-    "description": "Above a quote of another comment inside a comment.",
+    "description": "A label, not a button: above a quote of another comment inside a comment, naming whose comment is answered; author is that comment's author.",
     "placeholders": {
       "author": {
         "type": "String",
@@ -4702,7 +4702,7 @@
       }
     }
   },
-  "projectViewDeleteBody": "Nobody can use it to look at this project's tasks any more. No task is deleted. This can't be undone.",
+  "projectViewDeleteBody": "Nobody can use it to look at this project's tasks anymore. No task is deleted. This can't be undone.",
   "@projectViewDeleteBody": {
     "description": "Body of the confirmation for deleting a view of a project."
   },
@@ -5899,7 +5899,7 @@
     "placeholders": {
       "range": {
         "type": "String",
-        "example": "Next 7 Days"
+        "example": "Next 7 days"
       },
       "dates": {
         "type": "String",
@@ -6739,7 +6739,7 @@
   "teamLeaveConfirm": "Leave",
   "teamLeft": "You left the team",
   "teamOnlyAdminTitle": "Make someone else admin first",
-  "teamOnlyAdminBody": "Nobody but you is an admin of this team. Without an admin, nobody could change it any more.",
+  "teamOnlyAdminBody": "Nobody but you is an admin of this team. Without an admin, nobody could change it anymore.",
   "teamLastMemberTitle": "You are the last member",
   "teamLastMemberBody": "The last member can't leave a team. Delete the team instead?",
   "teamDelete": "Delete team",
@@ -7555,7 +7555,7 @@
   "@guestPasswordRemember": {
     "description": "Password sheet of a shared link: checkbox under the field, unchecked by default"
   },
-  "guestPasswordRemembered": "The app keeps this password in the device's secure storage and uses it when the link has to be opened again. Removing the guest deletes it.",
+  "guestPasswordRemembered": "The app keeps this password in the device's secure storage and uses it when the link has to be opened again. Removing the guest access deletes it.",
   "@guestPasswordRemembered": {
     "description": "Password sheet: helper under the field while 'Remember the password on this device' is checked"
   },
@@ -7886,7 +7886,7 @@
   },
   "widgetsTitle": "Home-screen widgets",
   "@widgetsTitle": {
-    "description": "The Account tab entry and the title of the page that explains the home-screen widgets."
+    "description": "Title of the page that explains the home-screen widgets; the Account tab's entry to it is widgetsEntryTitle."
   },
   "widgetsEntrySubtitle": "Your tasks on the home screen, checked off right there",
   "@widgetsEntrySubtitle": {
@@ -7910,13 +7910,13 @@
   },
   "widgetsAddHint": "It shows the active account; you can change that in its settings.",
   "@widgetsAddHint": {
-    "description": "Under the Add widget heading: which account a widget added from here shows."
+    "description": "Under the heading Add a widget (widgetsAddHeading): which account a widget added from here shows."
   },
   "widgetsAdd": "Add",
   "@widgetsAdd": {
     "description": "Button that asks the launcher to place a widget of that kind."
   },
-  "widgetsPinUnsupported": "Your home screen can't add widgets from here. Add it on the home screen instead.",
+  "widgetsPinUnsupported": "Your home screen can't add widgets from here. Add the widget on the home screen instead.",
   "@widgetsPinUnsupported": {
     "description": "Snackbar when the launcher cannot place a widget requested by the app."
   },
@@ -8003,7 +8003,7 @@
   },
   "widgetConfigureListHeading": "Shows",
   "@widgetConfigureListHeading": {
-    "description": "Heading of the list choice on the widget setup page."
+    "description": "Heading of the list choice on the widget setup page, above the lists a widget can show (Today, the coming days, a project, a label…); the widget is the subject: [the widget] shows."
   },
   "widgetConfigureDaysLabel": "Days ahead",
   "@widgetConfigureDaysLabel": {
@@ -8541,7 +8541,7 @@
   },
   "connectionIntro": "Used by this app for every account at this address. The browser that opens the sign-in page does not use them.",
   "@connectionIntro": {
-    "description": "Note at the top of the connection screen."
+    "description": "Note at the top of the connection screen, under its title Settings for {origin} (connectionOptionsFor); \"them\" are these connection settings."
   },
   "connectionServerCertificateHeading": "Server certificate",
   "@connectionServerCertificateHeading": {
@@ -9499,15 +9499,15 @@
   },
   "taskDetailChangeDueDate": "Change due date",
   "@taskDetailChangeDueDate": {
-    "description": "Screen reader: the tap hint of the due-date row in the task sheet, which opens the due-date choices."
+    "description": "Screen reader: the tap hint of the due-date row in the task sheet, which opens the due-date choices; screen readers say it after 'Double tap to'. Also the name of a task row's action that opens them, which screen readers list beside Mark as done and Select."
   },
   "taskDetailChangePriority": "Change priority",
   "@taskDetailChangePriority": {
-    "description": "Screen reader: the tap hint of the priority row in the task sheet, which opens the priority levels."
+    "description": "Screen reader: the tap hint of the priority row in the task sheet, which opens the priority levels. Screen readers say it after 'Double tap to'."
   },
   "taskDetailEditReminders": "Edit reminders",
   "@taskDetailEditReminders": {
-    "description": "Screen reader: the tap hint of the reminders row in the task sheet, which opens the sheet of its reminders."
+    "description": "Screen reader: the tap hint of the reminders row in the task sheet, which opens the sheet of its reminders. Screen readers say it after 'Double tap to'."
   },
   "taskDetailChangeLabels": "Change labels",
   "@taskDetailChangeLabels": {
@@ -10105,7 +10105,7 @@
   },
   "relativeYesterday": "yesterday",
   "@relativeYesterday": {
-    "description": "A relative time on the previous calendar day, at least 22 hours ago, for dates and times across the app, in place of \"1 day ago\"; lowercase, as it can stand inside a sentence, for example \"Overdue, was due yesterday\"."
+    "description": "A relative time on the previous calendar day, at least 22 hours ago, for dates and times across the app, in place of \"1 day ago\"; lowercase, as it can stand inside a sentence, for example \"Overdue, due yesterday\"."
   },
   "shortcutFieldSemantics": "{field}: {label}, {date}",
   "@shortcutFieldSemantics": {
@@ -10223,23 +10223,23 @@
   },
   "taskDetailChangeStartDate": "Change start date",
   "@taskDetailChangeStartDate": {
-    "description": "Screen reader: the tap hint of the start-date row in the task sheet, which opens the edit page at the start date."
+    "description": "Screen reader: the tap hint of the start-date row in the task sheet, which opens the edit page at the start date. Screen readers say it after 'Double tap to'."
   },
   "taskDetailChangeEndDate": "Change end date",
   "@taskDetailChangeEndDate": {
-    "description": "Screen reader: the tap hint of the end-date row in the task sheet, which opens the edit page at the end date."
+    "description": "Screen reader: the tap hint of the end-date row in the task sheet, which opens the edit page at the end date. Screen readers say it after 'Double tap to'."
   },
   "taskDetailChangeProgress": "Change progress",
   "@taskDetailChangeProgress": {
-    "description": "Screen reader: the tap hint of the progress row in the task sheet, which opens the edit page at the progress."
+    "description": "Screen reader: the tap hint of the progress row in the task sheet, which opens the edit page at the progress. Screen readers say it after 'Double tap to'."
   },
   "taskDetailChangeRepeat": "Change repeat",
   "@taskDetailChangeRepeat": {
-    "description": "Screen reader: the tap hint of the Repeats row in the task sheet, which opens the edit page at the repeat."
+    "description": "Screen reader: the tap hint of the Repeats row in the task sheet, which opens the edit page at the repeat. Screen readers say it after 'Double tap to'."
   },
   "taskDetailChangeAssignees": "Change assignees",
   "@taskDetailChangeAssignees": {
-    "description": "Screen reader: the tap hint of the assignees row in the task sheet, which opens the edit page at the assignees."
+    "description": "Screen reader: the tap hint of the assignees row in the task sheet, which opens the edit page at the assignees. Screen readers say it after 'Double tap to'."
   },
   "quickAddHintEnglishDates": "Quick Add Magic only knows English date words, for example “{example}”.",
   "@quickAddHintEnglishDates": {

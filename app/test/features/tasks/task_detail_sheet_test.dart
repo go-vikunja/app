@@ -391,10 +391,20 @@ void main() {
 
   testWidgets('dates are localized in German', (tester) async {
     useLocale(tester, const Locale('de'));
+    useDevice24HourClock(tester);
     await openDetail(tester, 'Quarterly report');
 
     expect(find.text('12. Okt. 2026 09:30'), findsOneWidget);
     expect(find.text('Alle 2 Wochen'), findsOneWidget);
+  });
+
+  testWidgets("a German device's 12-hour switch reaches the dates", (
+    tester,
+  ) async {
+    useLocale(tester, const Locale('de'));
+    await openDetail(tester, 'Quarterly report');
+
+    expect(find.text('12. Okt. 2026 9:30 AM'), findsOneWidget);
   });
 
   testWidgets('the attribute card puts each value beside its name', (

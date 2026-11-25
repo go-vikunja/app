@@ -94,6 +94,30 @@ void main() {
     );
   });
 
+  testWidgets("a German device's clock follows the device's 24-hour switch, "
+      'unless the account sets one', (tester) async {
+    useLocale(tester, const Locale('de', 'DE'));
+    await pumpVikunjaApp(tester);
+    String clock({required bool device24Hour, TimeFormat? account}) =>
+        MomentFormatter(
+          l10n: screen(tester).l10n,
+          material: material(tester),
+          settings: DisplaySettings(timeFormat: account),
+          alwaysUse24HourFormat: device24Hour,
+        ).timeOfDay(DateTime(2026, 10, 13, 14, 5));
+
+    expect(clock(device24Hour: false), '2:05 PM');
+    expect(clock(device24Hour: true), '14:05');
+    expect(
+      clock(device24Hour: false, account: TimeFormat.twentyFourHour),
+      '14:05',
+    );
+    expect(
+      clock(device24Hour: true, account: TimeFormat.twelveHour),
+      '2:05 PM',
+    );
+  });
+
   testWidgets('a US device keeps US dates and Sunday first', (tester) async {
     useLocale(tester, const Locale('en', 'US'));
     await pumpVikunjaApp(tester);

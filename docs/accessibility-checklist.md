@@ -56,7 +56,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - [ ] **Overdue:** an overdue row and card show the circled exclamation mark instead of the calendar, in the error colour, and so does the sheet's due row, which reads "Überfällig, war fällig …". Check it with an absolute date format set on the web, where the colour was the only sign before.
 - [ ] **Refresh:** Sessions, API tokens and CalDAV have "Aktualisieren" in the app bar, reachable with TalkBack and Switch Access; the list reloads.
 - [ ] **Gantt:** one text above the rows reads "Heute, *Datum*; Zeitraum: *von* bis *bis*" and is no button; the blocking row ends with "blockiert *Titel*", its target with "blockiert durch *Titel*"; the precedes pair with "geht *Titel* voraus" and "folgt auf *Titel*".
-- [ ] **Contrast:** Settings › Accessibility › Colour and motion › Contrast at medium and at high, each with "Use system colors" (Account tab › Appearance) on and off: the app uses the high-contrast scheme (stronger outlines and text), with system colours in the wallpaper's hue. Back at standard, the normal scheme returns.
+- [ ] **Contrast:** Settings › Accessibility › Colour and motion › Contrast at medium and at high, each with "Systemfarben verwenden" (Account tab › Darstellung) on and off: the app uses the high-contrast scheme (stronger outlines and text), with system colours in the wallpaper's hue. Back at standard, the normal scheme returns.
 - [ ] **Remove animations** on: the board jumps to the column after a drop or a move instead of gliding; focusing the comment field jumps the task sheet to full height; "Zu heute springen" in Gantt jumps. Record any other motion that remains.
 - [ ] **Dragging without TalkBack** (WCAG 2.5.7): as a pointer user, confirm that reordering cards within a column, list rows and sibling projects has no single-pointer way, and that a card's column (Mehr › "In Spalte verschieben …" in its task detail, since step 37k), a column's place (its menu), a project's parent (project edit › parent) and a task's project (task edit › project) do. [Accessibility] records exactly this.
 
@@ -111,32 +111,26 @@ On a phone in German, with TalkBack and Switch Access, signed in to a user accou
 
 On a phone in German, with TalkBack and Switch Access ([Tasks]):
 
-The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
-
-- [ ] **Row actions:** on an Overview row, TalkBack's actions offer "Als erledigt markieren", "Fälligkeitsdatum ändern" and "Select"; each does what its swipe does, and the done is announced with its Undo. A read-only project's task offers none, and no row offers scroll actions. In a list sorted by hand the move actions come first.
-- [ ] **Selecting:** "Select" on a row; the bar says how many are selected (spoken as it changes), each row reads as checked or not checked, a read-only task as unavailable; "Select all"; the bottom bar's five buttons by name; Back ends it and "Selection ended" is spoken; with a sheet of the bar open, Back closes only the sheet. Switch Access reaches the close button, "Select all" and every bottom button. Record where focus goes after "Select" and after an action ends the selection.
-- [ ] **Reschedule:** the Overdue heading reads as a heading, then "Reschedule" as a button; at the largest font it sits on its own line below the heading, nothing cut off. The sheet takes focus with its title.
+- [ ] **Row actions:** on an Overview row, TalkBack's actions offer "Als erledigt markieren", "Fälligkeitsdatum ändern" and "Auswählen"; each does what its swipe does, and the done is announced with its Undo. A read-only project's task offers none, and no row offers scroll actions. In a list sorted by hand the move actions come first.
+- [ ] **Selecting:** "Auswählen" on a row; the bar says how many are selected (spoken as it changes), each row reads as checked or not checked, a read-only task as unavailable; "Alle auswählen"; the bottom bar's five buttons by name; Back ends it and "Auswahl beendet" is spoken; with a sheet of the bar open, Back closes only the sheet. Switch Access reaches the close button, "Alle auswählen" and every bottom button. Record where focus goes after "Auswählen" and after an action ends the selection.
+- [ ] **Reschedule:** the heading "Überfällig" reads as a heading, then "Neu planen" as a button; at the largest font it sits on its own line below the heading, nothing cut off. The sheet takes focus with its title.
 - [ ] **Swipes without a screen reader:** a slow drag shows the strip and its name, crossing the threshold ticks, letting go before it does nothing; on a board and in a timeline nothing swipes.
 
 ### 2.9 Checks of step 40m
 
 On a phone in German, with TalkBack, offline after the task was opened once online ([Descriptions, comments, attachments]):
 
-The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
-
-- [ ] **The task sheet offline:** under the title "Offline – gespeicherte Daten werden angezeigt" with "Noch einmal versuchen", read as one region; above the attachments "Attachments and reactions as of …" and with the comments "Comments as of …", the comments' note announced when they load. "Noch einmal versuchen" starts a sync.
-- [ ] **Actions that need a connection:** in an attachment's menu "Delete attachment" and in a comment's menu Edit and Delete read as unavailable with "This needs a connection to the server.", greyed, never red; Open, Share and Save stay available.
+- [ ] **The task sheet offline:** under the title "Offline – gespeicherte Daten werden angezeigt" with "Noch einmal versuchen", read as one region; above the attachments "Anhänge und Reaktionen, Stand: …" and with the comments "Kommentare, Stand: …", the comments' note announced when they load. "Noch einmal versuchen" starts a sync.
+- [ ] **Actions that need a connection:** in an attachment's menu "Anhang löschen" and in a comment's menu "Bearbeiten" and "Löschen" read as unavailable with "Dafür ist eine Verbindung zum Server nötig.", greyed, never red; "Öffnen", "Teilen" and "Auf dem Gerät speichern" stay available.
 - [ ] **Images:** an image in the description and an avatar seen online show offline after the app was closed.
-- [ ] **A label created offline:** in the label picker "Create label "x"" works offline; on the Labels page the label reads "Noch nicht synchronisiert" until it is sent; a refused one is a sync problem named "The label could not be created." with its title.
+- [ ] **A label created offline:** in the label picker "Label „x“ erstellen" works offline; on the Labels page the label reads "Noch nicht synchronisiert" until it is sent; a refused one is a sync problem named "Das Label konnte nicht erstellt werden." with its title.
 
 ### 2.10 Checks of step 41
 
 On a phone in German with TalkBack and Switch Access, in a build with crash reports (`--dart-define=VIKUNJA_APP_SENTRY_DSN=…`, [Diagnostics]):
 
-The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
-
-- [ ] **The question:** after the first sign-in the dialog "Send crash reports?" opens over the shell; TalkBack reads its title first, then its text, then "No thanks" and "Allow", neither of which is preselected or looks like the default; back closes it as "No thanks"; on a tablet it keeps its readable width.
-- [ ] **The switch:** Account › App lock and privacy ends with "Send crash reports", read as one switch with its state and its subtitle, and the note below it read on its own; turning it on or off is announced.
+- [ ] **The question:** after the first sign-in the dialog "Absturzberichte senden?" opens over the shell; TalkBack reads its title first, then its text, then "Nein, danke" and "Erlauben", neither of which is preselected or looks like the default; back closes it as "Nein, danke"; on a tablet it keeps its readable width.
+- [ ] **The switch:** Account › App-Sperre und Privatsphäre ends with "Absturzberichte senden", read as one switch with its state and its subtitle, and the note below it read on its own; turning it on or off is announced.
 - [ ] **VoiceOver** (the iOS device test): the same two checks.
 
 ### 2.11 The flows

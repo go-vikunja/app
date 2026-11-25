@@ -14,10 +14,10 @@ void main() {
   late MaterialLocalizations materialDe;
 
   setUpAll(() async {
-    materialEn = await GlobalMaterialLocalizations.delegate.load(
+    materialEn = await appMaterialLocalizationsDelegate.load(
       const Locale('en'),
     );
-    materialDe = await GlobalMaterialLocalizations.delegate.load(
+    materialDe = await appMaterialLocalizationsDelegate.load(
       const Locale('de'),
     );
   });
@@ -26,12 +26,13 @@ void main() {
     bool german = false,
     DateDisplay? display,
     TimeFormat? time,
-    bool device24Hour = false,
+    // A German device's switch is on unless the user turned it off.
+    bool? device24Hour,
   }) => MomentFormatter(
     l10n: german ? de : en,
     material: german ? materialDe : materialEn,
     settings: DisplaySettings(dateDisplay: display, timeFormat: time),
-    alwaysUse24HourFormat: device24Hour,
+    alwaysUse24HourFormat: device24Hour ?? german,
   );
 
   // The web's vectors (`formatDisplayDate`), in local wall-clock time.
@@ -302,6 +303,10 @@ void main() {
         formatter(german: true).absolute(moments[0]),
         '19. Okt. 2026 14:05',
       );
+      expect(
+        formatter(german: true, device24Hour: false).absolute(moments[0]),
+        '19. Okt. 2026 2:05 PM',
+      );
     });
 
     test('a translation orders and separates the date and the time', () {
@@ -371,6 +376,10 @@ void main() {
       expect(formatter().uses24HourFormat, isFalse);
       expect(formatter(device24Hour: true).uses24HourFormat, isTrue);
       expect(formatter(german: true).uses24HourFormat, isTrue);
+      expect(
+        formatter(german: true, device24Hour: false).uses24HourFormat,
+        isFalse,
+      );
       expect(
         formatter(german: true, time: TimeFormat.twelveHour).uses24HourFormat,
         isFalse,
