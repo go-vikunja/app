@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/platform/app_shortcuts.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/application/local_quick_add_service.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
@@ -89,6 +90,9 @@ final class ComposerHarness {
   );
   FakeAppShortcuts shortcuts = FakeAppShortcuts();
 
+  /// What the app's clock says; a test may move it while the app runs.
+  DateTime now = composerNow;
+
   /// Whom plans resolve `@names` to, like the service's known people.
   List<User> knownUsers = [sam];
   UserSettings get settings => data.shared.settings;
@@ -105,7 +109,7 @@ final class ComposerHarness {
     tasks: data.tasks,
     labels: labels,
     users: users,
-    now: () => composerNow,
+    now: () => now,
   );
 
   QuickAddPlan _plan(
@@ -137,8 +141,7 @@ final class ComposerHarness {
     await pumpSignedInApp(
       tester,
       sync: data,
-      now: composerNow,
-      overrides: overrides,
+      overrides: [clockProvider.overrideWithValue(() => now), ...overrides],
     );
   }
 

@@ -203,18 +203,22 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     setState(() => _saving = true);
+    var queued = false;
     final saved = await saveLocalChange(
       context,
-      () => repository.updateTask(
-        current.id,
-        draft.diff(original, labelRemaps: _labelRemaps),
-      ),
+      () async {
+        queued = await repository.updateTask(
+          current.id,
+          draft.diff(original, labelRemaps: _labelRemaps),
+        );
+      },
       action: 'Saving the edit page',
       messenger: messenger,
     );
     if (!mounted) return;
-    // Back asks again and the edit can be saved once more.
-    if (!saved) {
+    // Back asks again and the edit can be saved once more; not queued, the
+    // task went before the write and the page shows it as gone.
+    if (!saved || !queued) {
       setState(() => _saving = false);
       return;
     }
@@ -241,6 +245,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     _labelRemaps = ref.watch(labelRemapsProvider).value ?? const {};
     final draft = _draft;
     final current = _current;
+    final gone = task.hasValue && current == null;
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final archived =
         current != null &&
@@ -249,7 +254,8 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
         });
 
     return PopScope(
-      canPop: !_dirty || _saving,
+      // Edits to a task no longer here cannot be saved: nothing to ask.
+      canPop: !_dirty || _saving || gone,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) unawaited(_leaveIfConfirmed());
       },
@@ -265,8 +271,16 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             const SizedBox(width: 8),
           ],
         ),
-        body: switch ((draft, task)) {
-          (final draft?, _) => _Form(
+        body: switch (draft) {
+          _ when gone => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
+            child: EmptyState(
+              icon: Icons.search_off,
+              title: l10n.taskEditGoneTitle,
+              body: l10n.taskEditGoneBody,
+            ),
+          ),
+          final draft? => _Form(
             draft: draft,
             originalHexColor: _original?.hexColor.toLowerCase() ?? '',
             description: current?.description ?? '',
@@ -284,15 +298,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             onPickAssignees: () => unawaited(_pickAssignees()),
             onPickReminder: ({index}) => unawaited(_pickReminder(index: index)),
           ),
-          (null, AsyncValue(hasValue: true)) => CenteredScrollView(
-            maxWidth: ReadableWidth.form,
-            child: EmptyState(
-              icon: Icons.search_off,
-              title: l10n.taskEditGoneTitle,
-              body: l10n.taskEditGoneBody,
-            ),
-          ),
-          (null, _) => CenteredScrollView(
+          null => CenteredScrollView(
             maxWidth: ReadableWidth.form,
             child: LoadingPlaceholder(label: l10n.taskEditLoading),
           ),
@@ -344,7 +350,10 @@ class _Form extends ConsumerWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final now = ref.watch(clockTickProvider);
+    // Redrawn by the minute tick, but dated by the clock as a chip tap is,
+    // so the chips drawn after a tap show the day it set.
+    ref.watch(clockTickProvider);
+    final now = ref.watch(clockProvider)();
     final shortcuts = [
       for (final option in buildDateShortcuts(now))
         if (dueDateShortcuts.contains(option.shortcut)) option,
@@ -420,7 +429,6 @@ class _Form extends ConsumerWidget {
                     clearLabel: l10n.taskEditClearDueDate,
                     icon: Icons.calendar_today_outlined,
                     value: draft.dueDate,
-                    now: now,
                     shortcuts: shortcuts,
                     onChanged: (value) =>
                         onChanged((draft) => draft.copyWith(dueDate: value)),
@@ -525,7 +533,6 @@ class _Form extends ConsumerWidget {
                     clearLabel: l10n.taskEditClearStartDate,
                     icon: Icons.play_arrow_outlined,
                     value: draft.startDate,
-                    now: now,
                     shortcuts: shortcuts,
                     onChanged: (value) =>
                         onChanged((draft) => draft.copyWith(startDate: value)),
@@ -536,7 +543,6 @@ class _Form extends ConsumerWidget {
                     clearLabel: l10n.taskEditClearEndDate,
                     icon: Icons.stop_outlined,
                     value: draft.endDate,
-                    now: now,
                     shortcuts: shortcuts,
                     onChanged: (value) =>
                         onChanged((draft) => draft.copyWith(endDate: value)),

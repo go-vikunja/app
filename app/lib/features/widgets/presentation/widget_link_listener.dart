@@ -6,7 +6,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
-import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/links/widget_link.dart';
@@ -188,21 +187,19 @@ class _WidgetLinkListenerState extends ConsumerState<WidgetLinkListener> {
 
   /// The pages, dialogs and sheets over the shell go as if the user went
   /// back (the edit page asks first), then the tab shows [location]; on that
-  /// tab already, only the dialogs and sheets close.
+  /// tab already, only the dialogs and sheets go, as if the user went back.
   Future<void> _goToTab(String location) async {
     final router = _opener.router;
     if (router.routerDelegate.state.matchedLocation == location) {
-      ref.read(rootModalRoutesProvider).closeAll();
+      await _opener.leaveDialogsAndSheets();
       return;
     }
-    if (await popPagesOverShell(router) == LeaveOutcome.left && mounted) {
-      router.go(location);
-    }
+    if (await _opener.leavePagesOverShell() && mounted) router.go(location);
   }
 
   /// [location] over the shell, unless it shows already.
   Future<void> _showPage(String location) async {
-    ref.read(rootModalRoutesProvider).closeAll();
+    if (!await _opener.leaveDialogsAndSheets() || !mounted) return;
     final router = _opener.router;
     if (router.routerDelegate.state.uri.toString() == location) return;
     unawaited(router.push(location));

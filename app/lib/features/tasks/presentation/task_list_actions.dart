@@ -14,29 +14,36 @@ import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_edi
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
 /// The done and favourite controls of a task list. A task marked done shows
-/// done at once and, where the list would drop it, stays on screen until
-/// its Undo snackbar has gone, so the row does not vanish under the finger.
-/// Each row has its own time: when the next tap replaces the snackbar, the
-/// earlier row still gets its full [markedDoneSnackBarDuration], so the
-/// list does not shift under the finger that tapped the next one. The
-/// snackbar undoes the latest task only.
+/// done at once and stays where it was, struck through, until its Undo
+/// snackbar has gone, however long the device takes to store the done. This
+/// holds also in a list that shows done tasks elsewhere and when a repeating
+/// task's next occurrence arrives meanwhile, so the row neither vanishes nor
+/// moves under the finger. After Undo the row stays open in its place until
+/// the Undo is stored. Each row has its own time: when the next tap replaces
+/// the snackbar, the earlier row still gets its full
+/// [markedDoneSnackBarDuration], so the list does not shift under the
+/// finger that tapped the next one. The snackbar undoes the latest task
+/// only.
 mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
-  // Done copies while the snackbar is up; after Undo the open copy, until
-  // the list has the task again. By the id the row shows now.
+  // Done copies while the snackbar is up; after Undo or a reopen from the
+  // row the open copy, until that is stored and the list has the task open
+  // again. By the id the row shows now.
   final _leaving = <int, _LeavingRow>{};
   // Every row whose snackbar, leave timer or id watch may still run.
   final _rows = <_LeavingRow>{};
   List<Task> _shown = const [];
   _LeavingRow? _undoRow;
 
-  /// [tasks] with the rows still leaving put back where they were.
+  /// [tasks] with the rows still leaving where they were, each in place of
+  /// the list's own row of its task.
   List<Task> withLeavingTasks(List<Task> tasks) {
     if (_leaving.isEmpty) return _shown = tasks;
-    final present = {for (final task in tasks) task.id};
-    // A task the list has again needs no copy; without this an undone task
-    // would come back as open from here after a later sync marked it done.
-    _dropWhere((row) => present.contains(row.id));
-    final merged = [...tasks];
+    final listed = {for (final task in tasks) task.id: task};
+    _dropWhere((row) => _listTakesOver(row, listed[row.id]));
+    final merged = [
+      for (final task in tasks)
+        if (!_leaving.containsKey(task.id)) task,
+    ];
     for (final row in _leaving.values) {
       merged.insert(_placeOf(row.id, merged), row.copy);
     }
@@ -62,7 +69,7 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   /// again, as a list that loads only the done tasks it shows may not have
   /// it until then.
   Map<int, Task> leavingTasksIn(Map<int, Task> listed) {
-    _dropWhere((row) => !row.copy.done && listed[row.id]?.done == false);
+    _dropWhere((row) => _listTakesOver(row, listed[row.id]));
     return Map.unmodifiable({
       for (final row in _leaving.values) row.id: row.copy,
     });
@@ -100,6 +107,27 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     for (final row in [..._leaving.values]) {
       if (test(row)) _drop(row);
     }
+  }
+
+  /// Whether the list's own row of [row]'s task, [listed], takes over from
+  /// its copy: only from an open copy whose Undo or reopen is stored, once
+  /// the list has the task open. A done copy goes with its snackbar, also
+  /// when a repeating task's next occurrence arrives meanwhile.
+  bool _listTakesOver(_LeavingRow row, Task? listed) =>
+      listed != null && !listed.done && !row.copy.done && !row.undoing;
+
+  /// Once the Undo or reopen of [row] was written, the list's row may take
+  /// over; when it failed, the task stays done and the row shows it as the
+  /// list has it.
+  void _undone(_LeavingRow row, {required bool saved}) {
+    if (!mounted || !identical(_leaving[row.id], row) || row.copy.done) {
+      row.undoing = false;
+      return;
+    }
+    setState(() {
+      row.undoing = false;
+      if (!saved) _drop(row);
+    });
   }
 
   /// Lets a row go once nothing of it runs or shows any more.
@@ -158,16 +186,20 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     }
     if (!done) {
       final leaving = _leaving[task.id];
-      setState(() {
-        if (leaving != null) _drop(leaving);
-      });
-      // Reopened from the row: the Undo of the done it undoes is moot.
-      if (_undoRow?.id == task.id) messenger?.hideCurrentSnackBar();
       // Reopening a row still shown done is its Undo: a bare done: false
       // after a done already sent would leave a repeating task on its next
-      // occurrence.
+      // occurrence (decision log: Tasks).
       final before = leaving != null && leaving.copy.done ? leaving.task : null;
-      await saveLocalChangeIn(
+      if (leaving != null) {
+        setState(() {
+          leaving
+            ..copy = withDone(leaving.task, done: false, now: now)
+            ..undoing = true;
+        });
+      }
+      // Reopened from the row: the Undo of the done it undoes is moot.
+      if (_undoRow?.id == task.id) messenger?.hideCurrentSnackBar();
+      final saved = await saveLocalChangeIn(
         messenger,
         l10n,
         () => before != null
@@ -175,6 +207,7 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
             : writeTaskDone(repository, task, done: false),
         action: 'Reopening a task',
       );
+      if (leaving != null) _undone(leaving, saved: saved);
       return;
     }
     final row = _LeavingRow(task, withDone(task, done: true, now: now));
@@ -198,6 +231,12 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
       }
       return;
     }
+    // Reopened from the row while the done was stored: no Undo to offer.
+    if (!identical(_leaving[row.id], row) || !row.copy.done) {
+      row.closed = true;
+      _settle(row);
+      return;
+    }
 
     void leave() {
       if (mounted && identical(_leaving[row.id], row) && row.copy.done) {
@@ -218,7 +257,9 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
       onUndo: () {
         if (mounted) {
           setState(() {
-            row.copy = withDone(row.task, done: false, now: now);
+            row
+              ..copy = withDone(row.task, done: false, now: now)
+              ..undoing = true;
             _show(row);
           });
         }
@@ -228,15 +269,7 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
             l10n,
             () => writeTaskUndo(repository, task),
             action: 'Undoing a done',
-          ).then((saved) {
-            // The task stays done; the row shows it as the list has it.
-            if (!saved &&
-                mounted &&
-                identical(_leaving[row.id], row) &&
-                !row.copy.done) {
-              setState(() => _drop(row));
-            }
-          }),
+          ).then((saved) => _undone(row, saved: saved)),
         );
       },
     );
@@ -299,6 +332,10 @@ final class _LeavingRow {
 
   /// The snackbar has gone.
   bool closed = false;
+
+  /// An Undo or reopen is being written: until then an open task in the
+  /// list may be a repeating task's next occurrence.
+  bool undoing = false;
   StreamSubscription<Task?>? watch;
 
   int get id => task.id;

@@ -8,7 +8,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
+import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
@@ -230,6 +232,84 @@ void main() {
     expect(
       harness.service.submits.single.fallbackDueDate,
       DateTime(2026, 10, 11, 17, 45).toUtc(),
+    );
+  });
+
+  testWidgets('the date chips turn over at midnight while the sheet stays '
+      'open, and Today then sets the new day', (tester) async {
+    harness.now = DateTime(2026, 10, 10, 23, 59, 30);
+    await harness.open(tester, projectId: 1);
+    await typeLine(tester, 'Buy milk');
+    expect(
+      tester.getSemantics(inSheet(en.shortcutToday)).label,
+      en.shortcutSemantics(en.shortcutToday, 'Sat, Oct 10'),
+    );
+
+    harness.now = DateTime(2026, 10, 11, 0, 0, 30);
+    await tester.pump(ClockTick.period);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(inSheet(en.shortcutToday)).label,
+      en.shortcutSemantics(en.shortcutToday, 'Sun, Oct 11'),
+    );
+
+    await tapInSheet(tester, en.shortcutToday);
+    expect(
+      chipText(en.shortcutAtTime(en.shortcutToday, '9:00 AM')),
+      findsOneWidget,
+    );
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+    expect(
+      harness.service.submits.single.fallbackDueDate,
+      DateTime(2026, 10, 11, 9).toUtc(),
+    );
+  });
+
+  testWidgets('Today takes the time of the tap: a default due time passed '
+      'since the sheet was drawn becomes 23:59', (tester) async {
+    harness
+      ..settings = const UserSettings(defaultDueTime: ClockTime(17, 45))
+      ..now = DateTime(2026, 10, 10, 17, 44, 30);
+    await harness.open(tester, projectId: 1);
+    await typeLine(tester, 'Buy milk');
+
+    harness.now = DateTime(2026, 10, 10, 17, 46);
+    await tester.tap(choiceChip(en.shortcutToday));
+    await tester.pumpAndSettle();
+    expect(
+      chipText(en.shortcutAtTime(en.shortcutToday, '11:59 PM')),
+      findsOneWidget,
+    );
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+    expect(
+      harness.service.submits.single.fallbackDueDate,
+      DateTime(2026, 10, 10, 23, 59).toUtc(),
+    );
+  });
+
+  testWidgets('Pick date dates a day without a time at the tap: a default '
+      'due time passed since the sheet was drawn becomes 23:59', (
+    tester,
+  ) async {
+    harness
+      ..settings = const UserSettings(defaultDueTime: ClockTime(17, 45))
+      ..now = DateTime(2026, 10, 10, 17, 44, 30);
+    await harness.open(tester, projectId: 1);
+    await tester.ensureVisible(inSheet(en.newTaskPickDate));
+    await tester.pumpAndSettle();
+
+    harness.now = DateTime(2026, 10, 10, 17, 46);
+    await tester.tap(inSheet(en.newTaskPickDate));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(
+      chipText(en.shortcutAtTime(en.shortcutToday, '11:59 PM')),
+      findsOneWidget,
     );
   });
 
@@ -936,6 +1016,13 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    // Not pumpAndSettle: the progress bar of an add that is held never
+    // settles.
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
+
     testWidgets('nothing typed, Back and a swipe down close the sheet '
         'without asking; spaces alone count as nothing', (tester) async {
       await harness.open(tester);
@@ -1050,6 +1137,88 @@ void main() {
       await tester.pumpAndSettle();
       expect(sheet, findsNothing);
       expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
+    });
+
+    testWidgets('an add that ends while the project picker is open closes the '
+        'picker and the sheet, and shows the confirmation', (tester) async {
+      final held = Completer<void>();
+      harness.service.beforeSubmit = () => held.future;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      await tester.tap(addButton());
+      await tester.pump();
+
+      await tester.tap(projectField('Inbox'));
+      await settle(tester);
+      expect(find.text(en.taskEditProjectPickerTitle), findsOneWidget);
+
+      held.complete();
+      await settle(tester);
+      expect(find.text(en.taskEditProjectPickerTitle), findsNothing);
+      expect(sheet, findsNothing);
+      expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
+      expect(harness.service.submits.single.fallbackProjectId, 2);
+      expect(
+        routerOf(tester).routerDelegate.state.matchedLocation,
+        AppRoutes.overview,
+      );
+    });
+
+    testWidgets('an add that ends while the help is open closes the help and '
+        'the sheet too', (tester) async {
+      final held = Completer<void>();
+      harness.service.beforeSubmit = () => held.future;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      await tester.tap(addButton());
+      await tester.pump();
+
+      await tester.tap(find.byTooltip(en.quickAddHelp));
+      await settle(tester);
+      expect(find.byType(QuickAddHelpSheet), findsOneWidget);
+
+      held.complete();
+      await settle(tester);
+      expect(find.byType(QuickAddHelpSheet), findsNothing);
+      expect(sheet, findsNothing);
+      expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
+    });
+
+    testWidgets("an add that ends while a reminder's time is picked closes "
+        'every picker and the sheet, and the page under them stays', (
+      tester,
+    ) async {
+      final held = Completer<void>();
+      harness.service.beforeSubmit = () => held.future;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      await tapInSheet(tester, en.newTaskMoreOptions);
+      await tester.ensureVisible(addButton());
+      await tester.pumpAndSettle();
+      await tester.tap(addButton());
+      await tester.pump();
+
+      await tester.ensureVisible(inSheet(en.taskEditAddReminder));
+      await tester.pump();
+      await tester.tap(inSheet(en.taskEditAddReminder));
+      await settle(tester);
+      await tester.tap(find.text(en.reminderPickerDateTime));
+      await settle(tester);
+      await tester.tap(find.text('OK'));
+      await settle(tester);
+      expect(find.byType(TimePickerDialog), findsOneWidget);
+
+      held.complete();
+      await settle(tester);
+      expect(find.byType(TimePickerDialog), findsNothing);
+      expect(find.byType(ReminderPicker), findsNothing);
+      expect(sheet, findsNothing);
+      expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
+      expect(
+        routerOf(tester).routerDelegate.state.matchedLocation,
+        AppRoutes.overview,
+      );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('with the pin on, the sheet an add emptied closes without '

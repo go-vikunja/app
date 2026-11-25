@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/invite_c
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/share/presentation/open_shared_link_sheet.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 
 import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
@@ -54,6 +55,38 @@ void main() {
     sync: data,
     overrides: [...guestEntryOverrides(invites: invites)],
   );
+
+  final apiServer = fullServer270(root: 'https://api.example.org');
+
+  /// Signed in on another server, opens a shared link whose host has no API.
+  Future<void> pumpSignedInWithWebOnlyLink(WidgetTester tester) async {
+    usePhoneSurface(tester);
+    final other = fullServer270(root: 'https://other.example.org');
+    await auth.seedAccount(
+      other,
+      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+    );
+    await pumpVikunjaApp(
+      tester,
+      auth: auth,
+      sync: data,
+      connector: FakeServerConnector(
+        (input) async => switch (input) {
+          'api.example.org' => apiServer,
+          'https://other.example.org' => other,
+          _ => throw NotAVikunjaServer(
+            Uri.parse('https://tasks.example.org/vikunja/'),
+            statusCode: 200,
+          ),
+        },
+      ),
+      overrides: guestEntryOverrides(invites: invites),
+    );
+    data.shareSource.push(IncomingShare(text: shareLink()));
+    await tester.pumpAndSettle();
+    await tester.tap(inSheet(find.text(en.guestShareOpen)));
+    await tester.pumpAndSettle();
+  }
 
   testWidgets("signed out, a shared project's link opens as a guest", (
     tester,
@@ -125,6 +158,82 @@ void main() {
           .having((screen) => screen.projectId, 'projectId', 1378)
           .having((screen) => screen.viewId, 'viewId', 4),
     );
+  });
+
+  testWidgets('signed in over a typed New task sheet, a newer share during '
+      "the link's question asks again, without saying the user kept editing", (
+    tester,
+  ) async {
+    await pumpSignedIn(tester);
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(NewTaskSheet),
+        matching: find.byType(TextField),
+      ),
+      'Buy milk',
+    );
+    await tester.pumpAndSettle();
+    data.shareSource.push(IncomingShare(text: shareLink()));
+    await tester.pumpAndSettle();
+    await tester.tap(inSheet(find.text(en.guestShareOpen)));
+    await tester.pumpAndSettle();
+    expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+
+    data.shareSource.push(const IncomingShare(text: 'Second'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+    expect(find.text(en.shareKeptEditing), findsNothing);
+    expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+    expect(find.byType(ConnectServerScreen), findsNothing);
+    expect(auth.linkShareGateway.authentications, isEmpty);
+  });
+
+  testWidgets('signed in, a link whose host is no Vikunja server asks which '
+      'server it is, in view and without the keyboard', (tester) async {
+    await pumpSignedInWithWebOnlyLink(tester);
+    // A phone's keyboard takes 300 dp while it shows.
+    tester.view.viewInsets = FakeViewPadding(
+      bottom: tester.testTextInput.isVisible ? 900 : 0,
+    );
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ConnectServerScreen), findsOneWidget);
+    expect(find.text(en.guestServerNeededTitle).hitTestable(), findsOneWidget);
+    expect(
+      find.text(en.guestServerNeededSuggestion).hitTestable(),
+      findsOneWidget,
+    );
+    expect(tester.testTextInput.isVisible, isFalse);
+    expect(
+      tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
+      isEmpty,
+    );
+    expect(auth.linkShareGateway.authentications, isEmpty);
+    expect(data.shareSource.calls.last, 'clear');
+  });
+
+  testWidgets('signed in, that link opens as a guest beside the account at '
+      'the address given for it', (tester) async {
+    await pumpSignedInWithWebOnlyLink(tester);
+    final userId = (await auth.registry.load()).activeAccountId;
+
+    final field = find.byType(TextFormField);
+    await tester.ensureVisible(field);
+    await tester.enterText(field, 'api.example.org');
+    await tester.testTextInput.receiveAction(TextInputAction.go);
+    await tester.pumpAndSettle();
+
+    final registry = await auth.registry.load();
+    expect(
+      registry.activeAccountId,
+      linkShareAccountIdFor(apiServer.rootUri, 84),
+    );
+    expect(registry.find(userId), isNotNull);
+    expect(find.byType(ProjectTasksScreen), findsOneWidget);
   });
 
   testWidgets('signed out, an invite goes to its check', (tester) async {

@@ -128,7 +128,14 @@ class _ReminderPickerState extends ConsumerState<ReminderPicker> {
       now: now,
       display: display,
     );
-    if (picked == null || !mounted) return;
+    // Once closed from outside (by an add, a switch or an opening), the
+    // route on top is another one, and a time dialog closed that way still
+    // returns its day.
+    if (picked == null ||
+        !mounted ||
+        !(ModalRoute.isCurrentOf(context) ?? false)) {
+      return;
+    }
     Navigator.of(context).pop(TaskReminder(reminder: picked.toUtc()));
   }
 

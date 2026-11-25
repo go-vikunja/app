@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show Tristate;
 
 import 'package:cupertino_ui/cupertino_ui.dart';
@@ -531,6 +532,88 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Call mum'), findsNothing);
     expect(sectionTitles(tester), isNot(contains(en.sectionToday)));
+  });
+
+  testWidgets('a task marked done stays struck through in its day while the '
+      'device stores the done, until its snackbar hides', (tester) async {
+    await pumpUpcoming(tester);
+    final hold = Completer<void>();
+    data.tasks.beforeWrite = () => hold.future;
+
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(TaskRow, 'Call mum'),
+        matching: find.byTooltip(en.taskMarkDone),
+      ),
+    );
+    await tester.pump();
+    expect(
+      tester.widget<Text>(find.text('Call mum')).style?.decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(sectionTitles(tester), contains(en.sectionToday));
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.text('Call mum')).style?.decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(sectionTitles(tester), contains(en.sectionToday));
+    expect(find.text(en.taskMarkedDone), findsOneWidget);
+
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+    expect(find.text('Call mum'), findsNothing);
+    expect(sectionTitles(tester), isNot(contains(en.sectionToday)));
+  });
+
+  testWidgets('a repeating task marked done stays struck through in its day '
+      'when its next occurrence arrives, and moves on once its Undo has gone', (
+    tester,
+  ) async {
+    final daily = sampleTask(
+      id: 3,
+      title: 'Call mum',
+      due: DateTime(2026, 10, 13, 18),
+      repeatAfter: const Duration(days: 1),
+    );
+    data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id == daily.id) daily else task,
+    ];
+    await pumpUpcoming(tester);
+    final before = rowTitles(tester);
+
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(TaskRow, 'Call mum'),
+        matching: find.byTooltip(en.taskMarkDone),
+      ),
+    );
+    await tester.pumpAndSettle();
+    data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id == daily.id)
+          daily.copyWith(dueDate: DateTime(2026, 10, 14, 18).toUtc())
+        else
+          task,
+    ];
+    await tester.pumpAndSettle();
+    expect(rowTitles(tester), before);
+    expect(
+      tester.widget<Text>(find.text('Call mum')).style?.decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(sectionTitles(tester), contains(en.sectionToday));
+
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+    expect(sectionTitles(tester), isNot(contains(en.sectionToday)));
+    expect(
+      rowTitles(tester).indexOf('Call mum'),
+      rowTitles(tester).indexOf('Water plants') + 1,
+    );
   });
 
   testWidgets('pull to refresh syncs', (tester) async {

@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart' hide RepeatMode;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
@@ -421,6 +422,76 @@ void main() {
       expect(find.byType(TaskEditPage), findsOneWidget);
     });
 
+    void removeTask(int id) => data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id != id) task,
+    ];
+
+    testWidgets('a task that goes while the page is open shows the not-found '
+        'state, and back leaves without asking', (tester) async {
+      await openEditPage(tester, 1);
+      await tester.enterText(titleField(), 'Changed');
+      await tester.pumpAndSettle();
+
+      removeTask(1);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.taskEditGoneTitle), findsOneWidget);
+      expect(find.text(en.taskEditGoneBody), findsOneWidget);
+      expect(titleField(), findsNothing);
+      expect(saveEnabled(tester), isFalse);
+
+      await pressBack(tester);
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(find.byType(TaskEditPage), findsNothing);
+      expect(await popped, isNull);
+      expect(data.tasks.updates, isEmpty);
+    });
+
+    testWidgets('a task that comes back shows the form again with the edits '
+        'made before it went', (tester) async {
+      final kept = data.tasks.find(1)!;
+      await openEditPage(tester, 1);
+      await tester.enterText(titleField(), 'Changed');
+      await tester.pumpAndSettle();
+      removeTask(1);
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskEditGoneTitle), findsOneWidget);
+
+      data.tasks.all = [...data.tasks.all, kept];
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.taskEditGoneTitle), findsNothing);
+      expect(
+        tester.widget<TextField>(titleField()).controller?.text,
+        'Changed',
+      );
+      expect(saveEnabled(tester), isTrue);
+      await pressBack(tester);
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+    });
+
+    testWidgets('a save that finds the task gone stays on the page without '
+        'Saved, shows the not-found state, and the system back leaves '
+        'without asking', (tester) async {
+      await openEditPage(tester, 1);
+      await tester.enterText(titleField(), 'Changed');
+      await tester.pumpAndSettle();
+      data.tasks.beforeWrite = () async => removeTask(1);
+
+      await save(tester);
+
+      expect(find.byType(TaskEditPage), findsOneWidget);
+      expect(find.text(en.taskEditGoneTitle), findsOneWidget);
+      expect(find.text(en.taskEditSaved), findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(find.byType(TaskEditPage), findsNothing);
+      expect(await popped, isNull);
+    });
+
     testWidgets('the dialog is a Cupertino alert on iOS', (tester) async {
       await openEditPage(tester, 1);
       await tester.enterText(titleField(), 'Changed');
@@ -700,6 +771,35 @@ void main() {
         TaskChanges(
           startDate: DateChange.set(DateTime(2026, 10, 10, 12).toUtc()),
         ),
+      );
+    });
+
+    testWidgets('a chip is dated at the tap: past midnight Today sets the new '
+        'day before the chips have turned over', (tester) async {
+      var clock = DateTime(2026, 10, 10, 23, 59, 30);
+      usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [clockProvider.overrideWithValue(() => clock)],
+      );
+      popped = routerOf(tester).push<bool>(AppRoutes.taskEdit(2));
+      await tester.pumpAndSettle();
+
+      clock = DateTime(2026, 10, 11, 0, 0, 10);
+      await tapVisible(tester, find.text(en.shortcutToday).first);
+      expect(
+        selected(
+          tester,
+          find.text(en.shortcutAtTime(en.shortcutToday, '9:00 AM')),
+        ),
+        isTrue,
+      );
+      await save(tester);
+
+      expect(
+        data.tasks.updates.single.$2,
+        TaskChanges(dueDate: DateChange.set(DateTime(2026, 10, 11, 9).toUtc())),
       );
     });
   });

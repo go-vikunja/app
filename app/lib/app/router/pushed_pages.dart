@@ -20,8 +20,8 @@ final class PushedPages extends NavigatorObserver {
 
 extension PagePush on BuildContext {
   /// [GoRouter.push] with a result that arrives even when go_router's own
-  /// future never does: once the platform reports the route list back, as
-  /// Android does when the app is opened again, go_router rebuilds the list
+  /// future never does: a refresh of the router, such as a sign-in or a
+  /// server change while the page is open, decodes the pushed pages anew
   /// with new futures (flutter/flutter#128122). The pushed route survives
   /// that and still reports its pop.
   Future<T?> pushPage<T>(String location, {Object? extra}) {

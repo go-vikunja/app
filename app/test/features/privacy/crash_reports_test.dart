@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/crash_reports/crash_report_consent.dart';
 import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
@@ -82,8 +83,8 @@ void main() {
       expect(stored(), 'declined');
     });
 
-    testWidgets('closed by the app, as a notification or widget tap closes '
-        'every dialog, it is not answered and comes again at the next start', (
+    testWidgets('closed by the app, as an account switch closes every '
+        'dialog, it is not answered and comes again at the next start', (
       tester,
     ) async {
       await pumpShell(tester);
@@ -105,6 +106,33 @@ void main() {
       await pumpShell(tester, seed: false);
       expect(question(), findsOneWidget);
     });
+
+    for (final (before, leave) in [
+      ('an opening of the active account', popDialogsAndSheets),
+      ('a switch from outside', popPagesOverShell),
+    ]) {
+      testWidgets('left before $before, it is not answered and comes '
+          'again', (tester) async {
+        await pumpShell(tester);
+        expect(question(), findsOneWidget);
+
+        final left = leave(containerOf(tester).read(appRouterProvider));
+        await tester.pumpAndSettle();
+
+        expect(await left, LeaveOutcome.left);
+        expect(question(), findsNothing);
+        expect(stored(), isNull);
+        expect(
+          await containerOf(tester)
+              .read(crashReportConsentControllerProvider.future),
+          CrashReportConsent.notAsked,
+        );
+
+        await tester.pumpWidget(const SizedBox());
+        await pumpShell(tester, seed: false);
+        expect(question(), findsOneWidget);
+      });
+    }
 
     testWidgets('going back declines; a tap beside it does not answer', (
       tester,

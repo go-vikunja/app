@@ -14,8 +14,8 @@ final _asking = Expando<bool>('crash report question');
 /// an account of any kind reaches the shell, until it is answered
 /// (decision log: Diagnostics). Allow allows, No thanks and going back decline;
 /// from then on only the privacy page's switch changes it. Closed by the app (a
-/// notification or widget tap closes every dialog), it is not answered and
-/// comes again at the shell's next start.
+/// notification or widget tap, or an account switch from outside, closes it),
+/// it is not answered and comes again at the shell's next start.
 Future<void> askAboutCrashReportsOnce(
   BuildContext context,
   WidgetRef ref,
@@ -48,16 +48,18 @@ Future<void> askAboutCrashReportsOnce(
 
 /// True for Allow, false for No thanks and for going back, null when the
 /// app closed it. Neither answer is the default.
-Future<bool?> showCrashReportsQuestion(BuildContext context) {
+Future<bool?> showCrashReportsQuestion(BuildContext context) async {
   final l10n = context.l10n;
-  return showAdaptiveDialog<bool>(
+  var wentBack = false;
+  final answer = await showAdaptiveDialog<bool>(
     context: context,
     // Not by a stray tap.
     barrierDismissible: false,
+    // Back pops it like any dialog, so that the app's own closing, which
+    // removes it unanswered, never declines (decision log: Diagnostics).
     builder: (context) => PopScope<bool>(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) Navigator.of(context).pop(false);
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && result == null) wentBack = true;
       },
       child: AlertDialog.adaptive(
         scrollable: true,
@@ -76,4 +78,5 @@ Future<bool?> showCrashReportsQuestion(BuildContext context) {
       ),
     ),
   );
+  return answer ?? (wentBack ? false : null);
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
@@ -19,15 +20,15 @@ const _chipIconBox = BoxConstraints.tightFor(width: 20, height: 20);
 /// on none of them, whose delete button clears it, and "Pick date…", the
 /// last two named with the field for screen readers, as the shortcuts are. A
 /// shortcut jumps to its day and keeps the time already set (else the
-/// user's default due time, else the breakpoint time for [now]); tapping
-/// the chosen one again clears.
+/// user's default due time, else the breakpoint time); tapping the chosen
+/// one again clears. Both are dated at the tap, as the [shortcuts] can be a
+/// minute old, from before midnight or before a default time passed.
 class DateField extends ConsumerWidget {
   const new({
     required this.label,
     required this.clearLabel,
     required this.icon,
     required this.value,
-    required this.now,
     required this.shortcuts,
     required this.onChanged,
     super.key,
@@ -40,7 +41,6 @@ class DateField extends ConsumerWidget {
   final String clearLabel;
   final IconData icon;
   final DateTime? value;
-  final DateTime now;
   final List<DateShortcutOption> shortcuts;
   final ValueChanged<DateTime?> onChanged;
 
@@ -48,7 +48,7 @@ class DateField extends ConsumerWidget {
     final picked = await pickDateTime(
       context,
       current: value,
-      now: now,
+      now: ref.read(clockProvider)(),
       display: ref.read(displaySettingsProvider),
     );
     if (picked != null) onChanged(picked);
@@ -77,16 +77,27 @@ class DateField extends ConsumerWidget {
           selectedDay: selectedDay,
           selectedTime: value == null ? null : formatter.timeOfDay(value),
           fieldLabel: label,
-          onSelected: (option) => onChanged(
-            option == null
-                ? null
-                : dayWithTime(
-                    option.day,
-                    current: value,
-                    now: now,
-                    defaultTime: defaultTime,
-                  ),
-          ),
+          onSelected: (option) {
+            if (option == null) {
+              onChanged(null);
+              return;
+            }
+            final now = ref.read(clockProvider)();
+            final day = buildDateShortcuts(now)
+                .firstWhere(
+                  (current) => current.shortcut == option.shortcut,
+                  orElse: () => option,
+                )
+                .day;
+            onChanged(
+              dayWithTime(
+                day,
+                current: value,
+                now: now,
+                defaultTime: defaultTime,
+              ),
+            );
+          },
           trailing: [
             if (value != null && !onShortcut)
               InputChip(

@@ -357,6 +357,44 @@ void main() {
         );
       });
 
+      testWidgets('a task marked done keeps its place among the open ones '
+          'while the device stores the done', (tester) async {
+        data.tasks.setSavedFilterMatches(filter.projectId, {2, 4, 7});
+        await openList(tester, filter.projectId);
+        final hold = Completer<void>();
+        data.tasks.beforeWrite = () => hold.future;
+
+        await tester.tap(
+          find.descendant(
+            of: find.widgetWithText(TaskRow, 'Plain'),
+            matching: find.byTooltip(en.taskMarkDone),
+          ),
+        );
+        await tester.pump();
+        expect(headings(tester), [
+          en.sectionToday,
+          en.sectionNoDueDate,
+          en.projectTasksDoneSection,
+        ]);
+        expect(
+          tester.widget<Text>(find.text('Plain')).style?.decoration,
+          TextDecoration.lineThrough,
+        );
+
+        hold.complete();
+        await tester.pumpAndSettle();
+        expect(headings(tester), [
+          en.sectionToday,
+          en.sectionNoDueDate,
+          en.projectTasksDoneSection,
+        ]);
+        expect(find.text(en.taskMarkedDone), findsOneWidget);
+
+        await tester.pump(markedDoneSnackBarDuration);
+        await tester.pumpAndSettle();
+        expect(headings(tester), [en.sectionToday, en.projectTasksDoneSection]);
+      });
+
       testWidgets('nothing matching says so, not that all is done', (
         tester,
       ) async {

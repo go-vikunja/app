@@ -25,10 +25,12 @@ final _log = Logger('ShareIntent');
 /// share meanwhile) and, signed in, About or Connection over the shell has
 /// gone as for [TaskOpener.reachHome]; with several accounts the user picks
 /// one first (a switch follows, before which an edit page asks; when it
-/// stays, the share is dropped with a note), then the share sheet opens
-/// over the current screen. Signed out it says so. A shared project's link is
-/// offered to open as a guest and an admin's invite goes to its check,
-/// signed in or out, both on the connect screen. Whatever happens, the
+/// stays, the share is dropped with a note). Then the dialogs and sheets go
+/// as if the user went back: a New task sheet with typed text asks, and when
+/// it stays, the share is dropped with the same note. Then the share sheet
+/// opens over the current screen. Signed out it says so. A shared project's
+/// link is offered to open as a guest and an admin's invite goes to its
+/// check, signed in or out, both on the connect screen. Whatever happens, the
 /// share is cleared at the end, which deletes the inbox copies that did not
 /// move into uploads. A newer share replaces one still being handled.
 /// Nothing shared is logged.
@@ -90,8 +92,9 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     _generation++;
     _waiting = share;
     if (_handling != null) {
-      // Its sheet or account question closes; that run then ends.
-      ref.read(rootModalRoutesProvider).closeAll();
+      // Its sheet or account question closes; that run then ends. A sheet that
+      // asks before it goes stays for the newer share's own leave.
+      ref.read(rootModalRoutesProvider).closeDownToGuarded();
     }
     _runWhenReady();
   }
@@ -166,7 +169,14 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
       }
     }
     if (!current()) return;
-    ref.read(rootModalRoutesProvider).closeAll();
+    if (!await _opener.leaveDialogsAndSheets()) {
+      if (current()) {
+        await _opener.showMessage((l10n) => l10n.shareKeptEditing);
+      }
+      await _clear(generation);
+      return;
+    }
+    if (!current()) return;
     final shown = Completer<ShareOutcome?>();
     Future<ShareOutcome?>? submitted;
     var submittedSettled = false;
@@ -231,14 +241,27 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
       return false;
     }
     await _clear(generation);
-    await _connect(address, signedIn: signedIn);
+    await _connect(address, generation, signedIn: signedIn);
     return true;
   }
 
   /// Opens [address] on the connect screen, for another account when
-  /// [signedIn].
-  Future<void> _connect(String address, {required bool signedIn}) async {
-    ref.read(rootModalRoutesProvider).closeAll();
+  /// [signedIn], unless a newer share has replaced this one meanwhile.
+  Future<void> _connect(
+    String address,
+    int generation, {
+    required bool signedIn,
+  }) async {
+    bool current() => mounted && generation == _generation;
+    if (!signedIn) {
+      ref.read(rootModalRoutesProvider).closeAll();
+    } else if (!await _opener.leaveDialogsAndSheets()) {
+      if (current()) {
+        await _opener.showMessage((l10n) => l10n.shareKeptEditing);
+      }
+      return;
+    }
+    if (!current()) return;
     final location = _router.routerDelegate.state.matchedLocation;
     if (!signedIn) {
       if (location != AppRoutes.connect) _router.go(AppRoutes.connect);

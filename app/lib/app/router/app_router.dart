@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
@@ -74,7 +75,7 @@ abstract final class AppRoutes {
   static const connection = '/connection';
 
   /// The origin goes in the query, never in `extra`, which go_router drops
-  /// when the platform reports the route list back.
+  /// when a refresh of the router decodes the pushed pages anew.
   static String connectionFor(OriginKey origin, {ConnectionEditor? editor}) =>
       Uri(
         path: connection,
@@ -261,22 +262,26 @@ GoRouter appRouter(Ref ref) {
   // is asked first.
   ref.watch(appSchemeLinksProvider);
   final currentServer = ValueNotifier(ref.read(currentServerProvider));
-  // Only what triggers a redirect; it reads the registry and the status
-  // itself, because a listener notified before these may already route.
-  final accounts = ValueNotifier(ref.read(accountsProvider));
-  final syncStatus = ValueNotifier(ref.read(syncStatusProvider));
+  // Only what the redirect decides by, so that a sync's progress or a stored
+  // name re-checks no route; the redirect still reads the registry and the
+  // status itself, because a listener notified before these may already
+  // route.
+  final account = ValueNotifier(_routedAccount(ref));
   final onboarded = ValueNotifier(ref.read(notificationsOnboardingProvider));
+  void checkAccount() => account.value = _routedAccount(ref);
   ref
     ..listen(currentServerProvider, (_, next) => currentServer.value = next)
-    ..listen(accountsProvider, (_, next) => accounts.value = next)
-    ..listen(syncStatusProvider, (_, next) => syncStatus.value = next)
+    ..listen(accountsProvider, (_, _) => checkAccount())
+    // The status follows a switch only when it rebuilds, a frame later, and
+    // may then equal the previous account's: the id's own change checks too.
+    ..listen(activeAccountIdProvider, (_, _) => checkAccount())
+    ..listen(syncStatusProvider, (_, _) => checkAccount())
     ..listen(
       notificationsOnboardingProvider,
       (_, next) => onboarded.value = next,
     )
     ..onDispose(currentServer.dispose)
-    ..onDispose(accounts.dispose)
-    ..onDispose(syncStatus.dispose)
+    ..onDispose(account.dispose)
     ..onDispose(onboarded.dispose);
 
   final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -310,12 +315,7 @@ GoRouter appRouter(Ref ref) {
     // reads the link itself.
     overridePlatformDefaultLocation: true,
     observers: [ref.watch(rootModalRoutesProvider), PushedPages()],
-    refreshListenable: Listenable.merge([
-      currentServer,
-      accounts,
-      syncStatus,
-      onboarded,
-    ]),
+    refreshListenable: Listenable.merge([currentServer, account, onboarded]),
     redirect: (context, state) {
       // Never a route; [_AppSchemeLinks] takes these before they get here.
       if (ref.read(deepLinkRelayProvider).accept(state.uri)) {
@@ -669,6 +669,26 @@ AsyncValue<SyncStatus> _syncStatusOfActive(
   null => const AsyncLoading(),
 };
 
+typedef _RoutedAccount = ({
+  bool reading,
+  String? id,
+  bool guest,
+  bool firstSyncDue,
+});
+
+/// Each value [_redirect] and the guest gate read of the registry and the
+/// sync status; one more read there belongs here too.
+_RoutedAccount _routedAccount(Ref ref) {
+  final accounts = ref.read(accountsProvider);
+  final active = accounts.value?.activeAccount;
+  return (
+    reading: accounts is AsyncLoading && !accounts.hasValue,
+    id: active?.id,
+    guest: active?.account.isLinkShare ?? false,
+    firstSyncDue: needsFirstSync(_syncStatusOfActive(ref, accounts).value),
+  );
+}
+
 /// The account registry, the sync state and the onboarding flag are local,
 /// so the start screen never waits for the network. Signed in, the shell
 /// waits for the account's first full sync (and for its engine to report
@@ -721,9 +741,9 @@ String? _redirect({
 }
 
 /// The comment or team an editor page was pushed with. go_router drops an
-/// `extra` it cannot store as JSON once the platform reports the route list
-/// back, as Android does when the app is opened again, and would then send
-/// the open editor away.
+/// `extra` it cannot store as JSON when a refresh of the router (a sign-in
+/// or out, a server change, the notification setup) decodes the pushed
+/// pages anew, and would then send the open editor away.
 final class _PushedTargets<T extends DescriptionTarget> {
   String? _location;
   T? _target;

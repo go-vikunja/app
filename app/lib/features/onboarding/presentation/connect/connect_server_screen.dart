@@ -331,18 +331,15 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
         context.go(AppRoutes.serverOverview);
       case ConnectServerShareNeedsServer(:final claimingServer):
         unawaited(HapticFeedback.heavyImpact());
+        // Without focus: on a phone the keyboard would cover the card below
+        // the field, and with a claiming server its Go would send the link
+        // before the card naming both hosts was read.
+        _addressFocus.unfocus();
         if (claimingServer != null) {
-          // Without focus: a keyboard would cover the card naming both
-          // hosts, and its Go would send the link before that was read.
-          _addressFocus.unfocus();
           _address.text = '$claimingServer';
-        } else {
+        } else if (parseLinkShareUrl(_address.text) != null) {
           // The field holds the link, which is not the server's address.
-          if (parseLinkShareUrl(_address.text) != null) _address.clear();
-          // Once the field is enabled again; a disabled one takes no focus.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _addressFocus.requestFocus();
-          });
+          _address.clear();
         }
       case ConnectServerSharePasswordNeeded(:final serverRoot)
           when previous is! ConnectServerSharePasswordNeeded:

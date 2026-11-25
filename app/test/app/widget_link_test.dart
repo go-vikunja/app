@@ -319,6 +319,134 @@ void main() {
       expect(find.byType(ConnectServerScreen), findsOneWidget);
       expect(find.byType(NewTaskSheet), findsNothing);
     });
+
+    group('over a New task sheet with a title typed', () {
+      final newTask = find.byType(NewTaskSheet);
+
+      Future<void> typeNewTask(WidgetTester tester) async {
+        await pumpApp(tester);
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.descendant(of: newTask, matching: find.byType(TextField)),
+          'Buy milk',
+        );
+        await tester.pumpAndSettle();
+      }
+
+      Future<void> keepEditing(WidgetTester tester) async {
+        expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+        await tester.tap(find.text(en.taskEditKeepEditing));
+        await tester.pumpAndSettle();
+        expect(find.text(en.newTaskDiscardTitle), findsNothing);
+        expect(newTask, findsOneWidget);
+        expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+      }
+
+      testWidgets('a row asks; Keep editing keeps the sheet and its title and '
+          'opens nothing', (tester) async {
+        await typeNewTask(tester);
+
+        await push(
+          tester,
+          WidgetTaskLink(accountId: activeAccountId(tester), taskId: 7),
+        );
+        await keepEditing(tester);
+
+        expect(sheet, findsNothing);
+      });
+
+      testWidgets("Discard lets the sheet go and the row's task opens", (
+        tester,
+      ) async {
+        await typeNewTask(tester);
+
+        await push(
+          tester,
+          WidgetTaskLink(accountId: activeAccountId(tester), taskId: 7),
+        );
+        await tester.tap(find.text(en.taskEditDiscard));
+        await tester.pumpAndSettle();
+
+        expect(newTask, findsNothing);
+        expect(inSheet('Water the plants'), findsOneWidget);
+      });
+
+      testWidgets('the Today list on the Overview asks too, and Keep editing '
+          'keeps the sheet', (tester) async {
+        await typeNewTask(tester);
+        expect(location(tester), AppRoutes.overview);
+
+        await push(
+          tester,
+          WidgetListLink(
+            accountId: activeAccountId(tester),
+            kind: WidgetListKind.today,
+          ),
+        );
+        await keepEditing(tester);
+
+        expect(location(tester), AppRoutes.overview);
+      });
+
+      testWidgets('a row tapped while a list on another tab asks goes with '
+          'Keep editing, without asking again', (tester) async {
+        await typeNewTask(tester);
+
+        await push(
+          tester,
+          WidgetListLink(
+            accountId: activeAccountId(tester),
+            kind: WidgetListKind.upcoming,
+          ),
+        );
+        expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+        await push(
+          tester,
+          WidgetTaskLink(accountId: activeAccountId(tester), taskId: 7),
+        );
+        await keepEditing(tester);
+
+        expect(location(tester), AppRoutes.overview);
+        expect(sheet, findsNothing);
+      });
+
+      testWidgets("a label's list asks before its page opens", (tester) async {
+        await typeNewTask(tester);
+
+        await push(
+          tester,
+          WidgetListLink(
+            accountId: activeAccountId(tester),
+            kind: WidgetListKind.label,
+            id: 10,
+          ),
+        );
+        expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+        expect(find.byType(LabelTasksScreen), findsNothing);
+        await tester.tap(find.text(en.taskEditDiscard));
+        await tester.pumpAndSettle();
+
+        expect(newTask, findsNothing);
+        expect(location(tester), AppRoutes.labelTasks(10));
+        expect(find.byType(LabelTasksScreen), findsOneWidget);
+      });
+
+      testWidgets('"+" keeps the sheet and its title without asking', (
+        tester,
+      ) async {
+        await typeNewTask(tester);
+
+        await push(
+          tester,
+          WidgetNewTaskLink(accountId: activeAccountId(tester), projectId: 3),
+        );
+
+        expect(find.text(en.newTaskDiscardTitle), findsNothing);
+        expect(newTask, findsOneWidget);
+        expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+      });
+    });
   });
 
   group('the link that starts the app', () {

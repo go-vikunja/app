@@ -149,13 +149,13 @@ void main() {
     expect(bridges.last.readOnly.last, isFalse);
   });
 
-  testWidgets('the edit survives the platform reporting the route list back, '
-      'which drops the comment the push carried', (tester) async {
+  testWidgets('the edit survives a route refresh, which drops the comment the '
+      'push carried', (tester) async {
     await openEditor(tester);
     bridges.last.edit('<p>Mine, edited</p>');
     await tester.pump();
 
-    await reportRouteFromPlatform(tester);
+    await refreshRoutes(tester);
 
     expect(find.byType(DescriptionEditorPage), findsOneWidget);
     expect(bridges.created, hasLength(1));

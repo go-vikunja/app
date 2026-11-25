@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/features/description_editor/presentation/descript
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -602,6 +603,77 @@ void main() {
     expect(data.shareSource.calls.where((call) => call == 'clear'), isEmpty);
   });
 
+  group('over a New task sheet with a title typed', () {
+    final newTask = find.byType(NewTaskSheet);
+
+    Future<void> typeNewTask(WidgetTester tester) async {
+      await pumpSignedInApp(tester, sync: data);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(of: newTask, matching: find.byType(TextField)),
+        'Buy milk',
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a share asks first; Keep editing keeps the sheet, says so '
+        'and drops the share', (tester) async {
+      await typeNewTask(tester);
+
+      data.shareSource.push(const IncomingShare(text: 'Note'));
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(newTask, findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+      expect(find.text(en.shareKeptEditing), findsOneWidget);
+      expect(sheet, findsNothing);
+      expect(data.shareSource.calls.last, 'clear');
+    });
+
+    testWidgets('Discard there lets the sheet go and the share sheet opens', (
+      tester,
+    ) async {
+      await typeNewTask(tester);
+
+      data.shareSource.push(const IncomingShare(text: 'Note'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(newTask, findsNothing);
+      expect(sheet, findsOneWidget);
+      expect(fieldText(tester, en.taskEditTitleLabel), 'Note');
+      expect(find.text(en.shareKeptEditing), findsNothing);
+    });
+
+    testWidgets('a newer share during that question keeps the New task sheet '
+        'and its title and asks again', (tester) async {
+      await typeNewTask(tester);
+
+      data.shareSource.push(const IncomingShare(text: 'First'));
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+
+      data.shareSource.push(const IncomingShare(text: 'Second'));
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+      expect(find.text(en.shareKeptEditing), findsNothing);
+
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(newTask, findsNothing);
+      expect(sheet, findsOneWidget);
+      expect(fieldText(tester, en.taskEditTitleLabel), 'Second');
+      expect(data.shareSource.calls.where((call) => call == 'clear'), isEmpty);
+    });
+  });
+
   group('with several accounts', () {
     late ThreeAccounts accounts;
 
@@ -725,6 +797,7 @@ void main() {
 
       saved.complete();
       await tester.pumpAndSettle();
+      expect(accounts.aliceData.projects.byId(1)?.description, '<p>Edited</p>');
       expect(find.byType(DescriptionEditorPage), findsNothing);
       expect(
         containerOf(tester).read(accountsProvider).value!.activeAccountId,

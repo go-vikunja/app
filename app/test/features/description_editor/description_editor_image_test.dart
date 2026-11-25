@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
@@ -363,6 +364,52 @@ void main() {
       ),
       isEmpty,
     );
+    expect(find.byType(DescriptionEditorPage), findsNothing);
+  });
+
+  testWidgets('a tap from outside that Save answered waits for the upload '
+      'through a route refresh: the image goes in and the page goes', (
+    tester,
+  ) async {
+    const src =
+        'https://tasks.example.org/vikunja/api/v2/tasks/1/attachments/500';
+    const image = '<img data-src="$src" src="#" id="tiptap-image-1-500">';
+    final upload = Completer<void>();
+    data.attachments.beforeCall = (_) => upload.future;
+    await openEditor(tester);
+    final bridge = bridges.last..edit('<p>a b</p>');
+    bridge.onCommand = (command) {
+      if (command.name == EditorCommandName.insertImage) {
+        bridge.edit('<p>a b</p>$image');
+      }
+    };
+    await tester.pump();
+    await insertFrom(tester, en.attachmentSourcePhotos, settle: false);
+
+    final router = containerOf(tester).read(appRouterProvider);
+    final leaving = popPagesOverShell(router);
+    await pumpFrames(tester, 5);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(Dialog),
+        matching: find.text(en.taskEditSave),
+      ),
+    );
+    await pumpFrames(tester, 5);
+
+    router.refresh();
+    await pumpFrames(tester, 5);
+    expect(find.text(en.editorImageNotAdded), findsNothing);
+    expect(data.attachments.cancelTokens.single?.isCancelled, isFalse);
+    expect(find.byType(DescriptionEditorPage), findsOneWidget);
+
+    upload.complete();
+    await tester.pumpAndSettle();
+
+    expect(await leaving, LeaveOutcome.left);
+    expect(data.tasks.descriptionUpdates, [
+      (1, '<p>a b</p>$image', '<p>a</p>'),
+    ]);
     expect(find.byType(DescriptionEditorPage), findsNothing);
   });
 

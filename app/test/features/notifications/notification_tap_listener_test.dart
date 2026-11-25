@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
@@ -33,6 +34,7 @@ import 'package:vikunja_mobile/features/notifications/presentation/notifications
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
+import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
@@ -745,6 +747,28 @@ void main() {
       expect(accounts.aliceData.tasks.writes, isEmpty);
     });
 
+    testWidgets('a route refresh while the question is open changes '
+        'nothing: Keep editing refuses the switch with the page and its text '
+        'kept, and nothing is asked again', (tester) async {
+      await pumpAndEditTitle(tester);
+
+      await tapForBob(tester);
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+
+      routerOf(tester).refresh();
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(find.widgetWithText(TextField, 'Changed'), findsOneWidget);
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(bobsTask(), findsNothing);
+    });
+
     testWidgets('each page asks in turn: Save in the description editor '
         'saves, Discard on the edit page under it, then the switch goes on', (
       tester,
@@ -779,9 +803,72 @@ void main() {
       expect(bobsTask(), findsOneWidget);
     });
 
+    testWidgets('a route refresh while the description editor asks does not '
+        'end the leave: Save saves, then the edit page under it asks and the '
+        'switch goes on', (tester) async {
+      await pumpAndEditTitle(tester);
+      unawaited(routerOf(tester).push(AppRoutes.taskDescription(7)));
+      await tester.pumpAndSettle();
+      bridges.last.edit('<p>Edited</p>');
+      await tester.pump();
+      final saving = Completer<void>();
+      accounts.aliceData.tasks.beforeWrite = () => saving.future;
+
+      await tapForBob(tester);
+      expect(find.text(en.descriptionEditorLeaveTitle), findsOneWidget);
+
+      routerOf(tester).refresh();
+      await tester.pumpAndSettle();
+      expect(find.text(en.descriptionEditorLeaveTitle), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(en.taskEditSave),
+        ),
+      );
+      // The save's progress bar never settles while the write is held.
+      await pumpFrames(tester, 5);
+      expect(find.byType(DescriptionEditorPage), findsOneWidget);
+      expect(activeAccountId(tester), accounts.alice.id);
+
+      saving.complete();
+      await tester.pumpAndSettle();
+      expect(accounts.aliceData.tasks.descriptionUpdates, [
+        (7, '<p>Edited</p>', ''),
+      ]);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      expect(activeAccountId(tester), accounts.alice.id);
+
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(bobsTask(), findsOneWidget);
+    });
+
     testWidgets('without changes nothing is asked', (tester) async {
       await accounts.pump(tester, notifications: notifications);
       unawaited(routerOf(tester).push(AppRoutes.taskEdit(7)));
+      await tester.pumpAndSettle();
+
+      await tapForBob(tester);
+
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(find.byType(TaskEditPage), findsNothing);
+      expect(bobsTask(), findsOneWidget);
+    });
+
+    testWidgets('an edit page whose task has gone goes without asking, and '
+        'the switch goes on', (tester) async {
+      await pumpAndEditTitle(tester);
+      accounts.aliceData.tasks.all = [
+        for (final task in accounts.aliceData.tasks.all)
+          if (task.id != 7) task,
+      ];
       await tester.pumpAndSettle();
 
       await tapForBob(tester);
@@ -1005,6 +1092,219 @@ void main() {
       expect(activeAccountId(tester), accounts.alice.id);
       expect(bobsTask(), findsNothing);
     });
+  });
+
+  group('a tap of the active account over the New task sheet', () {
+    final newTask = find.byType(NewTaskSheet);
+
+    Future<void> openNewTask(
+      WidgetTester tester, {
+      String text = 'Buy milk',
+      List<Override> overrides = const [],
+    }) async {
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+        overrides: overrides,
+      );
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      if (text.isEmpty) return;
+      await tester.enterText(
+        find.descendant(of: newTask, matching: find.byType(TextField)),
+        text,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    void tapTask(WidgetTester tester) =>
+        notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+
+    Finder plantsTask() =>
+        find.descendant(of: sheet, matching: find.text('Water the plants'));
+
+    testWidgets('with a title typed asks; Keep editing keeps the sheet and '
+        'its title and drops the tap', (tester) async {
+      await openNewTask(tester);
+
+      tapTask(tester);
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.newTaskDiscardTitle), findsNothing);
+      expect(newTask, findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets('Discard lets the sheet go and the task opens over the '
+        'overview', (tester) async {
+      await openNewTask(tester);
+
+      tapTask(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(newTask, findsNothing);
+      expect(location(tester), AppRoutes.overview);
+      expect(plantsTask(), findsOneWidget);
+      expect(data.tasks.writes, isEmpty);
+    });
+
+    testWidgets('with nothing typed the sheet goes without asking and the '
+        'task opens', (tester) async {
+      await openNewTask(tester, text: '');
+      expect(newTask, findsOneWidget);
+
+      tapTask(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.newTaskDiscardTitle), findsNothing);
+      expect(newTask, findsNothing);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets('a second tap during the question goes with Keep editing, '
+        'without asking again', (tester) async {
+      await openNewTask(tester);
+
+      tapTask(tester);
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+      tapTask(tester);
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.newTaskDiscardTitle), findsNothing);
+      expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets("a tap while a share's question is open waits for its "
+        'answer: Keep editing drops both, the share with its note', (
+      tester,
+    ) async {
+      await openNewTask(tester);
+      data.shareSource.push(const IncomingShare(text: 'Note'));
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+
+      tapTask(tester);
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+      expect(find.text(en.shareKeptEditing), findsNothing);
+
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.newTaskDiscardTitle), findsNothing);
+      expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+      expect(find.text(en.shareKeptEditing), findsOneWidget);
+      expect(find.byType(ShareSheet), findsNothing);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets("a tap while a share's question is open goes on with it "
+        'after Discard, without asking again', (tester) async {
+      await openNewTask(tester);
+      data.shareSource.push(const IncomingShare(text: 'Note'));
+      await tester.pumpAndSettle();
+
+      tapTask(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.newTaskDiscardTitle), findsNothing);
+      expect(newTask, findsNothing);
+      expect(find.byType(ShareSheet), findsOneWidget);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets('while its add runs the tap is dropped, and the add closes '
+        'the sheet as usual', (tester) async {
+      final held = Completer<void>();
+      final service = FakeQuickAddService(project: data.projects.all.first)
+        ..beforeSubmit = () => held.future;
+      await openNewTask(
+        tester,
+        overrides: [quickAddServiceProvider.overrideWithValue(service)],
+      );
+      await tester.tap(find.text(en.newTaskAdd));
+      await tester.pump();
+
+      tapTask(tester);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text(en.newTaskDiscardTitle), findsNothing);
+      expect(newTask, findsOneWidget);
+
+      held.complete();
+      await tester.pumpAndSettle();
+      expect(service.submits.single.text, 'Buy milk');
+      expect(newTask, findsNothing);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets('the notification standing for several asks before the '
+        'inbox opens; Keep editing keeps the sheet', (tester) async {
+      await openNewTask(tester);
+
+      notifications.taps.tap(
+        payload(
+          accountId: activeAccountId(tester),
+          taskId: 0,
+          key: ActivityTray.moreKey(activeAccountId(tester)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(location(tester), AppRoutes.overview);
+      expect(find.byType(InboxScreen), findsNothing);
+      expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+    });
+  });
+
+  testWidgets('a sheet that asks stays under a page that covers it, and the '
+      'task opens over the page', (tester) async {
+    usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+      overrides: [
+        labelRepositoryProvider.overrideWithValue(FakeLabelRepository()),
+        userRepositoryProvider.overrideWithValue(FakeUserRepository()),
+      ],
+    );
+    await typeNote(tester);
+    unawaited(routerOf(tester).push(AppRoutes.taskEdit(7)));
+    await tester.pumpAndSettle();
+
+    notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Drop the note?'), findsNothing);
+    expect(location(tester), AppRoutes.taskEdit(7));
+    expect(find.byType(TaskEditPage), findsOneWidget);
+    expect(
+      find.descendant(of: sheet, matching: find.text('Water the plants')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('note'), skipOffstage: false), findsOneWidget);
+    expect(find.text('Half a thought', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('a task that is gone is reported', (tester) async {

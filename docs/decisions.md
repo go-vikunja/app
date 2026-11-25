@@ -400,7 +400,7 @@ Limits:
 
 ### Opening a task
 
-- **One opener serves every task tap and link.** It waits for start-up and the app lock, and lets pages over the shell go as if the user went back, asking where something is unsaved. It **asks before a link switches accounts** (why: anyone can make a link). No link is logged.
+- **One opener serves every task tap and link.** It waits for start-up and the app lock, and lets what covers its target go as if the user went back: the dialogs and sheets always, the pages over the shell where it has to leave them. What asks on Back (the New task sheet with typed text, an edit page) asks first, the rest goes as Back would close it, and one that stays, or is still saving, drops the opening, together with the openings that came during its question. It **asks before a link switches accounts** (why: anyone can make a link). No link is logged.
 - No App Links or Universal Links (why: self-hosted domains cannot be verified).
 - **No task identifier is shown or spoken anywhere** (owner), also in the task detail (owner, 2026-11-18). Deep links, search by `#12` or `PROJ-12`, `+project` and filters still use identifiers.
 
@@ -417,7 +417,7 @@ Limits:
   - Repeats over the server's 10 years are refused.
 - **Undo after Done** in the detail is handed to the sheet below when the detail closes (why: in a list of open tasks the row has already left).
 - **Reopening a task whose Undo is still up is that Undo,** in a list and in the detail (why: a bare not-done after a Done already sent leaves a repeating task on its next occurrence). An Undo puts back the dates and reminders the server moved, but none while the Done has not left the device and none a queued edit made since (why: what the user set last stands).
-- **Leaving the New task sheet** with a title or description typed asks "Discard the new task?" on every way out.
+- **Leaving the New task sheet** with a title or description typed asks "Discard the new task?" on every way out, also before a notification, widget, link or share opens something in the active account; Keep editing keeps the sheet and its text and drops that opening (why: an opening from outside comes unasked, and what was typed would be gone without a word).
 
 ### Swipes and selection
 

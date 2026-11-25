@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
@@ -253,8 +254,8 @@ void main() {
       expect(inPicker(find.byType(LinearProgressIndicator)), findsNothing);
     });
 
-    testWidgets('lists the known people at once while the server is slow, '
-        'filtered while typing', (tester) async {
+    testWidgets('offers only the assignees until the server answers, not '
+        'the other people the device knows', (tester) async {
       final answer = Completer<void>();
       users.beforeAnswer = (_) => answer.future;
       await openPage(tester);
@@ -262,14 +263,11 @@ void main() {
       await tester.tap(find.text(en.taskEditAssign));
       await pumpFrames(tester, 5);
 
-      expect(rowNames(tester), ['Carol Writer', 'Dave Known']);
+      expect(rowNames(tester), ['Carol Writer']);
       expect(inPicker(find.byType(LinearProgressIndicator)), findsOneWidget);
       expect(inPicker(find.text(en.assigneePickerOffline)), findsNothing);
 
       await tester.enterText(searchField(), 'dav');
-      await tester.pump();
-      expect(rowNames(tester), ['Carol Writer', 'Dave Known']);
-      await tester.enterText(searchField(), 'zz');
       await tester.pump();
       expect(rowNames(tester), ['Carol Writer']);
 
@@ -279,6 +277,80 @@ void main() {
       await tester.pumpAndSettle();
       expect(users.searches.map((s) => s.$2), ['', 'al']);
       expect(rowNames(tester), ['Carol Writer', 'Alice Example']);
+    });
+
+    testWidgets('while a query waits for its answer, offers only the people '
+        'the server listed for the project, filtered while typing', (
+      tester,
+    ) async {
+      await openPage(tester);
+      await openPicker(tester);
+      final answer = Completer<void>();
+      users.beforeAnswer = (_) => answer.future;
+
+      await tester.enterText(searchField(), 'dav');
+      await tester.pump();
+      expect(rowNames(tester), ['Carol Writer']);
+
+      await tester.enterText(searchField(), 'b');
+      await tester.pump();
+      expect(rowNames(tester), ['Carol Writer', 'bob']);
+      await tester.pump(AssigneePicker.debounce);
+      await tester.pump();
+      expect(rowNames(tester), ['Carol Writer', 'bob']);
+
+      answer.complete();
+      await tester.pumpAndSettle();
+      expect(users.searches.map((s) => s.$2), ['', 'b']);
+      expect(rowNames(tester), ['Carol Writer', 'bob']);
+    });
+
+    testWidgets('while the sync finds the server unreachable, offers the '
+        'known people with the notice at once, and the server answer first '
+        'once it comes', (tester) async {
+      final answer = Completer<void>();
+      users.beforeAnswer = (_) => answer.future;
+      await openPage(tester);
+      data.engine.emit(
+        SyncFailed(
+          failure: const NetworkFailure(NetworkProblem.unreachable),
+          lastSyncedAt: now,
+        ),
+      );
+      await tester.ensureVisible(find.text(en.taskEditAssign));
+      await tester.tap(find.text(en.taskEditAssign));
+      await pumpFrames(tester, 5);
+
+      expect(inPicker(find.text(en.assigneePickerOffline)), findsOneWidget);
+      expect(rowNames(tester), ['Carol Writer', 'Dave Known']);
+      await tester.enterText(searchField(), 'dav');
+      await tester.pump();
+      expect(rowNames(tester), ['Carol Writer', 'Dave Known']);
+      await tester.enterText(searchField(), '');
+      await tester.pump();
+
+      answer.complete();
+      await tester.pumpAndSettle();
+      expect(inPicker(find.text(en.assigneePickerOffline)), findsNothing);
+      expect(rowNames(tester), ['Carol Writer', 'Alice Example', 'bob']);
+    });
+
+    testWidgets('a search that fails after a wait offers the known people '
+        'with the notice', (tester) async {
+      final answer = Completer<void>();
+      users
+        ..beforeAnswer = ((_) => answer.future)
+        ..searchFailure = const NetworkFailure(NetworkProblem.timeout);
+      await openPage(tester);
+      await tester.ensureVisible(find.text(en.taskEditAssign));
+      await tester.tap(find.text(en.taskEditAssign));
+      await pumpFrames(tester, 5);
+      expect(rowNames(tester), ['Carol Writer']);
+
+      answer.complete();
+      await tester.pumpAndSettle();
+      expect(inPicker(find.text(en.assigneePickerOffline)), findsOneWidget);
+      expect(rowNames(tester), ['Carol Writer', 'Dave Known']);
     });
 
     testWidgets('offline it shows the known people with a notice and '
@@ -425,12 +497,16 @@ void main() {
       expect(rowNames(tester), ['Carol Writer', 'Alice Example']);
     });
 
-    testWidgets('nobody found says so', (tester) async {
+    testWidgets('says nobody was found only once the server has answered', (
+      tester,
+    ) async {
       data.tasks.all = [sampleTask(id: 1, title: 'Shopping')];
       await openPage(tester);
       await openPicker(tester);
 
       await tester.enterText(searchField(), 'zzz');
+      await tester.pump();
+      expect(inPicker(find.text(en.assigneePickerNoResults)), findsNothing);
       await tester.pump(AssigneePicker.debounce);
       await tester.pumpAndSettle();
 

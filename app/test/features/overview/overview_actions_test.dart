@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
@@ -236,8 +238,10 @@ void main() {
     expect(data.tasks.writes.last, 'undoDone 2');
   });
 
-  testWidgets('a sync that reopens the task while Undo is offered wins, like '
-      'the next occurrence of a repeating task', (tester) async {
+  testWidgets('a sync that reopens the task while Undo is offered, like the '
+      'next occurrence of a repeating task, waits until the Undo has gone', (
+    tester,
+  ) async {
     await pumpOverview(tester);
     await tester.tap(markDone('Write report'));
     await tester.pumpAndSettle();
@@ -254,8 +258,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Write report'), findsOneWidget);
-    expect(decorationOf(tester, 'Write report'), isNull);
-    expect(find.text('in 4 days'), findsOneWidget);
+    expect(decorationOf(tester, 'Write report'), TextDecoration.lineThrough);
+    expect(find.text('in 3 days'), findsOneWidget);
+    expect(find.text('in 4 days'), findsNothing);
     expect(find.text(en.undo), findsOneWidget);
 
     // Undo takes the previous occurrence back, dates included.
@@ -333,6 +338,197 @@ void main() {
     await tester.pump(markedDoneSnackBarDuration);
     await tester.pumpAndSettle();
     expect(titles(), ['Later 1', 'Later 3', 'Later 4']);
+  });
+
+  testWidgets('a row marked done stays struck through in its place while the '
+      'device stores the done, however long that takes, and until its Undo '
+      'has gone', (tester) async {
+    data.tasks.all = [
+      for (var i = 1; i <= 3; i++)
+        sampleTask(
+          id: i,
+          title: 'Later $i',
+          due: now.add(Duration(days: 10 + i)),
+        ),
+    ];
+    await pumpOverview(tester);
+    final hold = Completer<void>();
+    data.tasks.beforeWrite = () => hold.future;
+
+    List<String> titles() => [
+      for (final row in tester.widgetList<TaskRow>(find.byType(TaskRow)))
+        row.task.title,
+    ];
+    void expectStruckThroughInPlace() {
+      expect(titles(), ['Later 1', 'Later 2', 'Later 3']);
+      expect(decorationOf(tester, 'Later 2'), TextDecoration.lineThrough);
+      expect(markNotDone('Later 2'), findsOneWidget);
+    }
+
+    await tester.tap(markDone('Later 2'));
+    await tester.pump();
+    expectStruckThroughInPlace();
+    expect(find.text(en.taskMarkedDone), findsNothing);
+
+    await tester.pump(markedDoneSnackBarDuration * 2);
+    expectStruckThroughInPlace();
+    expect(find.text(en.taskMarkedDone), findsNothing);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expectStruckThroughInPlace();
+    expect(find.text(en.taskMarkedDone), findsOneWidget);
+
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+    expect(titles(), ['Later 1', 'Later 3']);
+  });
+
+  testWidgets('a sync while the device stores the done leaves the row struck '
+      'through in its place', (tester) async {
+    await pumpOverview(tester);
+    final hold = Completer<void>();
+    data.tasks.beforeWrite = () => hold.future;
+
+    await tester.tap(markDone('Write report'));
+    await tester.pump();
+    data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id == 3) task.copyWith(priority: TaskPriority.high) else task,
+    ];
+    await tester.pump();
+    expect(decorationOf(tester, 'Write report'), TextDecoration.lineThrough);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(decorationOf(tester, 'Write report'), TextDecoration.lineThrough);
+    expect(find.text(en.taskMarkedDone), findsOneWidget);
+  });
+
+  testWidgets('a done row reopened from its circle stays in its place, open, '
+      'while the device stores it', (tester) async {
+    await pumpOverview(tester);
+    await tester.tap(markDone('Write report'));
+    await tester.pumpAndSettle();
+    final hold = Completer<void>();
+    data.tasks.beforeWrite = () => hold.future;
+
+    await tester.tap(markNotDone('Write report'));
+    await tester.pump();
+    expect(find.text('Write report'), findsOneWidget);
+    expect(decorationOf(tester, 'Write report'), isNull);
+    expect(markDone('Write report'), findsOneWidget);
+    // Long enough for the hidden snackbar to slide out.
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(en.taskMarkedDone), findsNothing);
+    expect(markDone('Write report'), findsOneWidget);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(data.tasks.writes, ['setDone 3 true', 'undoDone 3']);
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+    expect(find.text('Write report'), findsOneWidget);
+  });
+
+  testWidgets('a row reopened while its done is still being stored stays in '
+      'its place, open, and offers no Undo', (tester) async {
+    await pumpOverview(tester);
+    final holds = [Completer<void>(), Completer<void>()];
+    var write = 0;
+    data.tasks.beforeWrite = () => holds[write++].future;
+
+    await tester.tap(markDone('Write report'));
+    await tester.pump();
+    expect(decorationOf(tester, 'Write report'), TextDecoration.lineThrough);
+    await tester.tap(markNotDone('Write report'));
+    await tester.pump();
+    expect(decorationOf(tester, 'Write report'), isNull);
+
+    holds[0].complete();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(data.tasks.find(3)?.done, isTrue);
+    expect(find.text('Write report'), findsOneWidget);
+    expect(decorationOf(tester, 'Write report'), isNull);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+
+    holds[1].complete();
+    await tester.pumpAndSettle();
+    expect(data.tasks.writes, ['setDone 3 true', 'undoDone 3']);
+    expect(find.text('Write report'), findsOneWidget);
+    expect(decorationOf(tester, 'Write report'), isNull);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+  });
+
+  group('a repeating task due today', () {
+    final water = sampleTask(
+      id: 4,
+      title: 'Water the plants',
+      due: now.add(const Duration(hours: 2)),
+      repeatAfter: const Duration(days: 1),
+    );
+    final nextOccurrence = water.copyWith(
+      dueDate: water.dueDate!.add(const Duration(days: 1)),
+    );
+    const today = ['Pay the bill', 'Water the plants', 'Call mum'];
+    const tomorrow = ['Pay the bill', 'Call mum', 'Water the plants'];
+
+    List<String> titles(WidgetTester tester) => [
+      for (final row in tester.widgetList<TaskRow>(find.byType(TaskRow)))
+        row.task.title,
+    ];
+
+    Future<void> markDoneUntilTheNextOccurrence(WidgetTester tester) async {
+      data.tasks.all = [...data.tasks.all, water];
+      await pumpOverview(tester);
+      expect(titles(tester), [...today, 'Write report']);
+      await tester.tap(markDone('Water the plants'));
+      await tester.pumpAndSettle();
+      data.tasks.all = [
+        for (final task in data.tasks.all)
+          if (task.id == water.id) nextOccurrence else task,
+      ];
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('stays struck through in its place when the next occurrence '
+        'arrives, until its Undo has gone', (tester) async {
+      await markDoneUntilTheNextOccurrence(tester);
+
+      expect(titles(tester), [...today, 'Write report']);
+      expect(
+        decorationOf(tester, 'Water the plants'),
+        TextDecoration.lineThrough,
+      );
+      expect(find.text(en.taskMarkedDone), findsOneWidget);
+
+      await tester.pump(markedDoneSnackBarDuration);
+      await tester.pumpAndSettle();
+      expect(titles(tester), [...tomorrow, 'Write report']);
+      expect(decorationOf(tester, 'Water the plants'), isNull);
+    });
+
+    testWidgets('an Undo after the next occurrence arrived keeps the row '
+        'open in its place while the Undo is stored', (tester) async {
+      await markDoneUntilTheNextOccurrence(tester);
+      final hold = Completer<void>();
+      data.tasks.beforeWrite = () => hold.future;
+
+      await tester.tap(find.text(en.undo));
+      await tester.pump();
+      expect(titles(tester), [...today, 'Write report']);
+      expect(decorationOf(tester, 'Water the plants'), isNull);
+      await tester.pump(const Duration(seconds: 1));
+      expect(titles(tester), [...today, 'Write report']);
+
+      hold.complete();
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes, ['setDone 4 true', 'undoDone 4']);
+      expect(data.tasks.find(water.id)?.dueDate, water.dueDate);
+      expect(titles(tester), [...today, 'Write report']);
+      expect(decorationOf(tester, 'Water the plants'), isNull);
+    });
   });
 
   testWidgets('the star toggles the favourite', (tester) async {

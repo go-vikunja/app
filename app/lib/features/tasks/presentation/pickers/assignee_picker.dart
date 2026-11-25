@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
@@ -60,12 +61,12 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
   /// Everyone the server has listed for the project, all of whom may be
   /// assigned; the empty query lists them. Those matching a query here,
   /// ignoring accents, join the server's answer to it, which on most
-  /// servers minds accents.
+  /// servers minds accents, and are all the rows offer while it is awaited.
   List<User> _projectPeople = const [];
 
   /// The people this device knows and everyone found so far: the rows,
-  /// filtered here, while the server has not answered the current query,
-  /// which on a slow or dead connection can take its retries and timeouts.
+  /// filtered here, for a link-share guest, while the last search failed,
+  /// and while the sync finds the server unreachable and no answer came.
   List<User> _known = const [];
 
   /// Set while the last search failed.
@@ -175,12 +176,27 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final query = _query.text;
+    final answered = query == _answeredQuery;
+    // A search on a dead connection takes its retries and timeouts before it
+    // fails, about 30 s.
+    final outage = _answeredQuery == null && ref.watch(offlineProvider) != null;
+    final offersKnown =
+        ref.watch(activeAccountIsGuestProvider) ||
+        _fallbackNotice != null ||
+        outage;
+    final notice =
+        _fallbackNotice ?? (outage ? l10n.assigneePickerOffline : null);
     final rows = peoplePickerRows(
       assigned: widget.selected,
       selected: _selected,
-      found: query == _answeredQuery
-          ? _merged(_found, filterUsers(_projectPeople, query))
-          : filterUsers(_known, query),
+      found: switch ((answered, offersKnown)) {
+        (true, _) => _merged(_found, filterUsers(_projectPeople, query)),
+        (false, true) => filterUsers(_known, query),
+        // Not everyone this device knows: the server refuses an assignee
+        // without access to the project, and only after Save, as a sync
+        // problem.
+        (false, false) => filterUsers(_projectPeople, query),
+      },
     );
 
     // Everything under the header scrolls: with the keyboard up, in
@@ -218,7 +234,7 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
                       )
                     : null,
               ),
-              if (_fallbackNotice case final notice?)
+              if (notice != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Semantics(
@@ -255,7 +271,7 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
                   title: Text(user.displayName),
                   subtitle: Text(l10n.assigneeUsername(user.username)),
                 ),
-              if (rows.isEmpty && !_searching)
+              if (rows.isEmpty && !_searching && (answered || offersKnown))
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(

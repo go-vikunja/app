@@ -1982,7 +1982,7 @@
   },
   "newTaskDiscardTitle": "Discard the new task?",
   "@newTaskDiscardTitle": {
-    "description": "Title of the question when the new-task sheet would close while a title or a description is typed in it: by Back, a tap beside it, a swipe down, or before the app switches to another account for a notification, a widget or a share. Its buttons are taskEditKeepEditing, which keeps the sheet and what was typed, and taskEditDiscard, which closes it."
+    "description": "Title of the question when the new-task sheet would close while a title or a description is typed in it: by Back, a tap beside it, a swipe down, or before the app opens a notification, a widget, a link or a share, in the active account or after a switch to another one. Its buttons are taskEditKeepEditing, which keeps the sheet and what was typed and drops that opening, and taskEditDiscard, which closes it."
   },
   "newTaskDiscardBody": "What you typed will be lost.",
   "@newTaskDiscardBody": {
@@ -4147,7 +4147,7 @@
   "shareSignedOut": "Sign in to Vikunja first, then share again.",
   "shareKeptEditing": "Save or discard your changes first, then share again.",
   "@shareKeptEditing": {
-    "description": "Shown when something was shared into the app for another account while a page or sheet with unsaved changes was open and stayed: the user chose Keep editing when asked to discard the changes, or it could not be left just then. The app stayed in the current account and nothing was shared."
+    "description": "Shown when something was shared into the app while a page or sheet with unsaved changes was open and stayed, such as an edit page before a switch to another account or the new-task sheet with a title typed: the user chose Keep editing when asked to discard the changes, or it could not be left just then. Nothing was shared, and the app stayed in the current account."
   },
   "sharePickAccountTitle": "Share to which account?",
   "sharePickAccountBody": "What you share goes to that account's server.",

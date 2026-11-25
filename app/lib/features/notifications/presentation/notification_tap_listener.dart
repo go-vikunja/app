@@ -6,7 +6,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
-import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -25,19 +24,20 @@ final _log = Logger('NotificationTap');
 /// Opens the task a tapped notification names, whether the tap arrives
 /// while the app runs or launched it, through the [TaskOpener]: once the
 /// shell shows, in the notification's account, with the detail sheet over
-/// the Overview or over a page that covers the shell. An activity
+/// the Overview or over a page that covers the shell. The tap lets the
+/// dialogs and sheets go as if the user went back, so one that asks on Back,
+/// such as the New task sheet with typed text, asks first. An activity
 /// notification is marked read first and opens the inbox when it names no
-/// task, a team membership its team, and the one that stands for several
-/// the inbox; a test notification
-/// and one about an ended session open the Account tab, after the pages
-/// over the shell went as if the user went back (the edit page asks
-/// first). The reminder to open the app before a session ends only opens
-/// it. Signed out, the tap is dropped. All this only for a payload with
-/// the install's widget-link key: on Android any app can make one up, so a
-/// tap without it (or from a notification scheduled before the key) never
-/// switches accounts silently and marks nothing read; its task opens like a
-/// task link from outside, which asks first, and the rest opens only in
-/// the active account.
+/// task, a team membership its team, and the one that stands for several the
+/// inbox; a test notification and one about an ended session open the
+/// Account tab, after the pages over the shell went as if the user went back
+/// (the edit page asks first). The reminder to open the app before a session
+/// ends only opens it. Signed out, the tap is dropped. All this only for a
+/// payload with the install's widget-link key: on Android any app can make
+/// one up, so a tap without it (or from a notification scheduled before the
+/// key) never switches accounts silently and marks nothing read; its task
+/// opens like a task link from outside, which asks first, and the rest opens
+/// only in the active account.
 class NotificationTapListener extends ConsumerStatefulWidget {
   const new({required this.child, super.key});
 
@@ -127,7 +127,7 @@ class _NotificationTapListenerState
       await _openAccountTab(confirmTest: false);
     } else if (ActivityTray.isMoreKey(payload.key) ||
         ActivityTray.activityIdOf(payload.key) != null) {
-      _openInbox();
+      await _openInbox();
     } else if (payload.taskId == testNotificationTaskId) {
       await _openAccountTab(confirmTest: true);
     }
@@ -145,7 +145,7 @@ class _NotificationTapListenerState
       return;
     }
     if (ActivityTray.isMoreKey(payload.key)) {
-      _openInbox();
+      await _openInbox();
       return;
     }
     final activityId = ActivityTray.activityIdOf(payload.key);
@@ -158,9 +158,9 @@ class _NotificationTapListenerState
       if (payload.taskId == 0) {
         switch (_teamOf(stored)) {
           case final teamId?:
-            _openTeam(teamId);
+            await _openTeam(teamId);
           case null:
-            _openInbox();
+            await _openInbox();
         }
         return;
       }
@@ -223,12 +223,12 @@ class _NotificationTapListenerState
     }
   }
 
-  void _openInbox() => _push(AppRoutes.inbox);
+  Future<void> _openInbox() => _push(AppRoutes.inbox);
 
-  void _openTeam(int teamId) => _push(AppRoutes.team(teamId));
+  Future<void> _openTeam(int teamId) => _push(AppRoutes.team(teamId));
 
-  void _push(String location) {
-    ref.read(rootModalRoutesProvider).closeAll();
+  Future<void> _push(String location) async {
+    if (!await _opener.leaveDialogsAndSheets() || !mounted) return;
     final router = _opener.router;
     if (router.routerDelegate.state.matchedLocation != location) {
       unawaited(router.push(location));
@@ -241,13 +241,12 @@ class _NotificationTapListenerState
   Future<void> _openAccountTab({required bool confirmTest}) async {
     final router = _opener.router;
     if (router.routerDelegate.state.matchedLocation != AppRoutes.account) {
-      if (await popPagesOverShell(router) == LeaveOutcome.left && mounted) {
+      if (await _opener.leavePagesOverShell() && mounted) {
         router.go(AppRoutes.account);
       }
       return;
     }
-    ref.read(rootModalRoutesProvider).closeAll();
-    if (!confirmTest) return;
+    if (!await _opener.leaveDialogsAndSheets() || !confirmTest) return;
     await _opener.showMessage((l10n) => l10n.notificationTestReceived);
   }
 

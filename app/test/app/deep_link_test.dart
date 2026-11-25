@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
@@ -211,6 +212,29 @@ void main() {
       await push(tester, '$_scheme://task/7');
 
       expect(find.byType(ConnectServerScreen), findsOneWidget);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets('a task link over a New task sheet with a title typed asks; '
+        'Keep editing keeps it and opens nothing', (tester) async {
+      await pumpSignedInApp(tester, sync: data);
+      final newTask = find.byType(NewTaskSheet);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(of: newTask, matching: find.byType(TextField)),
+        'Buy milk',
+      );
+      await tester.pumpAndSettle();
+
+      await push(tester, '$_scheme://task/7');
+      expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.newTaskDiscardTitle), findsNothing);
+      expect(newTask, findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
       expect(sheet, findsNothing);
     });
   });

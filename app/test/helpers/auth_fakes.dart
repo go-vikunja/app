@@ -85,12 +85,17 @@ final class MemoryPreferencesStore implements PrefixedPreferencesStore {
   /// Keys whose next read throws, once each.
   final Set<String> failNextRead = {};
 
+  /// Keys whose reads throw while listed.
+  final Set<String> failReads = {};
+
   /// Keys whose writes throw while listed.
   final Set<String> failWrites = {};
 
   @override
   Future<String?> getString(String key) async {
-    if (failNextRead.remove(key)) throw Exception('Preferences unreadable');
+    if (failNextRead.remove(key) || failReads.contains(key)) {
+      throw Exception('Preferences unreadable');
+    }
     return values[key];
   }
 

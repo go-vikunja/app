@@ -123,14 +123,14 @@ void main() {
       expect(inSheet(find.text('IMG_1.png')), findsOneWidget);
     });
 
-    testWidgets('saved after the app was opened again during the editor, '
-        'the sheet still says so and reads the details again', (tester) async {
+    testWidgets('saved after a route refresh during the editor, the sheet '
+        'still says so and reads the details again', (tester) async {
       await openSheet(tester, 'Quarterly report');
       await tester.tap(inSheet(find.byTooltip(en.taskDetailEditDescription)));
       await tester.pumpAndSettle();
       final reads = data.details.calls.length;
 
-      await reportRouteFromPlatform(tester);
+      await refreshRoutes(tester);
       await saveEdit(tester, '<p>Numbers, charts and a summary</p>');
 
       expect(find.byType(DescriptionEditorPage), findsNothing);
@@ -300,13 +300,13 @@ void main() {
       expect(data.tasks.updates, isEmpty);
     });
 
-    testWidgets('saved after the app was opened again during the editor, '
-        'the page still says so', (tester) async {
+    testWidgets('saved after a route refresh during the editor, the page '
+        'still says so', (tester) async {
       await openEditPage(tester, 1);
       await tester.tap(find.text(en.taskDetailDescription));
       await tester.pumpAndSettle();
 
-      await reportRouteFromPlatform(tester);
+      await refreshRoutes(tester);
       await saveEdit(tester, '<p>Only numbers</p>');
 
       expect(find.byType(DescriptionEditorPage), findsNothing);
@@ -360,8 +360,8 @@ void main() {
       expect(find.text(en.descriptionEditorSaved), findsOneWidget);
     });
 
-    testWidgets('saved after the app was opened again during the editor, '
-        'the page still says so', (tester) async {
+    testWidgets('saved after a route refresh during the editor, the page '
+        'still says so', (tester) async {
       await pumpApp(tester);
       unawaited(
         containerOf(tester)
@@ -372,7 +372,7 @@ void main() {
       await tester.tap(find.text(en.projectEditDescription));
       await tester.pumpAndSettle();
 
-      await reportRouteFromPlatform(tester);
+      await refreshRoutes(tester);
       await saveEdit(tester, '<p>About everything</p>');
 
       expect(find.byType(DescriptionEditorPage), findsNothing);

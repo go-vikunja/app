@@ -32,8 +32,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets("a label's description saved after the app was opened again "
-      'still says so on the form', (tester) async {
+  testWidgets("a label's description saved after a route refresh still says "
+      'so on the form', (tester) async {
     harness.labels = FakeLabelRepository(
       labels: [ownLabel(1, 'Urgent', html: '<p>Old</p>')],
     );
@@ -45,7 +45,7 @@ void main() {
     await tester.tap(find.text(en.labelsEditDescription));
     await tester.pumpAndSettle();
 
-    await reportRouteFromPlatform(tester);
+    await refreshRoutes(tester);
     await saveEdit(tester, '<p>New</p>');
 
     expect(find.byType(DescriptionEditorPage), findsNothing);
@@ -53,8 +53,8 @@ void main() {
     expect(find.text(en.descriptionEditorSaved), findsOneWidget);
   });
 
-  testWidgets("a team's description editor keeps its team when the app is "
-      'opened again, and the team page reads the saved one', (tester) async {
+  testWidgets("a team's description editor keeps its team through a route "
+      'refresh, and the team page reads the saved one', (tester) async {
     harness.teams.teams = [
       sampleTeam(id: 5, name: 'Design', description: '<p>Old</p>'),
     ];
@@ -66,7 +66,7 @@ void main() {
     await tester.tap(find.text(en.teamEditDescription));
     await tester.pumpAndSettle();
 
-    await reportRouteFromPlatform(tester);
+    await refreshRoutes(tester);
     expect(find.byType(DescriptionEditorPage), findsOneWidget);
     expect(currentLocation(tester), AppRoutes.teamDescription(5));
     await saveEdit(tester, '<p>New</p>');
@@ -80,36 +80,36 @@ void main() {
     expect(find.textContaining('New'), findsOneWidget);
   });
 
-  // The helper's canary: when a plain push's future survives the report,
+  // The helper's canary: when a plain push's future survives the refresh,
   // the helper no longer causes the re-decode (or go_router fixed it), and
-  // the tests here prove nothing.
-  testWidgets("the report drops a plain push's future", (tester) async {
+  // the tests here prove nothing. The pushed route itself survives it.
+  testWidgets("a route refresh drops a plain push's future", (tester) async {
     harness.teams.teams = [sampleTeam(id: 5, name: 'Design')];
     await harness.pump(tester, location: AppRoutes.teams);
     final router = containerOf(tester).read(appRouterProvider);
 
-    Future<bool> popped({required bool reported}) async {
+    Future<bool> popped({required bool refreshed}) async {
       var done = false;
       unawaited(router.push<void>(AppRoutes.team(5)).then((_) => done = true));
       await tester.pumpAndSettle();
-      if (reported) await reportRouteFromPlatform(tester);
+      if (refreshed) await refreshRoutes(tester);
       await tester.pageBack();
       await tester.pumpAndSettle();
       return done;
     }
 
-    expect(await popped(reported: false), isTrue);
-    expect(await popped(reported: true), isFalse);
+    expect(await popped(refreshed: false), isTrue);
+    expect(await popped(refreshed: true), isFalse);
   });
 
   testWidgets('the teams page reads the list again after a team page that '
-      'was open while the app was opened again', (tester) async {
+      'was open during a route refresh', (tester) async {
     harness.teams.teams = [sampleTeam(id: 5, name: 'Design')];
     await harness.pump(tester, location: AppRoutes.teams);
     await tester.tap(find.text('Design'));
     await tester.pumpAndSettle();
 
-    await reportRouteFromPlatform(tester);
+    await refreshRoutes(tester);
     await tester.pageBack();
     await tester.pumpAndSettle();
 

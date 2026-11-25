@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -336,14 +337,24 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       body: l10n.newTaskDiscardBody,
     );
     if (discard && mounted && (_route?.isCurrent ?? false)) {
-      _close(Navigator.of(context));
+      _close();
     }
   }
 
-  void _close(NavigatorState navigator) {
+  /// Closes the sheet with what it opened over itself. False when the sheet
+  /// was already taken (by an account switch, a sign-out or an opening),
+  /// and then it closes nothing.
+  bool _close() {
     _leaving = true;
     _guardSwipe();
-    navigator.pop();
+    final route = _route;
+    final navigator = route?.navigator;
+    if (route == null || navigator == null || !route.isActive) return false;
+    // A picker or the help opened while an add ran is still over the sheet.
+    navigator
+      ..popUntil((top) => top == route)
+      ..pop();
+    return true;
   }
 
   void _usePlanner({
@@ -429,7 +440,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       now: now,
       guest: ref.read(activeAccountIsGuestProvider),
     );
-    if (mounted) _focus.requestFocus();
+    if (mounted && !_leaving) _focus.requestFocus();
   }
 
   Future<void> _pickProject(List<Project> projects, int? selectedId) async {
@@ -441,14 +452,32 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     if (picked != null && mounted) setState(() => _pickedProjectId = picked.id);
   }
 
-  Future<void> _pickDue(DateTime now) async {
+  Future<void> _pickDue() async {
     final picked = await pickDateTime(
       context,
       current: _due,
-      now: now,
+      now: ref.read(clockProvider)(),
       display: ref.read(displaySettingsProvider),
     );
     if (picked != null && mounted) setState(() => _due = picked.toUtc());
+  }
+
+  /// The due date [option]'s chip sets, dated at the tap: the chips can be
+  /// a minute old, from before midnight or before a default time passed.
+  DateTime _shortcutDue(DateShortcutOption option, ClockTime? defaultTime) {
+    final now = ref.read(clockProvider)();
+    final day = buildDateShortcuts(now)
+        .firstWhere(
+          (current) => current.shortcut == option.shortcut,
+          orElse: () => option,
+        )
+        .day;
+    return dayWithTime(
+      day,
+      current: _due,
+      now: now,
+      defaultTime: defaultTime,
+    ).toUtc();
   }
 
   /// What a relative reminder refers to: the first line's due date.
@@ -559,7 +588,6 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
     final announcer = Announcer.of(context);
     final repository = ref.read(taskRepositoryProvider);
     final prefixes = _prefixes;
@@ -654,7 +682,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           )
         : null;
     final persist = MediaQuery.accessibleNavigationOf(context);
-    _close(navigator);
+    if (!_close()) return;
     messenger.showSnackBar(
       SnackBar(
         duration: Duration(seconds: warnings.isEmpty ? 4 : 8),
@@ -781,6 +809,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    // Redrawn by the minute tick, but dated by the clock as a chip tap is:
+    // the tick can be a minute behind, and the chips drawn after a tap must
+    // show the day it set.
+    ref.watch(clockTickProvider);
     final now = ref.watch(clockProvider)();
     final service = ref.watch(quickAddServiceProvider);
     final settings =
@@ -1032,12 +1064,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           onSelected: (option) => setState(
             () => _due = option == null
                 ? null
-                : dayWithTime(
-                    option.day,
-                    current: _due,
-                    now: now,
-                    defaultTime: defaultDueTime,
-                  ).toUtc(),
+                : _shortcutDue(option, defaultDueTime),
           ),
           trailing: [
             if (shownDue case final due? when !dueOnShortcut)
@@ -1059,7 +1086,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
                 color: colors.onSurfaceVariant,
               ),
               label: Text(l10n.newTaskPickDate),
-              onPressed: dueLocked ? null : () => unawaited(_pickDue(now)),
+              onPressed: dueLocked ? null : () => unawaited(_pickDue()),
             ),
           ],
         ),

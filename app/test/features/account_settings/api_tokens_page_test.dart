@@ -555,8 +555,8 @@ void main() {
       );
     });
 
-    testWidgets('the list and the settings re-read when the app was opened '
-        'again during the form', (tester) async {
+    testWidgets('the list and the settings re-read after a route refresh '
+        'during the form', (tester) async {
       await harness.pump(tester);
       await scrollToIn(
         tester,
@@ -571,7 +571,7 @@ void main() {
       await tester.tap(find.text(en.apiTokenPresetReadOnly));
       await tester.pump();
 
-      await reportRouteFromPlatform(tester);
+      await refreshRoutes(tester);
       await tester.tap(find.text(en.apiTokenFormCreate));
       await tester.pumpAndSettle();
       await tester.tap(find.text(en.oneTimeSecretCopy));

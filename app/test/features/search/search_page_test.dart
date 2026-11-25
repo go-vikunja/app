@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/features/smart_lists/presentation/label_tasks_scr
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -160,6 +161,78 @@ void main() {
     expect(find.text('Reports due'), findsOneWidget);
     expect(labelRow(5), findsOneWidget);
     expect(find.text('Old report'), findsNothing);
+  });
+
+  testWidgets('a task marked done keeps its place among the open results, '
+      'struck through, until its Undo has gone, then joins the done ones', (
+    tester,
+  ) async {
+    await openSearch(tester);
+    await search(tester, 'REPORT');
+    expect(taskTitles(tester), ['Quarterly report', 'Notes', 'Report draft']);
+    final hold = Completer<void>();
+    data.tasks.beforeWrite = () => hold.future;
+
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(TaskRow, 'Quarterly report'),
+        matching: find.byTooltip(en.taskMarkDone),
+      ),
+    );
+    await tester.pump();
+    expect(taskTitles(tester), ['Quarterly report', 'Notes', 'Report draft']);
+    expect(
+      tester.widget<Text>(find.text('Quarterly report')).style?.decoration,
+      TextDecoration.lineThrough,
+    );
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(taskTitles(tester), ['Quarterly report', 'Notes', 'Report draft']);
+    expect(find.text(en.taskMarkedDone), findsOneWidget);
+
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+    expect(taskTitles(tester).first, 'Notes');
+    expect(
+      tester
+          .widget<TaskRow>(find.widgetWithText(TaskRow, 'Quarterly report'))
+          .task
+          .done,
+      isTrue,
+    );
+  });
+
+  testWidgets('Undo keeps the row in its place among the open results while '
+      'the device stores it', (tester) async {
+    await openSearch(tester);
+    await search(tester, 'REPORT');
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(TaskRow, 'Quarterly report'),
+        matching: find.byTooltip(en.taskMarkDone),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final hold = Completer<void>();
+    data.tasks.beforeWrite = () => hold.future;
+
+    await tester.tap(find.text(en.undo));
+    await tester.pump();
+    expect(taskTitles(tester).first, 'Quarterly report');
+    expect(
+      tester.widget<Text>(find.text('Quarterly report')).style?.decoration,
+      isNull,
+    );
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(taskTitles(tester).first, 'Quarterly report');
+    expect(
+      tester.widget<Text>(find.text('Quarterly report')).style?.decoration,
+      isNull,
+    );
+    expect(data.tasks.writes.last, 'undoDone 2');
   });
 
   testWidgets('#12 finds index 12 in any project, OFF-12 the task with that '

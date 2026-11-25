@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -173,6 +174,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(containerOf(tester).read(activeAccountIdProvider), accounts.bob.id);
     expect(find.text('Bob task'), findsOneWidget);
+  });
+
+  testWidgets("a switch that stopped waiting for the account's status, which "
+      "then arrives in the switch's own frame, ends on its Overview", (
+    tester,
+  ) async {
+    await accounts.seed(withCarol: false);
+    final bobData = accounts.data.accounts[accounts.bob.id] = AccountDataFakes(
+      now: accounts.now,
+      restored: false,
+    );
+    await accounts.pump(tester);
+    // The app's own registry: the fakes' instance never hears its writes.
+    unawaited(
+      containerOf(tester)
+          .read(accountRegistryProvider)
+          .changes
+          .firstWhere((state) => state.activeAccountId == accounts.bob.id)
+          .then(
+            (_) => bobData.engine.emit(SyncIdle(lastSyncedAt: accounts.now)),
+          ),
+    );
+
+    unawaited(switchToBob(tester));
+    // Past the switch's wait for the status.
+    await tester.pump(const Duration(seconds: 6));
+    await pumpFrames(tester, 5);
+
+    expect(location(tester), AppRoutes.overview);
+    expect(find.byType(HomeShell), findsOneWidget);
+    expect(find.byType(FirstSyncScreen), findsNothing);
+    expect(containerOf(tester).read(activeAccountIdProvider), accounts.bob.id);
   });
 
   testWidgets("the next account's screens show none of the previous "

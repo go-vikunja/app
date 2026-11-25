@@ -2,7 +2,8 @@ import 'package:flutter/widgets.dart';
 
 /// The dialogs, sheets and pickers that are open, so that an account switch
 /// can close them at once: an exit animation would show them with the next
-/// account's data.
+/// account's data. An opening can also let them go as Back would, so that
+/// one that asks first stays until it is answered.
 final class RootModalRoutes extends NavigatorObserver {
   final _routes = <Route<Object?>>[];
 
@@ -45,5 +46,17 @@ final class RootModalRoutes extends NavigatorObserver {
       if (route.isActive) route.navigator?.removeRoute(route);
     }
     _routes.clear();
+  }
+
+  /// Like [closeAll], the newest first, but only down to the first one Back
+  /// would not close because it asks first or is busy; that one is
+  /// returned, and it and the ones under it stay.
+  Route<Object?>? closeDownToGuarded() {
+    for (final route in _routes.reversed.toList()) {
+      if (!route.isActive) continue;
+      if (route.popDisposition == RoutePopDisposition.doNotPop) return route;
+      route.navigator?.removeRoute(route);
+    }
+    return null;
   }
 }

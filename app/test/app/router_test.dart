@@ -240,6 +240,56 @@ void main() {
     });
   });
 
+  group('re-checking the routes', () {
+    testWidgets("a running sync's progress and a stored name leave a page "
+        "over the shell and its push's result alone", (tester) async {
+      final now = DateTime(2026, 11, 25, 9);
+      final data = SyncFakes(now: now);
+      await pumpSignedInApp(tester, sync: data, now: now);
+      final router = routerOf(tester);
+      int? result;
+      unawaited(
+        router.push<int>(AppRoutes.search).then((value) => result = value),
+      );
+      await tester.pumpAndSettle();
+      final pages = router.routerDelegate.currentConfiguration;
+
+      // No pumpAndSettle while it runs: the quiet indicator animates.
+      for (var done = 1; done <= 3; done++) {
+        data.engine.emit(
+          SyncRunning(
+            phase: SyncPhase.reconcile,
+            done: done,
+            total: 3,
+            initial: false,
+          ),
+        );
+        await tester.pump();
+      }
+      data.engine.emit(
+        SyncIdle(lastSyncedAt: now.add(const Duration(minutes: 1))),
+      );
+      await tester.pump();
+      final container = containerOf(tester);
+      final accountId = container
+          .read(accountsProvider)
+          .value!
+          .activeAccountId!;
+      // The app's own registry: the fakes' instance never announces to it.
+      unawaited(
+        container
+            .read(accountRegistryProvider)
+            .updateDisplayName(accountId, 'Alice B.'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(router.routerDelegate.currentConfiguration, same(pages));
+      router.pop(7);
+      await tester.pumpAndSettle();
+      expect(result, 7);
+    });
+  });
+
   testWidgets('home redirects to connect without an account', (tester) async {
     await pumpVikunjaApp(tester);
 

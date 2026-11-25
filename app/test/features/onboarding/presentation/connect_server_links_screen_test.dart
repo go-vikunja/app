@@ -434,8 +434,8 @@ void main() {
       );
     });
 
-    testWidgets('whose address is only the web asks for the server and '
-        'opens there', (tester) async {
+    testWidgets('whose address is only the web asks for the server without '
+        'the keyboard over the question, and opens there', (tester) async {
       final apiServer = fullServer270(root: 'https://api.example.org');
       final linkProbe = Completer<ServerConnection>();
       connector.handler = (input) => input == 'api.example.org'
@@ -459,8 +459,13 @@ void main() {
       // The link is no server address.
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.controller!.text, isEmpty);
-      expect(field.focusNode!.hasFocus, isTrue);
-      expect(tester.testTextInput.isVisible, isTrue);
+      // No keyboard covers the question, which is below the field.
+      expect(field.focusNode!.hasFocus, isFalse);
+      expect(tester.testTextInput.isVisible, isFalse);
+      expect(
+        find.text(en.guestServerNeededSuggestion).hitTestable(),
+        findsOneWidget,
+      );
 
       await submit(tester, 'api.example.org');
       await tester.pumpAndSettle();

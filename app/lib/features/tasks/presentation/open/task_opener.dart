@@ -49,7 +49,9 @@ String taskOpenFailureText(AppLocalizations l10n, Object error) =>
 /// which becomes active first (the edit page asks before it goes), with the
 /// detail in the Overview's pane where the window has room for one, else in
 /// a sheet over the Overview or over a page that covers the shell (the edit
-/// page keeps its unsaved changes).
+/// page keeps its unsaved changes). In the active account the dialogs and
+/// sheets go as if the user went back: one that asks on Back, such as the
+/// New task sheet with typed text, asks, and Keep editing drops the task.
 /// A detail that opens a task itself shows the next one over or in place of
 /// itself and only uses [resolve].
 final class TaskOpener {
@@ -68,6 +70,7 @@ final class TaskOpener {
   var _leaving = false;
   var _keptOutsideHome = false;
   final _afterLeaving = <VoidCallback>{};
+  Future<LeaveOutcome>? _runningLeave;
 
   /// How long a switch's registry change may take to reach the providers.
   static const _switchTimeout = Duration(seconds: 10);
@@ -198,7 +201,7 @@ final class TaskOpener {
     if (accounts?.activeAccountId != accountId) {
       final switcher = _ref.read(accountSwitcherProvider);
       if (!switcher.canSwitch) return false;
-      switch (await popPagesOverShell(_router)) {
+      switch (await _leave(() => popPagesOverShell(_router))) {
         case LeaveOutcome.left:
           break;
         case LeaveOutcome.stayed:
@@ -267,18 +270,56 @@ final class TaskOpener {
         (resolver) => resolver.resolve(reference),
       );
 
+  /// How an opening in the active account clears the way: the dialogs and
+  /// sheets go as if the user went back, so a New task sheet with a title
+  /// typed asks first (decision log: Tasks). False when one stays or another
+  /// account became active meanwhile; see [_leave] for the openings that
+  /// came during its question.
+  Future<bool> leaveDialogsAndSheets() async {
+    final accountId = _ref.read(activeAccountIdProvider);
+    final outcome = await _leave(() => popDialogsAndSheets(_router));
+    if (_disposed || outcome != LeaveOutcome.left) return false;
+    return _ref.read(activeAccountIdProvider) == accountId;
+  }
+
+  /// Like [leaveDialogsAndSheets], but the pages over the shell go too, as
+  /// before a tab of the shell shows.
+  Future<bool> leavePagesOverShell() async =>
+      await _leave(() => popPagesOverShell(_router)) == LeaveOutcome.left &&
+      !_disposed;
+
+  /// One leave at a time: one asked for while another one's question is up
+  /// waits for the answer instead of taking that question away. When the
+  /// user keeps editing, or the page does not go, the openings that came
+  /// meanwhile, waiting here or in [request], are dropped too.
+  Future<LeaveOutcome> _leave(Future<LeaveOutcome> Function() pop) async {
+    while (_runningLeave != null) {
+      final outcome = await _runningLeave!;
+      if (outcome != LeaveOutcome.left) return outcome;
+    }
+    late final Future<LeaveOutcome> leave;
+    leave = pop().whenComplete(() {
+      if (identical(_runningLeave, leave)) _runningLeave = null;
+    });
+    _runningLeave = leave;
+    final outcome = await leave;
+    if (outcome != LeaveOutcome.left) _pending = null;
+    return outcome;
+  }
+
   /// Shows [task] of the active account at its comment [commentId] when
-  /// there is one: the open dialogs and sheets close, a tab other than the
-  /// Overview goes back to it, and the task opens anew in the Overview's
-  /// pane, or in a sheet where the window has no room for the pane or a
-  /// page over the shell stays under it.
-  Future<void> showTask(Task task, {int? commentId}) {
-    _ref.read(rootModalRoutesProvider).closeAll();
+  /// there is one: the open dialogs and sheets go as if the user went back
+  /// (one that asks on Back asks, and Keep editing drops the task), a tab
+  /// other than the Overview goes back to it, and the task opens anew in
+  /// the Overview's pane, or in a sheet where the window has no room for the
+  /// pane or a page over the shell stays under it.
+  Future<void> showTask(Task task, {int? commentId}) async {
+    if (!await leaveDialogsAndSheets()) return;
     final location = _router.routerDelegate.state.matchedLocation;
     if (AppRoutes.isTab(location) && location != AppRoutes.overview) {
       _router.go(AppRoutes.overview);
     }
-    return showAfterFrame((context) {
+    await showAfterFrame((context) {
       final panes = _ref.read(taskDetailPanesProvider);
       if (panes.showInOverview(task, commentId: commentId)) return;
       unawaited(showTaskDetail(context, task: task, commentId: commentId));
@@ -296,15 +337,15 @@ final class TaskOpener {
   /// The New task sheet over the Overview or over a page that covers the
   /// shell, like [showTask]; nothing while one is open, as launching the
   /// app can report the same shortcut twice.
-  Future<void> showNewTask({int? projectId}) {
+  Future<void> showNewTask({int? projectId}) async {
     final modals = _ref.read(rootModalRoutesProvider);
-    if (modals.isOpen(newTaskSheetRouteName)) return Future.value();
-    modals.closeAll();
+    if (modals.isOpen(newTaskSheetRouteName)) return;
+    if (!await leaveDialogsAndSheets()) return;
     final location = _router.routerDelegate.state.matchedLocation;
     if (AppRoutes.isTab(location) && location != AppRoutes.overview) {
       _router.go(AppRoutes.overview);
     }
-    return showAfterFrame((context) {
+    await showAfterFrame((context) {
       if (modals.isOpen(newTaskSheetRouteName)) return;
       unawaited(showNewTaskSheet(context, projectId: projectId));
     });
@@ -331,7 +372,7 @@ final class TaskOpener {
 
   /// With the root navigator's context, which may not be built yet in the
   /// app's first frames. Completes once [show] ran, so the next opening's
-  /// `closeAll` sees what this one opened.
+  /// leave sees what this one opened.
   Future<void> showAfterFrame(
     void Function(BuildContext context) show, {
     int attemptsLeft = 10,

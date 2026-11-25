@@ -53,6 +53,23 @@ Future<void> bootstrap() async {
     ],
     earlyRoutes: earlyRoutes,
   );
+  await prepareFirstFrame(container);
+  runApp(
+    UncontrolledProviderScope(container: container, child: const VikunjaApp()),
+  );
+  container
+    ..listen(screenProtectionProvider, (_, _) {})
+    ..listen(inactiveAttachmentImagesProvider, (_, _) {});
+  unawaited(_initializeNotifications(container));
+  unawaited(_initializeBackground(container));
+  unawaited(_finishSignOuts(container));
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    unawaited(_excludeFromBackup());
+  }
+}
+
+/// Never throws: the app runs even when the account list cannot be read.
+Future<void> prepareFirstFrame(ProviderContainer container) async {
   // Awaited even when the rest fails, so that the first frame is already
   // locked while the app lock is on.
   final privacy = container.read(privacySettingsControllerProvider.future);
@@ -90,18 +107,6 @@ Future<void> bootstrap() async {
     ..listen(deviceLanguageFollowerProvider, (_, _) {})
     ..listen(foregroundHeartbeatProvider, (_, _) {})
     ..listen(appLockControllerProvider, (_, _) {});
-  runApp(
-    UncontrolledProviderScope(container: container, child: const VikunjaApp()),
-  );
-  container
-    ..listen(screenProtectionProvider, (_, _) {})
-    ..listen(inactiveAttachmentImagesProvider, (_, _) {});
-  unawaited(_initializeNotifications(container));
-  unawaited(_initializeBackground(container));
-  unawaited(_finishSignOuts(container));
-  if (defaultTargetPlatform == TargetPlatform.iOS) {
-    unawaited(_excludeFromBackup());
-  }
 }
 
 ProviderContainer createAppContainer({
