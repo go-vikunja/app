@@ -198,6 +198,86 @@ void main() {
     expect(images.loads, ['1 9 xl']);
   });
 
+  testWidgets('an image without a preview gets its original only when the '
+      'stored details name it as a small image', (tester) async {
+    data.details.storedDetailsByTask[1] = (
+      value: TaskDetails(
+        attachments: [
+          sampleAttachment(id: 9),
+          sampleAttachment(id: 8, size: 9 * _mib),
+          sampleAttachment(id: 7, name: 'notes.pdf', mime: 'application/pdf'),
+        ],
+      ),
+      readAt: now,
+    );
+    final images = data.attachmentImages
+      ..fallback = AttachmentImage(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        contentType: 'image/png',
+      );
+    for (final id in [9, 8, 7, 6]) {
+      images.failures[(1, id, AttachmentPreviewSize.extraLarge)] =
+          const DomainError(422, code: 4038);
+    }
+    await openEditor(tester);
+    final bridge = bridges.last;
+    final apiRoot = bridge.init!.links.apiRoot;
+    String image(int id) => '$apiRoot/tasks/1/attachments/$id';
+
+    bridge.emit(
+      EditorImagesWanted([
+        for (final id in [9, 8, 7, 6]) image(id),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(bridge.imagePreviews, [
+      {image(9): 'data:image/png;base64,AQID'},
+    ]);
+    expect(images.loads, ['1 9 xl', '1 9 original', '1 8 xl', '1 6 xl']);
+  });
+
+  testWidgets('a photo uploaded on the page that the server has no preview '
+      'of shows its original', (tester) async {
+    const src =
+        'https://tasks.example.org/vikunja/api/v2/tasks/1/attachments/500';
+    data.details.storedDetailsByTask[1] = (
+      value: TaskDetails(attachments: [sampleAttachment(id: 9)]),
+      readAt: now,
+    );
+    data.attachments.uploadSizes[photo.path] = 2048;
+    final images = data.attachmentImages
+      ..images[(1, 9, AttachmentPreviewSize.extraLarge)] = AttachmentImage(
+        bytes: Uint8List.fromList([4, 5, 6]),
+        contentType: 'image/jpeg',
+      )
+      ..failures[(1, 500, AttachmentPreviewSize.extraLarge)] =
+          const DomainError(422, code: 4038)
+      ..images[(1, 500, null)] = AttachmentImage(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        contentType: 'image/png',
+      );
+    await openEditor(tester);
+    final bridge = bridges.last;
+    final opened = '${bridge.init!.links.apiRoot}/tasks/1/attachments/9';
+    bridge.emit(EditorImagesWanted([opened]));
+    await tester.pumpAndSettle();
+
+    await insertFrom(tester, en.attachmentSourcePhotos);
+    expect(
+      bridge.commands.last,
+      EditorCommand.insertImage(src: src, id: 'tiptap-image-1-500'),
+    );
+    bridge.emit(EditorImagesWanted([opened, src]));
+    await tester.pumpAndSettle();
+
+    expect(bridge.imagePreviews, [
+      {opened: 'data:image/jpeg;base64,BAUG'},
+      {src: 'data:image/png;base64,AQID'},
+    ]);
+    expect(images.loads, ['1 9 xl', '1 500 xl', '1 500 original']);
+  });
+
   testWidgets('a photo is uploaded to the task, then inserted the way the '
       'web writes it', (tester) async {
     await openEditor(tester);

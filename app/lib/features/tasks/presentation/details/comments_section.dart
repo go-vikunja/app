@@ -67,6 +67,7 @@ List<Widget> commentsSection({
   required ValueChanged<int> onTaskLink,
   required int projectId,
   required CommentActions actions,
+  List<TaskAttachment>? attachments,
   Key? headerKey,
   Key Function(int commentId)? keyOf,
   int? highlighted,
@@ -119,6 +120,7 @@ List<Widget> commentsSection({
             projectId: projectId,
             replyAuthorOf: (id) => authors[id],
             actions: actions,
+            attachments: attachments,
             highlighted: comment.id == highlighted,
           ),
         ),
@@ -369,6 +371,7 @@ class CommentTile extends ConsumerWidget {
     required this.replyAuthorOf,
     this.projectId,
     this.actions,
+    this.attachments,
     this.highlighted = false,
     super.key,
   });
@@ -381,6 +384,9 @@ class CommentTile extends ConsumerWidget {
 
   /// Null shows the comment alone, without a menu or reactions to change.
   final CommentActions? actions;
+
+  /// The task's attachments, as [RichHtml.attachments].
+  final List<TaskAttachment>? attachments;
 
   /// Tinted, for a comment a notification opened the task at.
   final bool highlighted;
@@ -482,6 +488,7 @@ class CommentTile extends ConsumerWidget {
                           onTaskLink: onTaskLink,
                           projectId: projectId,
                           replyAuthorOf: replyAuthorOf,
+                          attachments: attachments,
                         ),
                       ),
                       ReactionChips(

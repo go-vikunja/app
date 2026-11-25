@@ -170,6 +170,45 @@ void main() {
       ]);
     });
 
+    test('a task stored with a progress far beyond 100 % and an offset beyond '
+        'ten thousand years reads back cut, and a date change of it is '
+        'stored', () async {
+      // The writers keep the values as they come, so this row stands for one
+      // an earlier version stored.
+      await db.tasksDao.upsertAll([
+        sampleTask(
+          id: 3,
+          title: 'Far',
+          projectId: 7,
+          due: monday,
+          percentDone: 1e307,
+          reminders: const [
+            TaskReminder(
+              relativePeriod: Duration(seconds: 9000000000000),
+              relativeTo: ReminderRelativeTo.dueDate,
+            ),
+          ],
+        ),
+      ]);
+
+      expect((await task(3)).percentDone, 1.0);
+
+      expect(
+        await queue(3, TaskChanges(dueDate: DateChange.set(tuesday))),
+        isTrue,
+      );
+
+      final far = await task(3);
+      expect(far.dueDate, tuesday);
+      expect(far.reminders, [
+        TaskReminder(
+          reminder: tuesday.add(TaskReminder.maxRelativePeriod),
+          relativePeriod: TaskReminder.maxRelativePeriod,
+          relativeTo: ReminderRelativeTo.dueDate,
+        ),
+      ]);
+    });
+
     test('label changes merge per id: an add then a remove is a remove, a '
         'remove then an add an add', () async {
       await queue(2, const TaskChanges(labels: IdSetChange(added: {10})));
@@ -599,6 +638,34 @@ void main() {
       expect((await task(1)).reminders, [
         absolute,
         at(hourBeforeDue, tuesday.subtract(const Duration(hours: 1))),
+      ]);
+    });
+
+    test('a queued date change does not stop the page from being stored when '
+        'a reminder would fall past the last date a device can hold', () async {
+      await queue(1, TaskChanges(startDate: DateChange.set(tuesday)));
+
+      await db.tasksDao.upsertAll([
+        incoming(
+          due: DateTime.utc(275760, 9, 12),
+          reminders: const [
+            TaskReminder(
+              relativePeriod: Duration(days: 2),
+              relativeTo: ReminderRelativeTo.dueDate,
+            ),
+          ],
+        ),
+      ]);
+
+      final one = await task(1);
+      expect(one.title, 'One, renamed');
+      expect(one.dueDate, DateTime.utc(275760, 9, 12));
+      expect(one.startDate, tuesday);
+      expect(one.reminders, [
+        const TaskReminder(
+          relativePeriod: Duration(days: 2),
+          relativeTo: ReminderRelativeTo.dueDate,
+        ),
       ]);
     });
 

@@ -299,8 +299,9 @@ bool changesDates(TaskChanges changes) =>
 
 /// [reminders] with the instant of every relative one computed from the
 /// task's dates as the server computes it: the referenced date plus the
-/// period, null while that date is unset. Absolute ones are kept. Every
-/// instant is in whole seconds, as the server keeps them.
+/// period, null while that date is unset or when no date can hold the sum.
+/// Absolute ones are kept. Every instant is in whole seconds, as the server
+/// keeps them.
 List<TaskReminder> withLocalInstants(
   List<TaskReminder> reminders, {
   required DateTime? dueDate,
@@ -315,11 +316,14 @@ List<TaskReminder> withLocalInstants(
       ),
       final relativeTo => TaskReminder(
         reminder: _inWholeSeconds(
-          switch (relativeTo) {
-            ReminderRelativeTo.dueDate => dueDate,
-            ReminderRelativeTo.startDate => startDate,
-            ReminderRelativeTo.endDate => endDate,
-          }?.toUtc().add(reminder.relativePeriod),
+          relativeReminderInstant(
+            switch (relativeTo) {
+              ReminderRelativeTo.dueDate => dueDate,
+              ReminderRelativeTo.startDate => startDate,
+              ReminderRelativeTo.endDate => endDate,
+            }?.toUtc(),
+            reminder.relativePeriod,
+          ),
         ),
         relativePeriod: reminder.relativePeriod,
         relativeTo: relativeTo,

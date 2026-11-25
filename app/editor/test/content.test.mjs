@@ -140,7 +140,7 @@ describe('images', () => {
     }
   })
 
-  test('nothing is loaded: the live page shows placeholders, never an img', async () => {
+  test('the page loads nothing itself: until the app sends previews it shows placeholders, never an img', async () => {
     const editor = await open(`${attachment}${external}`, server)
     assert.equal(editor.view.dom.querySelectorAll('img').length, 0)
     const placeholders = [...editor.view.dom.querySelectorAll('.image-placeholder')]
@@ -150,22 +150,22 @@ describe('images', () => {
     )
   })
 
-  test('a placeholder says it is an image shown after saving, with its alt text if any', async () => {
+  test('a placeholder says it is an image not shown while editing, with its alt text if any', async () => {
     posted.length = 0
     bridge.receive({
       type: 'init',
       token,
       html: `${attachment}<img src="https://images.example.com/dog.png">`,
       links: server,
-      l10n: {image: 'Image (shown after saving)'},
+      l10n: {image: 'Image (not shown while editing)'},
     })
     await waitFor(posted, message => message.type === 'state')
     const placeholders = [...bridge.editor.view.dom.querySelectorAll('.image-placeholder')]
     assert.deepEqual(
       placeholders.map(element => [element.textContent, element.getAttribute('aria-label')]),
       [
-        ['plan', 'plan, Image (shown after saving)'],
-        ['Image (shown after saving)', 'Image (shown after saving)'],
+        ['plan', 'plan, Image (not shown while editing)'],
+        ['Image (not shown while editing)', 'Image (not shown while editing)'],
       ],
     )
   })

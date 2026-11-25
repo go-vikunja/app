@@ -3918,6 +3918,10 @@
   "@richTextImageUnsupported": {
     "description": "An attachment image in a format the app does not draw, such as SVG."
   },
+  "richTextLoadImage": "Load image",
+  "@richTextLoadImage": {
+    "description": "Stands in for an attachment image in a description or comment that the app does not load by itself: one past the first 10 of the text, or a file the server has no preview of that is not listed as a small image. A tap loads it. Also the screen reader hint of that stand-in."
+  },
   "richTextShowImage": "Show full screen",
   "@richTextShowImage": {
     "description": "Screen reader: hint on an image in a description or comment that opens it full screen."

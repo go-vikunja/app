@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +24,13 @@ const photo = RichImage(
   RichAttachmentImage(AttachmentRef(taskId: 5, attachmentId: 3)),
   alt: 'The fence',
 );
+
+RichImage attachmentImage(int attachmentId) => RichImage(
+  RichAttachmentImage(AttachmentRef(taskId: 5, attachmentId: attachmentId)),
+);
+
+const AttachmentPreviewSize xl = AttachmentPreviewSize.extraLarge;
+const noPreview = DomainError(422, code: 4038);
 
 final class _Taps {
   final links = <String>[];
@@ -53,6 +62,8 @@ void main() {
     User? Function(int commentId)? replyAuthorOf,
     bool toggleable = false,
     bool opensLinks = true,
+    List<TaskAttachment>? attachments,
+    bool settle = true,
   }) async {
     usePhoneSurface(tester, logicalSize: const Size(360, 1600));
     await pumpSignedInApp(tester, sync: data);
@@ -75,13 +86,20 @@ void main() {
                     onToggleTaskItem: toggleable ? taps.taskItems.add : null,
                     projectId: projectId,
                     replyAuthorOf: replyAuthorOf,
+                    attachments: attachments,
                   ),
                 ),
               ),
             ),
           ),
         );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      // Spinners of images still loading never settle.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
     return taps;
   }
 
@@ -493,6 +511,32 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+
+    testWidgets('a document of tens of thousands of paragraphs builds only '
+        'its beginning, then an ellipsis', (tester) async {
+      final document = parseRichText(
+        [for (var i = 0; i < 20000; i++) '<p>Line $i</p>'].join(),
+        apiRoot: Uri.parse('https://tasks.example.org/vikunja/'),
+        taskLinkBases: const [],
+      );
+      await pumpRichText(tester, document.blocks);
+
+      expect(find.text('Line 0'), findsOneWidget);
+      expect(find.text('…'), findsOneWidget);
+      expect(find.text('Line 19999'), findsNothing);
+      expect(
+        tester
+            .widgetList(
+              find.descendant(
+                of: find.byType(RichTextView),
+                matching: find.byType(RichText),
+              ),
+            )
+            .length,
+        lessThanOrEqualTo(maxRichNodes + 1),
+      );
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets('headings are bold, larger than the body and ordered by '
         'level', (tester) async {
@@ -933,13 +977,176 @@ void main() {
       expect(find.text(en.richTextImageUnsupported), findsOneWidget);
     });
 
-    testWidgets('an image the server has no preview of (2.7.1 and newer) '
-        'shows its original, which opens full screen', (tester) async {
+    testWidgets('a text loads ten of its images by itself, an image named '
+        'twice once, and each of the others on a tap', (tester) async {
+      data.attachmentImages.fallback = samplePngImage;
+      await pumpRichText(tester, [
+        attachmentImage(1),
+        for (var id = 1; id <= 12; id++) attachmentImage(id),
+      ]);
+
+      expect(data.attachmentImages.loads.toSet(), {
+        for (var id = 1; id <= 10; id++) '5 $id xl',
+      });
+      expect(find.text(en.richTextLoadImage), findsNWidgets(2));
+
+      data.attachmentImages.loads.clear();
+      await tester.tap(find.text(en.richTextLoadImage).first);
+      await tester.pumpAndSettle();
+
+      expect(data.attachmentImages.loads, ['5 11 xl']);
+      expect(find.text(en.richTextLoadImage), findsOneWidget);
+    });
+
+    testWidgets('at most three images load at once, the others in turn, and '
+        'one whose page closes while it waits is never asked for', (
+      tester,
+    ) async {
+      data.attachmentImages.fallback = samplePngImage;
+      final held = <String, Completer<void>>{};
+      data.attachmentImages.beforeLoad = (load) =>
+          (held[load] = Completer<void>()).future;
+      await pumpRichText(tester, settle: false, [
+        for (var id = 1; id <= 5; id++) attachmentImage(id),
+      ]);
+
+      expect(data.attachmentImages.loads, ['5 1 xl', '5 2 xl', '5 3 xl']);
+
+      held['5 1 xl']!.complete();
+      await tester.pump();
+
+      expect(data.attachmentImages.loads, [
+        '5 1 xl',
+        '5 2 xl',
+        '5 3 xl',
+        '5 4 xl',
+      ]);
+
+      Navigator.of(tester.element(find.byType(RichTextView))).pop();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(RichTextView), findsNothing);
+      for (final load in held.values) {
+        if (!load.isCompleted) load.complete();
+      }
+      await tester.pumpAndSettle();
+
+      expect(data.attachmentImages.loads, [
+        '5 1 xl',
+        '5 2 xl',
+        '5 3 xl',
+        '5 4 xl',
+      ]);
+    });
+
+    testWidgets('closing a text cancels its images still loading, so the next '
+        "text's images load at once", (tester) async {
       data.attachmentImages
-        ..failures[(5, 3, AttachmentPreviewSize.extraLarge)] =
-            const DomainError(422, code: 4038)
+        ..fallback = samplePngImage
+        ..beforeLoad = (_) => Completer<void>().future;
+      await pumpRichText(tester, settle: false, [
+        for (var id = 1; id <= 4; id++) attachmentImage(id),
+      ]);
+      expect(data.attachmentImages.loads, ['5 1 xl', '5 2 xl', '5 3 xl']);
+
+      Navigator.of(tester.element(find.byType(RichTextView))).pop();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(RichTextView), findsNothing);
+      expect(
+        data.attachmentImages.cancels,
+        unorderedEquals(['5 1 xl', '5 2 xl', '5 3 xl']),
+      );
+
+      data.attachmentImages.beforeLoad = null;
+      containerOf(tester)
+          .read(appRouterProvider)
+          .routerDelegate
+          .navigatorKey
+          .currentState!
+          .push(
+            MaterialPageRoute<void>(
+              builder: (context) => Scaffold(
+                body: RichTextView(
+                  document: RichDocument([
+                    attachmentImage(21),
+                    attachmentImage(22),
+                  ]),
+                  onLink: null,
+                  onTaskLink: (_) {},
+                ),
+              ),
+            ),
+          );
+      await tester.pumpAndSettle();
+
+      expect(data.attachmentImages.loads.skip(3), ['5 21 xl', '5 22 xl']);
+      expect(find.byType(Image), findsNWidgets(2));
+    });
+
+    testWidgets('an image the list names without a type is asked for like '
+        'one it does not name: its preview shows, and without one it waits '
+        'for Load image', (tester) async {
+      data.attachmentImages
+        ..images[(5, 3, xl)] = samplePngImage
+        ..failures[(5, 4, xl)] = noPreview
+        ..images[(5, 4, null)] = samplePngImage;
+      await pumpRichText(
+        tester,
+        [photo, attachmentImage(4)],
+        attachments: const [
+          TaskAttachment(id: 3, taskId: 5, name: 'fence', size: 9),
+          TaskAttachment(
+            id: 4,
+            taskId: 5,
+            name: 'gate',
+            mime: 'application/octet-stream',
+            size: 9,
+          ),
+        ],
+      );
+
+      expect(data.attachmentImages.loads, ['5 3 xl', '5 4 xl']);
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.text(en.richTextLoadImage), findsOneWidget);
+      expect(find.text(en.richTextImageUnsupported), findsNothing);
+    });
+
+    testWidgets('an image past the ten shows at once when its preview is '
+        'already in memory', (tester) async {
+      data.attachmentImages.fallback = samplePngImage;
+      await data.attachmentImages.load(5, 11, preview: xl);
+      data.attachmentImages.loads.clear();
+      await pumpRichText(tester, [
+        for (var id = 1; id <= 11; id++) attachmentImage(id),
+      ]);
+
+      expect(find.text(en.richTextLoadImage), findsNothing);
+      expect(find.byType(Image), findsNWidgets(11));
+      expect(data.attachmentImages.loads.toSet(), {
+        for (var id = 1; id <= 10; id++) '5 $id xl',
+      });
+    });
+
+    testWidgets("an image the server has no preview of that the task's list "
+        'names as an image of at most 8 MiB shows its original, which opens '
+        'full screen', (tester) async {
+      data.attachmentImages
+        ..failures[(5, 3, xl)] = noPreview
         ..images[(5, 3, null)] = samplePngImage;
-      await pumpRichText(tester, const [photo]);
+      await pumpRichText(
+        tester,
+        const [photo],
+        attachments: const [
+          TaskAttachment(
+            id: 3,
+            taskId: 5,
+            name: 'fence.png',
+            mime: 'image/png',
+            size: 1024,
+          ),
+        ],
+      );
 
       expect(data.attachmentImages.loads, ['5 3 xl', '5 3 original']);
       expect(find.byType(Image), findsOneWidget);
@@ -951,15 +1158,122 @@ void main() {
       expect(find.byType(InteractiveViewer), findsOneWidget);
     });
 
-    testWidgets('an SVG without a preview is still never decoded', (
-      tester,
-    ) async {
+    for (final (name, attachments) in [
+      ('there is no list for', null),
+      (
+        'the list does not name',
+        const [
+          TaskAttachment(
+            id: 4,
+            taskId: 5,
+            name: 'other.png',
+            mime: 'image/png',
+            size: 1024,
+          ),
+        ],
+      ),
+      (
+        'the list names larger than 8 MiB',
+        const [
+          TaskAttachment(
+            id: 3,
+            taskId: 5,
+            name: 'fence.png',
+            mime: 'image/png',
+            size: 8 * 1024 * 1024 + 1,
+          ),
+        ],
+      ),
+    ]) {
+      testWidgets('an image the server has no preview of that $name waits '
+          'for Load image, and a tap loads its original', (tester) async {
+        final semantics = tester.ensureSemantics();
+        data.attachmentImages
+          ..failures[(5, 3, xl)] = noPreview
+          ..images[(5, 3, null)] = samplePngImage;
+        await pumpRichText(tester, const [photo], attachments: attachments);
+
+        expect(data.attachmentImages.loads, ['5 3 xl']);
+        expect(find.byType(Image), findsNothing);
+        expect(
+          find.semantics.byPredicate(
+            (node) =>
+                node.label == 'The fence' &&
+                node.hint == en.richTextLoadImage &&
+                node.flagsCollection.isButton &&
+                node.getSemanticsData().hasAction(SemanticsAction.tap),
+          ),
+          findsOne,
+        );
+
+        await tester.tap(find.text(en.richTextLoadImage));
+        await tester.pumpAndSettle();
+
+        expect(data.attachmentImages.loads, ['5 3 xl', '5 3 original']);
+        expect(find.byType(Image), findsOneWidget);
+        expect(find.text(en.richTextLoadImage), findsNothing);
+        semantics.dispose();
+      });
+    }
+
+    testWidgets('an original already in memory stands in for a missing '
+        'preview without a tap', (tester) async {
       data.attachmentImages
-        ..failures[(5, 3, AttachmentPreviewSize.extraLarge)] =
-            const DomainError(422, code: 4038)
+        ..failures[(5, 3, xl)] = noPreview
+        ..images[(5, 3, null)] = samplePngImage;
+      await data.attachmentImages.load(5, 3);
+      data.attachmentImages.loads.clear();
+      await pumpRichText(tester, const [photo]);
+
+      expect(data.attachmentImages.loads, ['5 3 xl']);
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.text(en.richTextLoadImage), findsNothing);
+    });
+
+    testWidgets("a file the task's list names as no image, or as SVG, is "
+        'never asked for and cannot be shown', (tester) async {
+      data.attachmentImages.fallback = samplePngImage;
+      await pumpRichText(
+        tester,
+        [photo, attachmentImage(4)],
+        attachments: const [
+          TaskAttachment(
+            id: 3,
+            taskId: 5,
+            name: 'notes.txt',
+            mime: 'text/plain; charset=utf-8',
+            size: 1024,
+          ),
+          TaskAttachment(
+            id: 4,
+            taskId: 5,
+            name: 'vector.svg',
+            mime: 'image/svg+xml',
+            size: 1024,
+          ),
+        ],
+      );
+
+      expect(data.attachmentImages.loads, isEmpty);
+      expect(find.byType(Image), findsNothing);
+      expect(find.text(en.richTextImageUnsupported), findsNWidgets(2));
+      expect(find.text(en.richTextLoadImage), findsNothing);
+    });
+
+    testWidgets('an SVG without a preview is never decoded, also once asked '
+        'for', (tester) async {
+      data.attachmentImages
+        ..failures[(5, 3, xl)] = noPreview
         ..images[(5, 3, null)] = sampleSvgImage;
       await pumpRichText(tester, const [photo]);
 
+      expect(data.attachmentImages.loads, ['5 3 xl']);
+      expect(find.text(en.richTextLoadImage), findsOneWidget);
+
+      await tester.tap(find.text(en.richTextLoadImage));
+      await tester.pumpAndSettle();
+
+      expect(data.attachmentImages.loads, ['5 3 xl', '5 3 original']);
       expect(find.byType(Image), findsNothing);
       expect(find.text(en.richTextImageUnsupported), findsOneWidget);
     });
@@ -993,6 +1307,57 @@ void main() {
 
       expect(data.attachmentImages.loads, ['5 3 xl', '5 3 xl']);
       expect(find.byType(Image), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('an image a page answered in place of, such as a Wi-Fi '
+        'sign-in page, says it could not load and a tap asks again once the '
+        'page is gone', (tester) async {
+      final semantics = tester.ensureSemantics();
+      const key = (5, 3, AttachmentPreviewSize.extraLarge);
+      data.attachmentImages.failures[key] = const AttachmentImagePageInstead();
+      await pumpRichText(tester, const [photo]);
+
+      expect(find.byType(Image), findsNothing);
+      expect(find.text(en.richTextImageFailed), findsOneWidget);
+      expect(
+        find.semantics.byPredicate(
+          (node) =>
+              node.label == en.richTextImageFailed &&
+              node.hint == en.retry &&
+              node.flagsCollection.isButton,
+        ),
+        findsOne,
+      );
+
+      data.attachmentImages
+        ..failures.remove(key)
+        ..images[key] = samplePngImage;
+      await tester.tap(find.text(en.richTextImageFailed));
+      await tester.pumpAndSettle();
+
+      expect(data.attachmentImages.loads, ['5 3 xl', '5 3 xl']);
+      expect(find.byType(Image), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('an answer that is no image says it cannot be shown, without '
+        'Try again', (tester) async {
+      final semantics = tester.ensureSemantics();
+      data.attachmentImages.failures[(5, 3, AttachmentPreviewSize.extraLarge)] =
+          const AttachmentNotAnImage();
+      await pumpRichText(tester, const [photo]);
+
+      expect(find.text(en.richTextImageUnsupported), findsOneWidget);
+      expect(find.byIcon(Icons.image_not_supported_outlined), findsOneWidget);
+      expect(
+        find.semantics.byPredicate((node) => node.hint == en.retry),
+        findsNothing,
+      );
+      await tester.tap(find.text(en.richTextImageUnsupported));
+      await tester.pumpAndSettle();
+
+      expect(data.attachmentImages.loads, ['5 3 xl']);
       semantics.dispose();
     });
 
@@ -1093,6 +1458,30 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(en.richTextImageOffline), findsOneWidget);
+      data.attachmentImages
+        ..failures.remove((5, 3, null))
+        ..images[(5, 3, null)] = samplePngImage;
+      await tester.tap(find.text(en.retry));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(data.attachmentImages.loads.where((l) => l == '5 3 original'), [
+        '5 3 original',
+        '5 3 original',
+      ]);
+    });
+
+    testWidgets('the viewer retries an original a page answered in place of', (
+      tester,
+    ) async {
+      data.attachmentImages
+        ..images[(5, 3, AttachmentPreviewSize.extraLarge)] = samplePngImage
+        ..failures[(5, 3, null)] = const AttachmentImagePageInstead();
+      await pumpRichText(tester, const [photo]);
+      await tester.tap(find.byType(Image));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.richTextImageFailed), findsOneWidget);
       data.attachmentImages
         ..failures.remove((5, 3, null))
         ..images[(5, 3, null)] = samplePngImage;

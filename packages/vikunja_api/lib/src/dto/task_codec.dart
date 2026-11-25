@@ -16,7 +16,7 @@ Task parseTask(Object? json) {
     startDate: dateOf(map['start_date']),
     endDate: dateOf(map['end_date']),
     priority: TaskPriority.fromValue(intOr(map, 'priority', 0)),
-    percentDone: doubleOr(map, 'percent_done', 0),
+    percentDone: doubleOr(map, 'percent_done', 0).clamp(0, 1),
     hexColor: hexColorOf(map['hex_color']),
     identifier: stringOr(map, 'identifier', ''),
     index: intOr(map, 'index', 0),
@@ -117,7 +117,7 @@ TaskReminder parseReminder(Object? json) {
   final map = objectOf(json, 'reminder');
   return TaskReminder(
     reminder: dateOf(map['reminder']),
-    relativePeriod: Duration(seconds: intOr(map, 'relative_period', 0)),
+    relativePeriod: reminderPeriodOf(intOr(map, 'relative_period', 0)),
     relativeTo: ReminderRelativeTo.fromWire(stringOr(map, 'relative_to', '')),
   );
 }

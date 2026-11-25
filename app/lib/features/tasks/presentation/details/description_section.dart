@@ -19,6 +19,7 @@ List<Widget> descriptionSection({
   required ValueChanged<int> onTaskLink,
   required VoidCallback? onEdit,
   required void Function(String html, RichTaskItem item)? onToggleTaskItem,
+  required List<TaskAttachment>? attachments,
 }) => [
   _DescriptionHeader(task: task, onEdit: onEdit),
   SectionCard(
@@ -29,6 +30,7 @@ List<Widget> descriptionSection({
         onTaskLink: onTaskLink,
         onAdd: onEdit,
         onToggleTaskItem: onToggleTaskItem,
+        attachments: attachments,
       ),
     ],
   ),
@@ -74,6 +76,7 @@ class _Description extends StatefulWidget {
     required this.onTaskLink,
     required this.onAdd,
     required this.onToggleTaskItem,
+    required this.attachments,
   });
 
   final Task task;
@@ -81,6 +84,7 @@ class _Description extends StatefulWidget {
   final ValueChanged<int> onTaskLink;
   final VoidCallback? onAdd;
   final void Function(String html, RichTaskItem item)? onToggleTaskItem;
+  final List<TaskAttachment>? attachments;
 
   @override
   State<_Description> createState() => _DescriptionState();
@@ -130,6 +134,7 @@ class _DescriptionState extends State<_Description> {
             onToggleTaskItem: widget.onToggleTaskItem,
             style: theme.textTheme.bodyLarge,
             projectId: task.projectId,
+            attachments: widget.attachments,
             empty: empty,
           ),
         ),

@@ -141,6 +141,23 @@ void main() {
     expect(reminderInstant(TaskReminder(reminder: start), dates), start);
   });
 
+  test('the instant is null when no date can hold it', () {
+    expect(
+      reminderInstant(
+        relative(const Duration(days: 2), ReminderRelativeTo.dueDate),
+        (due: DateTime.utc(275760, 9, 12), start: null, end: null),
+      ),
+      isNull,
+    );
+    expect(
+      reminderInstant(
+        relative(TaskReminder.maxRelativePeriod, ReminderRelativeTo.dueDate),
+        (due: due, start: null, end: null),
+      ),
+      due.add(TaskReminder.maxRelativePeriod),
+    );
+  });
+
   group('adding', () {
     final dayBefore = relative(
       const Duration(days: -1),

@@ -38,6 +38,9 @@ abstract interface class AttachmentRepository {
 
   /// The attachment's original as a file in the account's download cache,
   /// reused while its size matches; named after the attachment, sanitised.
+  /// A file whose length is not the listed size, such as a captive portal's
+  /// page in its place, is deleted and fails with `UnexpectedResponse`; a
+  /// listed size of 0 is not checked.
   Future<File> download(
     int taskId,
     TaskAttachment attachment, {

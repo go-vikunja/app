@@ -9,6 +9,7 @@ import 'package:vikunja_api/vikunja_api.dart'
 import 'package:vikunja_mobile/core/attachments/attachment_image_cache.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
 import 'package:vikunja_mobile/core/attachments/image_disk_cache.dart';
+import 'package:vikunja_mobile/core/attachments/load_queue.dart';
 import 'package:vikunja_mobile/core/files/file_actions.dart' show plainMimeType;
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 
@@ -47,7 +48,12 @@ ImageDiskCache accountImageDiskCache(Ref ref, String accountId) {
 /// original in the download cache is read from there, offline too.
 @Riverpod(keepAlive: true)
 AttachmentImages accountAttachmentImages(Ref ref, String accountId) {
-  final cache = AttachmentImageCache((taskId, attachmentId, preview) async {
+  final cache = AttachmentImageCache((
+    taskId,
+    attachmentId,
+    preview,
+    cancel,
+  ) async {
     if (preview == null) {
       if (await _downloadedOriginal(ref, accountId, taskId, attachmentId)
           case final original?) {
@@ -57,7 +63,7 @@ AttachmentImages accountAttachmentImages(Ref ref, String accountId) {
     return await ref
         .read(readClientProvider(accountId))
         .attachments
-        .fetch(taskId, attachmentId, preview: preview);
+        .fetch(taskId, attachmentId, preview: preview, cancel: cancel);
   }, disk: ref.watch(accountImageDiskCacheProvider(accountId)));
   ref.onDispose(cache.clear);
   return cache;
@@ -114,3 +120,8 @@ AttachmentImages? attachmentImages(Ref ref) {
   if (accountId == null) return null;
   return ref.watch(accountAttachmentImagesProvider(accountId));
 }
+
+/// Inline images of descriptions and comments ask a few at a time,
+/// app-wide (decision log: Descriptions, comments, attachments).
+@Riverpod(keepAlive: true)
+LoadQueue inlineImageQueue(Ref ref) => LoadQueue(maxRunning: 3);

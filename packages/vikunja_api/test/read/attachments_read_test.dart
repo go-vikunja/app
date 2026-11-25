@@ -106,6 +106,33 @@ final class _Endless {
   }
 }
 
+/// A few bytes and then nothing, never closed: a client that reads the
+/// body waits for ever.
+final class _Stalled {
+  new(this.contentType);
+
+  final String contentType;
+  bool cancelled = false;
+
+  ResponseBody call(RequestOptions request) {
+    late final StreamController<Uint8List> controller;
+    controller = StreamController<Uint8List>(
+      onListen: () => controller.add(Uint8List.fromList(utf8.encode('%PDF-'))),
+      onCancel: () {
+        cancelled = true;
+        return controller.close();
+      },
+    );
+    return ResponseBody(
+      controller.stream,
+      200,
+      headers: {
+        Headers.contentTypeHeader: [contentType],
+      },
+    );
+  }
+}
+
 void main() {
   for (final (hasV2, base) in [(true, _v2), (false, _v1)]) {
     group(hasV2 ? 'v2' : 'v1', () {
@@ -166,9 +193,10 @@ void main() {
         );
       });
 
-      test('before 2.7.1: what the server cannot preview comes back as it '
-          'is', () async {
+      test('before 2.7.1: a file that is no raster image, sent in place of a '
+          'preview, is no preview and its body is not read', () async {
         const svg = '<svg><script>alert(1)</script></svg>';
+        final pdf = _Stalled('application/pdf');
         final dio = fakeDio({
           '$_v1/tasks/17/attachments/15?preview_size=md': _file(
             utf8.encode('just some text'),
@@ -178,27 +206,52 @@ void main() {
             utf8.encode(svg),
             'Image/SVG+XML',
           ),
+          '$_v1/tasks/17/attachments/17?preview_size=md': pdf.call,
+          '$_v1/tasks/17/attachments/18?preview_size=md': _file(
+            utf8.encode('x'),
+            null,
+          ),
           '$base/tasks/17/attachments/18': _file(utf8.encode('x'), null),
         });
         final attachments = _attachments(dio, hasV2: hasV2);
 
-        final text = await attachments.fetch(
-          17,
-          15,
-          preview: AttachmentPreviewSize.medium,
-        );
-        final vector = await attachments.fetch(
-          17,
-          16,
-          preview: AttachmentPreviewSize.medium,
-        );
+        for (final id in [15, 16, 17, 18]) {
+          final failure = await attachments
+              .fetch(17, id, preview: AttachmentPreviewSize.medium)
+              .then<Object>((blob) => blob, onError: (Object error) => error);
+          expect(isNoAttachmentPreview(failure), isTrue, reason: '$id');
+        }
+        await pumpEventQueue();
+        expect(pdf.cancelled, isTrue);
         final untyped = await attachments.fetch(17, 18);
-
-        expect(text.contentType, 'text/plain');
-        expect(utf8.decode(text.bytes), 'just some text');
-        expect(vector.contentType, 'image/svg+xml');
-        expect(vector.isSvg, isTrue);
         expect(untyped.contentType, 'application/octet-stream');
+      });
+
+      test('before 2.7.1: an image the server cannot preview, and a page in '
+          'its place, come back as they are', () async {
+        final types = {
+          15: 'image/webp',
+          16: 'text/html',
+          17: 'application/xhtml+xml',
+        };
+        final dio = fakeDio({
+          for (final MapEntry(key: id, value: type) in types.entries)
+            '$_v1/tasks/17/attachments/$id?preview_size=md': _file(
+              utf8.encode('body $id'),
+              '$type; charset=utf-8',
+            ),
+        });
+        final attachments = _attachments(dio, hasV2: hasV2);
+
+        for (final MapEntry(key: id, value: type) in types.entries) {
+          final blob = await attachments.fetch(
+            17,
+            id,
+            preview: AttachmentPreviewSize.medium,
+          );
+          expect(blob.contentType, type);
+          expect(utf8.decode(blob.bytes), 'body $id');
+        }
       });
 
       test('an empty file is a file', () async {
@@ -332,6 +385,47 @@ void main() {
             ),
           ),
         );
+      });
+
+      test("the caller's cancel ends a fetch while its body arrives and "
+          "closes the connection; a refusal leaves the caller's token "
+          'alone', () async {
+        final stalled = _Stalled('image/png');
+        final endless = _Endless(
+          total: 64 * 1024 * 1024,
+          declared: maxAttachmentBytes + 1,
+        );
+        final dio = fakeDio({
+          '$base/tasks/17/attachments/14': stalled.call,
+          '$base/tasks/17/attachments/15': endless.call,
+        });
+        final attachments = _attachments(dio, hasV2: hasV2);
+        final cancel = CancelToken();
+
+        final fetch = attachments.fetch(17, 14, cancel: cancel);
+        await pumpEventQueue();
+        expect(stalled.cancelled, isFalse);
+        cancel.cancel();
+
+        await expectLater(
+          fetch,
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.type,
+              'type',
+              DioExceptionType.cancel,
+            ),
+          ),
+        );
+        await pumpEventQueue();
+        expect(stalled.cancelled, isTrue);
+
+        final kept = CancelToken();
+        await expectLater(
+          attachments.fetch(17, 15, cancel: kept),
+          throwsA(isA<UnexpectedResponse>()),
+        );
+        expect(kept.isCancelled, isFalse);
       });
     });
   }

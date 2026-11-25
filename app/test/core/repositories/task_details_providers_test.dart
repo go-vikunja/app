@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -33,6 +32,7 @@ import '../../helpers/notification_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/task_details_fakes.dart' show samplePngBytes;
 import '../../helpers/widget_fakes.dart';
 
 void main() {
@@ -210,13 +210,13 @@ void main() {
     final client =
         container.read(readClientProvider(alice.id)) as FakeSyncClient;
     client.attachmentBlobs[(4, 2, AttachmentPreviewSize.medium)] =
-        AttachmentBlob(bytes: Uint8List(3), contentType: 'image/png');
+        AttachmentBlob(bytes: samplePngBytes, contentType: 'image/png');
 
     final image = await container
         .read(accountAttachmentImagesProvider(alice.id))
         .load(4, 2, preview: AttachmentPreviewSize.medium);
 
-    expect(image.bytes, hasLength(3));
+    expect(image.bytes, hasLength(samplePngBytes.length));
     expect(client.requests, ['attachment 4 2 md']);
   });
 
@@ -229,7 +229,12 @@ void main() {
     await container.read(accountsProvider.future);
     final db = container.read(appDatabaseProvider(alice.id));
     await db.tasksDao.upsertAll([sampleTask(id: 4, title: 'Fly')]);
-    final pass = sampleAttachment(id: 2, taskId: 4, name: 'pass.png', size: 3);
+    final pass = sampleAttachment(
+      id: 2,
+      taskId: 4,
+      name: 'pass.png',
+      size: samplePngBytes.length,
+    );
     final ticket = sampleAttachment(id: 6, taskId: 4, size: 3);
     await db.taskDetailsDao.storeDetails(
       4,
@@ -237,7 +242,7 @@ void main() {
       at: noon,
     );
     for (final (attachment, bytes) in [
-      (pass, const [1, 2, 3]),
+      (pass, samplePngBytes),
       (ticket, const [1, 2]),
     ]) {
       (await downloads.fileFor(alice.id, 4, attachment))
@@ -251,7 +256,7 @@ void main() {
     final images = container.read(accountAttachmentImagesProvider(alice.id));
 
     final original = await images.load(4, 2);
-    expect(original.bytes, const [1, 2, 3]);
+    expect(original.bytes, samplePngBytes);
     expect(original.contentType, 'image/png');
     expect(client.requests, isEmpty);
 
@@ -325,7 +330,7 @@ void main() {
     final client =
         container.read(readClientProvider(alice.id)) as FakeSyncClient;
     client.attachmentBlobs[(4, 2, null)] = AttachmentBlob(
-      bytes: Uint8List(3),
+      bytes: samplePngBytes,
       contentType: 'image/png',
     );
     container.listen(inactiveAttachmentImagesProvider, (_, _) {});
@@ -349,7 +354,7 @@ void main() {
     final client =
         container.read(readClientProvider(alice.id)) as FakeSyncClient;
     client.attachmentBlobs[(4, 2, null)] = AttachmentBlob(
-      bytes: Uint8List(3),
+      bytes: samplePngBytes,
       contentType: 'image/png',
     );
     final images = container.read(accountAttachmentImagesProvider(alice.id));

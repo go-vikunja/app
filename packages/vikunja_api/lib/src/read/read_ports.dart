@@ -151,23 +151,34 @@ abstract interface class AttachmentsPort {
   /// the image. A file the server cannot preview (anything but a raster
   /// image it decodes: text, SVG, HEIC, AVIF) fails, see
   /// [isNoAttachmentPreview]. Older servers answer `?preview_size=` with a
-  /// PNG, small images upscaled, and with the original for what they
-  /// cannot preview, so check [AttachmentBlob.contentType].
+  /// PNG (small images upscaled). For a file they cannot preview they send
+  /// the file itself: if that is not a raster image it fails like 2.7.1's
+  /// no-preview ([isNoAttachmentPreview]) before its body is read, unless it
+  /// is a web page (`text/html` or `application/xhtml+xml`). An image they
+  /// cannot preview, such as WebP or HEIC, comes back as it is, so
+  /// [AttachmentBlob.contentType] still needs checking.
   ///
   /// A missing attachment is `NotFound`, a foreign one `Forbidden`; a body
   /// above [maxAttachmentBytes] is refused while it arrives, with
-  /// `UnexpectedResponse`.
+  /// `UnexpectedResponse`. [cancel] closes the connection, also while the
+  /// body arrives, and the fetch ends with dio's cancel.
   Future<AttachmentBlob> fetch(
     int taskId,
     int attachmentId, {
     AttachmentPreviewSize? preview,
+    CancelToken? cancel,
   });
 
   /// The original into [target], streamed: the body goes to `<target>.part`
   /// first and is renamed when complete, so [target] only ever holds a whole
   /// file. A part left by a cancelled or broken-off download is resumed with
-  /// a range request, or replaced when the server answers in full. The
-  /// parent directory is created. One download per target at a time.
+  /// a range request that reads its last 4 KiB again; when those bytes
+  /// differ, as for a part that came from another answer, or the answer ends
+  /// before them, the part is dropped and the file read in full, as it is
+  /// when the range does not fit (416). A part of at most 4 KiB is dropped,
+  /// and a full answer replaces the part. The file's length is not checked
+  /// here. The parent directory is created. One download per target at a
+  /// time.
   ///
   /// The name of the answer's `Content-Disposition` is not used. A missing
   /// attachment is `NotFound` code 4011, a foreign one `Forbidden`; a

@@ -282,11 +282,13 @@ void main() {
               outbox: sender,
               accountId: 'contract',
               images: AttachmentImageCache(
-                (taskId, attachmentId, preview) => reads.attachments.fetch(
-                  taskId,
-                  attachmentId,
-                  preview: preview,
-                ),
+                (taskId, attachmentId, preview, cancel) =>
+                    reads.attachments.fetch(
+                      taskId,
+                      attachmentId,
+                      preview: preview,
+                      cancel: cancel,
+                    ),
               ),
               uploadsEnabled: only.info.taskAttachmentsEnabled,
               maxUploadBytes: only.info.maxFileSizeBytes ?? 20 << 20,

@@ -1,4 +1,5 @@
 import 'package:html/dom.dart' as dom;
+import 'package:meta/meta.dart';
 import 'package:vikunja_logic/src/links/attachment_urls.dart';
 import 'package:vikunja_logic/src/links/task_links.dart';
 import 'package:vikunja_logic/src/links/url_text.dart';
@@ -701,6 +702,7 @@ final class _Rules {
   final List<Uri> taskLinkBases;
   final _SourceOffsets offsets;
   final _TaskItemIds taskItemIds = _TaskItemIds();
+  final _TaskItemContent taskItemContent = _TaskItemContent();
 
   /// The first tag rule of the schema, by priority, that matches.
   _Rule? match(dom.Element element, Map<String, String> style) {
@@ -731,7 +733,7 @@ final class _Rules {
             sourceOffset: offsets.of(element),
             taskItemId: taskItemIds.of(element),
           ),
-          (element) => element.querySelector('div') ?? element,
+          taskItemContent.of,
         );
       case 'strong':
         return _markRule(_bold);
@@ -1021,6 +1023,42 @@ final class _TaskItemIds {
   });
 }
 
+/// TipTap's content rule for a task item, `element.querySelector('div') ??
+/// element`: the first `div` below the item in document order, else the
+/// item.
+/// The children the search for checklist items' content looked at, over
+/// every parse; a test tells one walk of the markup from one per item by it.
+@visibleForTesting
+int taskItemContentVisits = 0;
+
+final class _TaskItemContent {
+  // Remembered so that items nested in items without a `div` do not each
+  // walk the same markup again (decision log: Descriptions, comments,
+  // attachments). A list moved into the item before it can bring a `div`
+  // only to an element whose search went on to find that `div`, and nothing
+  // outside the found `div` is read.
+  final Set<dom.Element> _withoutDiv = Set.identity();
+
+  dom.Element of(dom.Element item) {
+    if (_withoutDiv.contains(item)) return item;
+    final pending = [(item, item.nodes.iterator)];
+    while (pending.isNotEmpty) {
+      final (element, children) = pending.last;
+      if (!children.moveNext()) {
+        _withoutDiv.add(element);
+        pending.removeLast();
+        continue;
+      }
+      taskItemContentVisits++;
+      final child = children.current;
+      if (child is! dom.Element || _withoutDiv.contains(child)) continue;
+      if (child.localName == 'div') return child;
+      if (child.nodes.isNotEmpty) pending.add((child, child.nodes.iterator));
+    }
+    return item;
+  }
+}
+
 final _startTag = RegExp(r'^<li(?=[\t\n\f\r />])', caseSensitive: false);
 
 /// The position of the first attribute called [name] in a raw `<li …>`
@@ -1071,12 +1109,17 @@ final class _Converter {
   new(this._attachmentRoots);
 
   final List<Uri> _attachmentRoots;
+  int _nodesLeft = maxRichNodes;
+  int _charactersLeft = maxRichCharacters;
+
+  /// A budget ran out: nothing after this point is kept.
+  var _cut = false;
 
   /// At least one block, like ProseMirror's `block+`, also when every
   /// block was an image that is dropped here.
   RichDocument document(_Node doc, {required bool truncated}) {
     final blocks = _blocks(doc.content);
-    if (truncated) {
+    if (truncated || _cut) {
       return RichDocument([
         ...blocks,
         const RichParagraph([RichTextRun('…')]),
@@ -1085,71 +1128,162 @@ final class _Converter {
     return RichDocument(blocks.isEmpty ? const [RichParagraph([])] : blocks);
   }
 
-  List<RichBlock> _blocks(List<_Node> nodes) =>
-      List.unmodifiable([for (final node in nodes) ?_block(node)]);
+  bool _takeNode() {
+    if (_cut) return false;
+    if (_nodesLeft == 0) {
+      _cut = true;
+      return false;
+    }
+    _nodesLeft--;
+    return true;
+  }
+
+  bool _takeCharacters(int count) {
+    if (_cut) return false;
+    if (count > _charactersLeft) {
+      _cut = true;
+      return false;
+    }
+    _charactersLeft -= count;
+    return true;
+  }
+
+  String _takeText(String text) {
+    if (_cut) return '';
+    if (text.length <= _charactersLeft) {
+      _charactersLeft -= text.length;
+      return text;
+    }
+    _cut = true;
+    var end = _charactersLeft;
+    // A cut between the halves of a surrogate pair would make Flutter draw
+    // the whole run as one U+FFFD and report an error at every layout.
+    if (end > 0 && _isLeadSurrogate(text.codeUnitAt(end - 1))) end--;
+    _charactersLeft = 0;
+    return text.substring(0, end);
+  }
+
+  T? _unlessEmptied<C, T>(List<C> content, T Function(List<C> content) build) =>
+      _cut && content.isEmpty ? null : build(content);
+
+  List<RichBlock> _blocks(List<_Node> nodes) {
+    final blocks = <RichBlock>[];
+    for (final node in nodes) {
+      if (!_takeNode()) break;
+      if (_block(node) case final block?) blocks.add(block);
+    }
+    return List.unmodifiable(blocks);
+  }
 
   RichBlock? _block(_Node node) {
     final attrs = node.attrs;
     return switch (node.kind) {
-      NodeKind.paragraph => RichParagraph(_inlines(node.content)),
-      NodeKind.heading => RichHeading(attrs.level, _inlines(node.content)),
-      NodeKind.blockquote => RichBlockquote(
+      NodeKind.paragraph => _unlessEmptied(
+        _inlines(node.content),
+        RichParagraph.new,
+      ),
+      NodeKind.heading => _unlessEmptied(
+        _inlines(node.content),
+        (inlines) => RichHeading(attrs.level, inlines),
+      ),
+      NodeKind.blockquote => _unlessEmptied(
         _blocks(node.content),
-        commentId: attrs.commentId,
+        (blocks) => RichBlockquote(blocks, commentId: attrs.commentId),
       ),
-      NodeKind.bulletList => RichBulletList(_listItems(node.content)),
-      NodeKind.orderedList => RichOrderedList(
+      NodeKind.bulletList => _unlessEmptied(
         _listItems(node.content),
-        start: attrs.start,
+        RichBulletList.new,
       ),
-      NodeKind.taskList => RichTaskList(
-        List.unmodifiable([
-          for (final item in node.content)
-            if (item.kind == NodeKind.taskItem)
-              RichTaskItem(
-                checked: item.attrs.checked,
-                blocks: _blocks(item.content),
-                sourceOffset: item.attrs.sourceOffset,
-                taskId: item.attrs.taskItemId,
-              ),
-        ]),
+      NodeKind.orderedList => _unlessEmptied(
+        _listItems(node.content),
+        (items) => RichOrderedList(items, start: attrs.start),
       ),
-      NodeKind.codeBlock => RichCodeBlock(
-        node.content.map((text) => text.text).join(),
-        language: attrs.language,
+      NodeKind.taskList => _unlessEmptied(
+        _taskListItems(node.content),
+        RichTaskList.new,
       ),
+      NodeKind.codeBlock => _codeBlock(node),
       NodeKind.horizontalRule => const RichHorizontalRule(),
-      NodeKind.table => RichTable(
-        List.unmodifiable([
-          for (final row in node.content)
-            if (row.kind == NodeKind.tableRow)
-              RichTableRow(
-                List.unmodifiable([
-                  for (final cell in row.content) _cell(cell),
-                ]),
-              ),
-        ]),
-      ),
+      NodeKind.table => _unlessEmptied(_rows(node.content), RichTable.new),
       NodeKind.image => _image(attrs),
       _ => null,
     };
   }
 
-  List<RichListItem> _listItems(List<_Node> items) => List.unmodifiable([
-    for (final item in items)
-      if (item.kind == NodeKind.listItem) RichListItem(_blocks(item.content)),
-  ]);
+  RichCodeBlock? _codeBlock(_Node node) {
+    final text = _takeText(node.content.map((t) => t.text).join());
+    return _cut && text.isEmpty
+        ? null
+        : RichCodeBlock(text, language: node.attrs.language);
+  }
 
-  RichTableCell _cell(_Node cell) => RichTableCell(
-    blocks: _blocks(cell.content),
-    header: cell.kind == NodeKind.tableHeader,
-    colspan: cell.attrs.colspan,
-    rowspan: cell.attrs.rowspan,
-    align: cell.attrs.align,
-    backgroundColor: cell.attrs.backgroundColor,
+  List<RichListItem> _listItems(List<_Node> items) {
+    final converted = <RichListItem>[];
+    for (final item in items) {
+      if (item.kind != NodeKind.listItem) continue;
+      if (!_takeNode()) break;
+      final listItem = _unlessEmptied(_blocks(item.content), RichListItem.new);
+      if (listItem != null) converted.add(listItem);
+    }
+    return List.unmodifiable(converted);
+  }
+
+  List<RichTaskItem> _taskListItems(List<_Node> items) {
+    final converted = <RichTaskItem>[];
+    for (final item in items) {
+      if (item.kind != NodeKind.taskItem) continue;
+      if (!_takeNode()) break;
+      final attrs = item.attrs;
+      final taskItem = _unlessEmptied(
+        _blocks(item.content),
+        (blocks) => RichTaskItem(
+          checked: attrs.checked,
+          blocks: blocks,
+          sourceOffset: attrs.sourceOffset,
+          taskId: attrs.taskItemId,
+        ),
+      );
+      if (taskItem != null) converted.add(taskItem);
+    }
+    return List.unmodifiable(converted);
+  }
+
+  List<RichTableRow> _rows(List<_Node> rows) {
+    final converted = <RichTableRow>[];
+    for (final row in rows) {
+      if (row.kind != NodeKind.tableRow) continue;
+      if (!_takeNode()) break;
+      final cells = <RichTableCell>[];
+      for (final cell in row.content) {
+        if (!_takeNode()) break;
+        if (_cell(cell) case final richCell?) cells.add(richCell);
+      }
+      final tableRow = _unlessEmptied(
+        cells,
+        (kept) => RichTableRow(List.unmodifiable(kept)),
+      );
+      if (tableRow != null) converted.add(tableRow);
+    }
+    return List.unmodifiable(converted);
+  }
+
+  RichTableCell? _cell(_Node cell) => _unlessEmptied(
+    _blocks(cell.content),
+    (blocks) => RichTableCell(
+      blocks: blocks,
+      header: cell.kind == NodeKind.tableHeader,
+      colspan: cell.attrs.colspan,
+      rowspan: cell.attrs.rowspan,
+      align: cell.attrs.align,
+      backgroundColor: cell.attrs.backgroundColor,
+    ),
   );
 
   RichImage? _image(_Attrs attrs) {
+    // Charged before the source checks: which items a document keeps must
+    // not depend on the roots it is parsed with, and checklist toggles parse
+    // with a stand-in root.
+    if (!_takeCharacters(attrs.alt.length + attrs.title.length)) return null;
     final attachment = parseAttachmentUrl(
       attrs.dataSrc ?? attrs.src,
       roots: _attachmentRoots,
@@ -1169,39 +1303,56 @@ final class _Converter {
     return RichImage(source, alt: attrs.alt, title: attrs.title);
   }
 
-  List<RichInline> _inlines(List<_Node> nodes) => List.unmodifiable(
-    _joinRuns(
-      [for (final node in nodes) ?_inline(node)],
-      (first, next) =>
-          first is RichTextRun &&
-          next is RichTextRun &&
-          first.href == next.href &&
-          _sameRichMarks(first.marks, next.marks),
-      (run) {
-        final first = run.first as RichTextRun;
-        return RichTextRun(
-          run.cast<RichTextRun>().map((inline) => inline.text).join(),
-          marks: first.marks,
-          href: first.href,
-        );
-      },
-    ),
-  );
+  List<RichInline> _inlines(List<_Node> nodes) {
+    final inlines = <RichInline>[];
+    for (final node in nodes) {
+      if (_cut) break;
+      if (_inline(node) case final inline?) inlines.add(inline);
+    }
+    return List.unmodifiable(
+      _joinRuns(
+        inlines,
+        (first, next) =>
+            first is RichTextRun &&
+            next is RichTextRun &&
+            first.href == next.href &&
+            _sameRichMarks(first.marks, next.marks),
+        (run) {
+          final first = run.first as RichTextRun;
+          return RichTextRun(
+            run.cast<RichTextRun>().map((inline) => inline.text).join(),
+            marks: first.marks,
+            href: first.href,
+          );
+        },
+      ),
+    );
+  }
 
   RichInline? _inline(_Node node) {
     final attrs = node.attrs;
     return switch (node.kind) {
       NodeKind.text => _textRun(node),
-      NodeKind.hardBreak => const RichHardBreak(),
+      NodeKind.hardBreak => _takeCharacters(1) ? const RichHardBreak() : null,
       NodeKind.mention
           when attrs.username.isNotEmpty || attrs.label.isNotEmpty =>
-        RichMention(username: attrs.username, label: attrs.label),
-      NodeKind.taskLink => RichTaskLink(taskId: attrs.taskId, href: attrs.href),
+        _mention(attrs),
+      NodeKind.taskLink => _taskLink(attrs),
       _ => null,
     };
   }
 
-  RichTextRun _textRun(_Node node) {
+  RichMention? _mention(_Attrs attrs) =>
+      _takeNode() && _takeCharacters(attrs.username.length + attrs.label.length)
+      ? RichMention(username: attrs.username, label: attrs.label)
+      : null;
+
+  RichTaskLink? _taskLink(_Attrs attrs) =>
+      _takeNode() && _takeCharacters(attrs.href.length)
+      ? RichTaskLink(taskId: attrs.taskId, href: attrs.href)
+      : null;
+
+  RichTextRun? _textRun(_Node node) {
     String? href;
     final marks = <RichMark>{};
     for (final mark in node.marks) {
@@ -1224,9 +1375,14 @@ final class _Converter {
           marks.add(RichMark.underline);
       }
     }
-    return RichTextRun(node.text, marks: Set.unmodifiable(marks), href: href);
+    if (href != null && !_takeNode()) return null;
+    final text = _takeText(node.text);
+    if (text.isEmpty) return null;
+    return RichTextRun(text, marks: Set.unmodifiable(marks), href: href);
   }
 }
+
+bool _isLeadSurrogate(int unit) => unit >= 0xD800 && unit <= 0xDBFF;
 
 bool _sameRichMarks(Set<RichMark> a, Set<RichMark> b) =>
     a.length == b.length && a.containsAll(b);

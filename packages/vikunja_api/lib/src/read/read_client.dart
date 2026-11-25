@@ -234,6 +234,7 @@ final class _AttachmentsApi implements AttachmentsPort {
     int taskId,
     int attachmentId, {
     AttachmentPreviewSize? preview,
+    CancelToken? cancel,
   }) async {
     final original = '/tasks/$taskId/attachments/$attachmentId';
     final (path, query) = switch (preview) {
@@ -253,6 +254,8 @@ final class _AttachmentsApi implements AttachmentsPort {
           accept: preview == null ? '*/*' : 'image/*',
           maxBytes: maxAttachmentBytes,
           over: preview == null ? null : _previewApi,
+          refuse: preview == null ? null : _fileInPreviewsPlace,
+          cancel: cancel,
         );
     return AttachmentBlob(
       bytes: bytes,
@@ -261,6 +264,16 @@ final class _AttachmentsApi implements AttachmentsPort {
           : contentType,
     );
   }
+
+  // Servers before 2.7.1 send the file itself for a preview they cannot
+  // make, where 2.7.1 answers 4038; a page in the server's place is the
+  // caller's to judge.
+  static VikunjaFailure? _fileInPreviewsPlace(String type) =>
+      type == 'text/html' ||
+          type == 'application/xhtml+xml' ||
+          (type.startsWith('image/') && type != 'image/svg+xml')
+      ? null
+      : const DomainError(422, code: 4038);
 
   @override
   Future<void> download(
@@ -723,7 +736,8 @@ final class _ReadTransport {
   /// The body as it streams in, refused once it is longer than [maxBytes]
   /// (by its `Content-Length` or by what arrives), with the media type of
   /// the response without parameters. [over] asks another API version than
-  /// the preferred one.
+  /// the preferred one. What [refuse] returns for the media type is thrown
+  /// before the body is read. [cancel] ends the request.
   Future<({Uint8List bytes, String contentType, int? statusCode})>
   getCappedBytes(
     String path, {
@@ -731,17 +745,25 @@ final class _ReadTransport {
     required String accept,
     required int maxBytes,
     ApiVersion? over,
+    VikunjaFailure? Function(String contentType)? refuse,
+    CancelToken? cancel,
   }) async {
     final base = over == null ? _base : _connection.apiBaseUri(over);
     // Only a cancel closes the connection: dio does not pass the end of a
-    // subscription on to the source.
-    final cancel = CancelToken();
+    // subscription on to the source. The caller's token must not be
+    // cancelled for a refusal of this one.
+    final connection = CancelToken();
+    unawaited(
+      cancel?.whenCancel.then((error) {
+        if (!connection.isCancelled) connection.cancel(error.error);
+      }),
+    );
     final Response<ResponseBody> response;
     try {
       response = await _dio.get<ResponseBody>(
         base.replace(path: '${base.path}$path').toString(),
         queryParameters: query,
-        cancelToken: cancel,
+        cancelToken: connection,
         options: Options(
           responseType: ResponseType.stream,
           headers: {'Accept': accept},
@@ -750,7 +772,7 @@ final class _ReadTransport {
       );
     } on DioException catch (error) {
       if (error.type == DioExceptionType.cancel) rethrow;
-      throw normalizeError(await _withReadErrorBody(error, cancel));
+      throw normalizeError(await _withReadErrorBody(error, connection));
     }
     final contentType =
         (response.headers.value(Headers.contentTypeHeader) ?? '')
@@ -758,6 +780,10 @@ final class _ReadTransport {
             .first
             .trim()
             .toLowerCase();
+    if (refuse?.call(contentType) case final refusal?) {
+      connection.cancel();
+      throw refusal;
+    }
     final body = response.data;
     if (body == null) {
       throw UnexpectedResponse(response.statusCode, message: 'no body');
@@ -770,7 +796,7 @@ final class _ReadTransport {
       response.headers.value(Headers.contentLengthHeader) ?? '',
     );
     if (declared != null && declared > maxBytes) {
-      cancel.cancel();
+      connection.cancel();
       throw tooLarge;
     }
     final bytes = BytesBuilder(copy: false);
@@ -784,7 +810,7 @@ final class _ReadTransport {
       throw normalizeError(error);
     }
     if (bytes.length > maxBytes) {
-      cancel.cancel();
+      connection.cancel();
       throw tooLarge;
     }
     return (
@@ -798,7 +824,10 @@ final class _ReadTransport {
   Future<void> download(String path, File target, {CancelToken? cancel}) async {
     await target.parent.create(recursive: true);
     final part = File('${target.path}.part');
-    final offset = part.existsSync() ? await part.length() : 0;
+    final kept = part.existsSync() ? await part.length() : 0;
+    final offset = kept > _resumeOverlap ? kept - _resumeOverlap : 0;
+    if (kept > 0 && offset == 0) await part.delete();
+    final overlap = offset > 0 ? await _bytesFrom(part, offset) : Uint8List(0);
     // Only a cancel closes the connection, see [getCappedBytes]; the
     // caller's token must not be cancelled for a failure of this one.
     final connection = CancelToken();
@@ -838,7 +867,7 @@ final class _ReadTransport {
           'bytes $offset-',
         )) {
       connection.cancel();
-      await part.delete();
+      if (part.existsSync()) await part.delete();
       throw const UnexpectedResponse(
         _partialContent,
         message: 'a range that was not asked for',
@@ -851,10 +880,23 @@ final class _ReadTransport {
       connection.cancel();
       rethrow;
     }
+    // The part's last bytes, read again, must match, so a part that came
+    // from another answer, such as a page that broke off, is never
+    // completed with the file's rest (decision log: Descriptions, comments,
+    // attachments).
+    var unchecked = resumes ? overlap : Uint8List(0);
+    var differs = false;
     try {
       await for (final chunk in body.stream) {
-        await file.writeFrom(chunk);
+        final checked = min(unchecked.length, chunk.length);
+        if (!_startsWith(chunk, unchecked, checked)) {
+          differs = true;
+          break;
+        }
+        unchecked = Uint8List.sublistView(unchecked, checked);
+        if (checked < chunk.length) await file.writeFrom(chunk, checked);
       }
+      differs = differs || unchecked.isNotEmpty;
     } on DioException catch (error) {
       if (error.type == DioExceptionType.cancel) rethrow;
       throw normalizeError(error);
@@ -867,11 +909,34 @@ final class _ReadTransport {
     } finally {
       await file.close();
     }
+    if (differs) {
+      connection.cancel();
+      await part.delete();
+      return await download(path, target, cancel: cancel);
+    }
     await part.rename(target.path);
   }
 
   static const _partialContent = 206;
+  static const _resumeOverlap = 4096;
   static const _rangeNotSatisfiable = 416;
+
+  static Future<Uint8List> _bytesFrom(File part, int from) async {
+    final file = await part.open();
+    try {
+      await file.setPosition(from);
+      return await file.read(_resumeOverlap);
+    } finally {
+      await file.close();
+    }
+  }
+
+  static bool _startsWith(Uint8List chunk, Uint8List expected, int length) {
+    for (var i = 0; i < length; i++) {
+      if (chunk[i] != expected[i]) return false;
+    }
+    return true;
+  }
 
   // An error answer to a streamed request still streams; its small JSON
   // body carries the error code.

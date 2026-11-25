@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -9,10 +10,12 @@ import 'package:vikunja_mobile/core/attachments/image_pixels.dart';
 
 final _log = Logger('AttachmentImages');
 
+/// [cancel] is cancelled once no load waits for the image any more.
 typedef AttachmentFetch = Future<AttachmentBlob> Function(
   int taskId,
   int attachmentId,
   AttachmentPreviewSize? preview,
+  CancelToken cancel,
 );
 
 typedef _Key = (int taskId, int attachmentId, AttachmentPreviewSize? preview);
@@ -22,19 +25,23 @@ const int _megabyte = 1024 * 1024;
 const _noPreview = DomainError(422, code: 4038);
 
 /// [AttachmentImages] in memory: the most recently used images up to
-/// [maxBytes] together, one request per image at a time. A failure that
-/// may pass (no connection, a server error) is answered from memory for
-/// [retryAfter]; a missing or forbidden attachment, an answer the port
-/// could not take (one larger than its limit among them), one larger
-/// than [maxImageBytes] and an image of more than [maxPixels] for the
-/// session.
+/// [maxBytes] together, one request per image at a time, cancelled once
+/// every load waiting for it gave up, and not remembered as failed then.
+/// A failure that may pass (no connection, a server error, a page or a
+/// redirect in the image's place, such as a Wi-Fi sign-in or login page in
+/// front of the server) is answered from memory for [retryAfter]; a
+/// missing or forbidden attachment, an answer the port could not take (one
+/// larger than its limit among them), one larger than [maxImageBytes], an
+/// image of more than [maxPixels] and an answer that is no image it can
+/// draw for the session. Neither a page nor any other answer that is no image
+/// is kept.
 ///
 /// Behind it, an [ImageDiskCache] keeps every size loaded from the server:
 /// written after the load, read when a failure may pass or when the
-/// server answers with no image while a copy is kept (a login or
-/// maintenance page in front of it; attachments never change). Where the
-/// disk keeps the original but not the `xl` preview, the original stands
-/// in, as for a preview the server has none of, until [retryAfter].
+/// server answers with no image while a copy is kept (attachments never
+/// change). Where the disk keeps the original but not the `xl` preview,
+/// the original stands in, as for a preview the server has none of, for
+/// the session.
 final class AttachmentImageCache implements AttachmentImages {
   new(
     this._fetch, {
@@ -61,7 +68,7 @@ final class AttachmentImageCache implements AttachmentImages {
   final DateTime Function() _now;
   final _images = <_Key, AttachmentImage>{};
   final _failures = <_Key, ({Object error, DateTime? retryAt})>{};
-  final _inFlight = <_Key, Future<AttachmentImage>>{};
+  final _inFlight = <_Key, _Download>{};
   final _dropped = <(int, int)>{};
   var _bytes = 0;
   var _generation = 0;
@@ -85,6 +92,7 @@ final class AttachmentImageCache implements AttachmentImages {
     int taskId,
     int attachmentId, {
     AttachmentPreviewSize? preview,
+    CancelToken? cancel,
   }) {
     if (peek(taskId, attachmentId, preview: preview) case final image?) {
       return Future.value(image);
@@ -96,10 +104,37 @@ final class AttachmentImageCache implements AttachmentImages {
       }
       _failures.remove(key);
     }
-    if (_inFlight[key] case final running?) return running;
-    late final Future<AttachmentImage> download;
-    download = _download(key).whenComplete(() {
-      if (identical(_inFlight[key], download)) unawaited(_inFlight.remove(key));
+    if (cancel?.cancelError case final given?) return Future.error(given);
+    final download = _inFlight[key] ?? _start(key);
+    download.waiting++;
+    if (cancel == null) return download.image;
+    final answer = Completer<AttachmentImage>();
+    unawaited(
+      download.image.then<void>(
+        (image) {
+          if (!answer.isCompleted) answer.complete(image);
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!answer.isCompleted) answer.completeError(error, stackTrace);
+        },
+      ),
+    );
+    unawaited(
+      cancel.whenCancel.then((given) {
+        if (answer.isCompleted) return;
+        answer.completeError(given);
+        if (--download.waiting > 0) return;
+        if (identical(_inFlight[key], download)) _inFlight.remove(key);
+        download.cancel.cancel();
+      }),
+    );
+    return answer.future;
+  }
+
+  _Download _start(_Key key) {
+    final download = _Download();
+    download.image = _download(key, download.cancel).whenComplete(() {
+      if (identical(_inFlight[key], download)) _inFlight.remove(key);
     });
     return _inFlight[key] = download;
   }
@@ -142,8 +177,12 @@ final class AttachmentImageCache implements AttachmentImages {
     await _disk?.removeStartingWith(_diskPrefix(taskId, attachmentId));
   }
 
-  /// Forgets everything, also what a request still running brings back.
+  /// Forgets everything and cancels the requests still running; what one
+  /// brings back all the same is not kept.
   void clear() {
+    for (final download in _inFlight.values) {
+      download.cancel.cancel();
+    }
     _images.clear();
     _failures.clear();
     _inFlight.clear();
@@ -152,15 +191,21 @@ final class AttachmentImageCache implements AttachmentImages {
     _generation++;
   }
 
-  Future<AttachmentImage> _download(_Key key) async {
+  Future<AttachmentImage> _download(_Key key, CancelToken cancel) async {
     final generation = _generation;
     final (taskId, attachmentId, preview) = key;
     AttachmentImage image;
     var kept = false;
     try {
-      final blob = await _fetch(taskId, attachmentId, preview);
+      final blob = await _fetch(taskId, attachmentId, preview, cancel);
+      // As a failure that may pass, so a kept copy stands in and Retry asks
+      // again; the page itself is never kept.
+      if (_pageTypes.contains(blob.contentType)) {
+        throw const AttachmentImagePageInstead();
+      }
       image = AttachmentImage(bytes: blob.bytes, contentType: blob.contentType);
     } on Object catch (error) {
+      if (cancel.isCancelled) rethrow;
       _log.fine('Attachment image unavailable: ${error.runtimeType}');
       final stored = attachmentImageFailureMayPass(error)
           ? await _stored(key, generation)
@@ -180,7 +225,12 @@ final class AttachmentImageCache implements AttachmentImages {
         pixels = await _pixelsOf(stored.bytes);
       }
     }
-    if (image.bytes.length > maxImageBytes || (pixels ?? 0) > maxPixels) {
+    if (pixels == null) {
+      const notAnImage = AttachmentNotAnImage();
+      if (generation == _generation) _fail(key, notAnImage, passes: false);
+      throw notAnImage;
+    }
+    if (image.bytes.length > maxImageBytes || pixels > maxPixels) {
       const tooLarge = AttachmentImageTooLarge();
       if (generation == _generation) _fail(key, tooLarge, passes: false);
       throw tooLarge;
@@ -236,6 +286,8 @@ final class AttachmentImageCache implements AttachmentImages {
   static bool _decodable(AttachmentImage image) =>
       image.contentType.startsWith('image/') && !image.isSvg;
 
+  static const _pageTypes = {'text/html', 'application/xhtml+xml'};
+
   void _fail(_Key key, Object error, {required bool passes}) => _failures[key] =
       (error: error, retryAt: passes ? _now().add(retryAfter) : null);
 
@@ -249,4 +301,13 @@ final class AttachmentImageCache implements AttachmentImages {
       _bytes -= _images.remove(oldest)!.bytes.length;
     }
   }
+}
+
+final class _Download {
+  final cancel = CancelToken();
+  late final Future<AttachmentImage> image;
+
+  /// The loads waiting for [image]; one without a cancel token never
+  /// leaves.
+  int waiting = 0;
 }

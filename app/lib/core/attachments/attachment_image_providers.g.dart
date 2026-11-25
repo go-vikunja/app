@@ -244,7 +244,7 @@ final class AccountAttachmentImagesProvider
 }
 
 String _$accountAttachmentImagesHash() =>
-    r'870a280b5d4274728009ea1eca4ad8e01b127a32';
+    r'b00bfb7a2dce3eb54f47d3ea00c2454c6afbbd53';
 
 /// Kept for the session and dropped when the account signs out or another
 /// becomes active ([inactiveAttachmentImages]); what is on disk stays. The
@@ -381,3 +381,52 @@ final class AttachmentImagesProvider
 }
 
 String _$attachmentImagesHash() => r'1b90bbaede49c1ee90965df2a3be1514fdfc8556';
+
+/// Inline images of descriptions and comments ask a few at a time,
+/// app-wide (decision log: Descriptions, comments, attachments).
+
+@ProviderFor(inlineImageQueue)
+final inlineImageQueueProvider = InlineImageQueueProvider._();
+
+/// Inline images of descriptions and comments ask a few at a time,
+/// app-wide (decision log: Descriptions, comments, attachments).
+
+final class InlineImageQueueProvider
+    extends $FunctionalProvider<LoadQueue, LoadQueue, LoadQueue>
+    with $Provider<LoadQueue> {
+  /// Inline images of descriptions and comments ask a few at a time,
+  /// app-wide (decision log: Descriptions, comments, attachments).
+  InlineImageQueueProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'inlineImageQueueProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$inlineImageQueueHash();
+
+  @$internal
+  @override
+  $ProviderElement<LoadQueue> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  LoadQueue create(Ref ref) {
+    return inlineImageQueue(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LoadQueue value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LoadQueue>(value),
+    );
+  }
+}
+
+String _$inlineImageQueueHash() => r'4128a81a1bb4eb9c87099f540566ac92de62de50';

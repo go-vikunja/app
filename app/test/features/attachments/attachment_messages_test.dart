@@ -94,6 +94,17 @@ void main() {
         );
       });
 
+      test('a download that was not the file, in our words without detail', () {
+        expect(
+          attachmentFailureText(
+            l10n,
+            const UnexpectedResponse(null),
+            download: true,
+          ),
+          l10n.attachmentFailed,
+        );
+      });
+
       test('a route without a code still means attachments are off', () {
         expect(
           attachmentFailureText(l10n, const NotFound(message: 'Not Found')),

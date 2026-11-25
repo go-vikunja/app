@@ -277,8 +277,12 @@ void main() {
 
           test('attachment images load with the account session', () async {
             final images = AttachmentImageCache(
-              (task, attachment, preview) =>
-                  reads.attachments.fetch(task, attachment, preview: preview),
+              (task, attachment, preview, cancel) => reads.attachments.fetch(
+                task,
+                attachment,
+                preview: preview,
+                cancel: cancel,
+              ),
             );
 
             final preview = await images.load(

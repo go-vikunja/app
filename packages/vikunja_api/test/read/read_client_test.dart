@@ -799,6 +799,44 @@ void main() {
       expect(task.description, '<p>Hello</p>');
     });
 
+    test('a progress beyond 0 to 100 % and a reminder offset beyond ten '
+        'thousand years are cut to them', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/1': json(
+          _task(
+            1,
+            overrides: {
+              'percent_done': 1e307,
+              'reminders': [
+                {
+                  'reminder': _zeroDate,
+                  'relative_period': 9000000000000,
+                  'relative_to': 'due_date',
+                },
+                {
+                  'reminder': _zeroDate,
+                  'relative_period': -9223372036854775807,
+                  'relative_to': 'start_date',
+                },
+              ],
+            },
+          ),
+        ),
+        '$_v2/tasks/2': json(_task(2, overrides: {'percent_done': -0.5})),
+      });
+      final tasks = _client(dio).tasks;
+
+      final far = await tasks.read(1);
+      final below = await tasks.read(2);
+
+      expect(far.percentDone, 1.0);
+      expect(far.reminders.map((r) => r.relativePeriod), [
+        TaskReminder.maxRelativePeriod,
+        -TaskReminder.maxRelativePeriod,
+      ]);
+      expect(below.percentDone, 0.0);
+    });
+
     test('labels, assignees and reminders', () async {
       final dio = fakeDio({
         '$_v2/tasks/1': json(

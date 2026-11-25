@@ -224,10 +224,15 @@ String _decodeEntity(String name) {
   return _namedEntities[name.toLowerCase()] ?? '&$name;';
 }
 
-String _fromCodePoint(int? codePoint, String original) =>
-    codePoint == null || codePoint <= 0 || codePoint > 0x10FFFF
-    ? original
-    : String.fromCharCode(codePoint);
+String _fromCodePoint(int? codePoint, String original) {
+  if (codePoint == null || codePoint <= 0 || codePoint > 0x10FFFF) {
+    return original;
+  }
+  // Half a surrogate pair is no character: package:html reads it as U+FFFD,
+  // and Flutter, given it, draws the whole text as that one mark.
+  if (codePoint >= 0xD800 && codePoint <= 0xDFFF) return '\uFFFD';
+  return String.fromCharCode(codePoint);
+}
 
 // [ \t]+\n becomes \n, then \n{3,} becomes \n\n.
 String _tidyLineEnds(String text) {

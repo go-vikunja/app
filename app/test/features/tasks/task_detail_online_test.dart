@@ -464,6 +464,108 @@ void main() {
       expect(inSheet(find.byType(Image)), findsOneWidget);
     });
 
+    testWidgets('Retry also asks again for an image a page answered in place '
+        'of, such as a Wi-Fi sign-in page, once the page is gone', (
+      tester,
+    ) async {
+      const image = (4, 3, AttachmentPreviewSize.extraLarge);
+      const attachmentUrl =
+          'https://tasks.example.org/vikunja/api/v2/tasks/4/attachments/3';
+      data.tasks.all = [
+        data.tasks
+            .find(4)!
+            .copyWith(
+              description:
+                  '<p>Fence</p><img src="#" data-src="$attachmentUrl">',
+            ),
+      ];
+      data.details.detailsFailure = const NotJsonResponse(
+        200,
+        message: 'text/html',
+      );
+      data.attachmentImages.failures[image] =
+          const AttachmentImagePageInstead();
+      await openDetail(tester, 4);
+      expect(inSheet(find.text(en.richTextImageFailed)), findsOneWidget);
+
+      data.details.detailsFailure = null;
+      data.attachmentImages
+        ..failures.remove(image)
+        ..images[image] = samplePngImage;
+      await tester.tap(inSheet(find.text(en.retry)));
+      await tester.pumpAndSettle();
+
+      expect(data.attachmentImages.loads, ['4 3 xl', '4 3 xl']);
+      expect(inSheet(find.text(en.richTextImageFailed)), findsNothing);
+      expect(inSheet(find.byType(Image)), findsOneWidget);
+    });
+
+    testWidgets('an image in the description, or in a comment, that the '
+        'server has no preview of shows its original once the details name '
+        'it as a small image', (tester) async {
+      const attachments =
+          'https://tasks.example.org/vikunja/api/v2/tasks/4/attachments';
+      String image(int id) => '<img src="#" data-src="$attachments/$id">';
+      data.tasks.all = [
+        data.tasks.find(4)!.copyWith(description: '<p>Fence</p>${image(3)}'),
+      ];
+      data.details
+        ..detailsByTask[4] = TaskDetails(
+          commentCount: 1,
+          attachments: [
+            sampleAttachment(id: 3, taskId: 4, size: 1536),
+            sampleAttachment(id: 5, taskId: 4, name: 'gate.png', size: 1536),
+          ],
+        )
+        ..commentsByTask[4] = [
+          sampleComment(id: 1, html: '<p>The gate</p>${image(5)}'),
+        ];
+      for (final id in [3, 5]) {
+        data.attachmentImages
+          ..failures[(4, id, AttachmentPreviewSize.extraLarge)] =
+              const DomainError(422, code: 4038)
+          ..images[(4, id, null)] = samplePngImage;
+      }
+      final details = Completer<void>();
+      data.details.beforeCall = (call) async {
+        if (call == 'details 4') await details.future;
+      };
+      Finder inlineImages() => find.descendant(
+        of: inSheet(find.byType(InlineAttachmentImage)),
+        matching: find.byType(Image),
+      );
+      List<String> inlineLoads() => [
+        for (final load in data.attachmentImages.loads)
+          if (!load.endsWith(' md')) load,
+      ];
+      await openDetail(tester, 4);
+
+      expect(inSheet(find.text(en.richTextLoadImage)), findsOneWidget);
+      expect(inlineImages(), findsNothing);
+      expect(inlineLoads(), ['4 3 xl']);
+
+      details.complete();
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.text(en.richTextLoadImage)), findsNothing);
+      expect(inlineImages(), findsOneWidget);
+      // The sheet builds the description anew once the details arrive, and
+      // the cache answers the missing preview again from memory.
+      expect(inlineLoads().toSet(), {'4 3 xl', '4 3 original'});
+      expect(inlineLoads().last, '4 3 original');
+
+      await tester.tap(inSheet(find.text(en.taskDetailShowComments)));
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.text('The gate')), findsOneWidget);
+      expect(inSheet(find.text(en.richTextLoadImage)), findsNothing);
+      expect(inlineImages(), findsNWidgets(2));
+      expect(inlineLoads().where((load) => load.startsWith('4 5 ')), [
+        '4 5 xl',
+        '4 5 original',
+      ]);
+    });
+
     testWidgets("an image the web wrote under /info's frontend_url shows, "
         'loaded through the account by its ids; one on another host is not '
         'loaded', (tester) async {

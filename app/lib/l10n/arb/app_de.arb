@@ -891,6 +891,7 @@
   "richTextImageFrom": "Bild von {host}",
   "richTextImageFailed": "Das Bild konnte nicht geladen werden",
   "richTextImageUnsupported": "Dieses Bild kann hier nicht angezeigt werden",
+  "richTextLoadImage": "Bild laden",
   "richTextShowImage": "Im Vollbild anzeigen",
   "richTextOpensInBrowser": "Öffnet sich im Browser",
   "richTextReplyTo": "Antwort auf {author}",

@@ -15,10 +15,10 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'helpers.dart';
 
 // Per API version, uploads through the port and reads them back, downloads
-// to disk (whole and resumed with a range), deletes, sets and clears the
-// cover and runs into the cover a delete leaves behind or a cover naming a
-// deleted attachment, and writes into an archived project. One user for the
-// whole file.
+// to disk (whole and resumed with a range that rechecks the part's end),
+// deletes, sets and clears the cover and runs into the cover a delete leaves
+// behind or a cover naming a deleted attachment, and writes into an archived
+// project. One user for the whole file.
 const _pace = Duration(milliseconds: 500);
 const int _mebibyte = 1024 * 1024;
 
@@ -220,8 +220,8 @@ void main() {
               expect((await details(taskId)).attachments, isEmpty);
             });
 
-            test('downloads the original byte for byte and resumes a part '
-                'with a range', () async {
+            test('downloads the original byte for byte, resumes a part whose '
+                'end matches and reads one that does not in full', () async {
               final taskId = await newTask('Downloads');
               final random = Random(26);
               final binary = Uint8List.fromList([
@@ -242,10 +242,15 @@ void main() {
               final directory =
                   '${temp.path}/${apiVersion.pathSegment}/$taskId';
               final blobFile = File('$directory/random.bin');
+              final foreignFile = File('$directory/foreign.bin');
               final textFile = File('$directory/notes.txt');
-              File('${textFile.path}.part')
+              File('${blobFile.path}.part')
                 ..createSync(recursive: true)
-                ..writeAsBytesSync(utf8.encode(_text).sublist(0, 9));
+                ..writeAsBytesSync(binary.sublist(0, 128 * 1024));
+              File('${foreignFile.path}.part')
+                  .writeAsBytesSync(Uint8List(128 * 1024));
+              File('${textFile.path}.part')
+                  .writeAsBytesSync(utf8.encode(_text).sublist(0, 9));
               statuses.rangesAndStatuses.clear();
 
               await patiently(
@@ -258,17 +263,29 @@ void main() {
               await patiently(
                 () => reads.attachments.download(
                   taskId,
+                  blob.id,
+                  target: foreignFile,
+                ),
+              );
+              await patiently(
+                () => reads.attachments.download(
+                  taskId,
                   text.id,
                   target: textFile,
                 ),
               );
 
               expect(blobFile.readAsBytesSync(), binary);
+              expect(foreignFile.readAsBytesSync(), binary);
               expect(textFile.readAsStringSync(), _text);
-              expect(File('${textFile.path}.part').existsSync(), isFalse);
+              for (final file in [blobFile, foreignFile, textFile]) {
+                expect(File('${file.path}.part').existsSync(), isFalse);
+              }
               expect(statuses.rangesAndStatuses, [
+                ('bytes=126976-', 206),
+                ('bytes=126976-', 206),
                 (null, 200),
-                ('bytes=9-', 206),
+                (null, 200),
               ]);
             });
 

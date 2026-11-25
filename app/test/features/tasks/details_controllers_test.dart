@@ -244,6 +244,140 @@ void main() {
 
       expect(marked, [4]);
     });
+
+    test('a file uploaded while the first read is under way drops it, which '
+        'may not have the file: its answer shows with the file until the '
+        'read after it answers; one of another task reads nothing '
+        'again', () async {
+      final reads = <Completer<TaskDetails>>[];
+      final controller = TaskDetailsController(
+        read: (_) => (reads..add(Completer())).last.future,
+        markRead: (_) async {},
+      );
+      addTearDown(controller.dispose);
+      final scan = sampleAttachment(id: 7, name: 'scan.pdf');
+      unawaited(controller.load(1));
+
+      controller.addAttachment(sampleAttachment(id: 8, taskId: 2));
+      expect(reads, hasLength(1));
+      controller.addAttachment(scan);
+      expect(reads, hasLength(2));
+
+      reads.first.complete(const TaskDetails(commentCount: 1));
+      await pumpEventQueue();
+      final early = controller.value as TaskDetailsLoaded;
+      expect(early.details.attachments, [scan]);
+      expect(early.details.commentCount, 1);
+      expect(early.storedAt, isNull);
+
+      reads.last.complete(TaskDetails(attachments: [scan], commentCount: 2));
+      await pumpEventQueue();
+      final shown = (controller.value as TaskDetailsLoaded).details;
+      expect(shown.attachments, [scan]);
+      expect(shown.commentCount, 2);
+    });
+
+    test('a file uploaded while the first read is under way still shows '
+        'with that read when the read after it fails offline', () async {
+      const offline = NetworkFailure(NetworkProblem.unreachable);
+      final reads = <Completer<TaskDetails>>[];
+      final controller = TaskDetailsController(
+        read: (_) => (reads..add(Completer())).last.future,
+        markRead: (_) async {},
+      );
+      addTearDown(controller.dispose);
+      final photo = sampleAttachment(id: 3);
+      final scan = sampleAttachment(id: 7, name: 'scan.pdf');
+      unawaited(controller.load(1));
+      controller.addAttachment(scan);
+      expect(reads, hasLength(2));
+
+      reads.first.complete(TaskDetails(attachments: [photo], commentCount: 4));
+      reads.last.completeError(offline);
+      await pumpEventQueue();
+
+      final shown = controller.value as TaskDetailsLoaded;
+      expect(shown.details.attachments, [photo, scan]);
+      expect(shown.details.commentCount, 4);
+      expect(shown.failure, isNull);
+    });
+
+    test("a dropped read's answer gets only the changes made after it "
+        'began', () async {
+      final reads = <Completer<TaskDetails>>[];
+      final controller = TaskDetailsController(
+        read: (_) => (reads..add(Completer())).last.future,
+        markRead: (_) async {},
+      );
+      addTearDown(controller.dispose);
+      final scan = sampleAttachment(id: 7, name: 'scan.pdf');
+      unawaited(controller.load(1));
+      controller
+        ..countComments(1)
+        ..addAttachment(scan);
+      expect(reads, hasLength(3));
+
+      reads[1].complete(const TaskDetails(commentCount: 1));
+      await pumpEventQueue();
+
+      final shown = (controller.value as TaskDetailsLoaded).details;
+      expect(shown.attachments, [scan]);
+      expect(shown.commentCount, 1);
+    });
+
+    test('a dropped read of an earlier opening never shows', () async {
+      final reads = <Completer<TaskDetails>>[];
+      final controller = TaskDetailsController(
+        read: (_) => (reads..add(Completer())).last.future,
+        markRead: (_) async {},
+      );
+      addTearDown(controller.dispose);
+      unawaited(controller.load(1));
+      controller.addAttachment(sampleAttachment(id: 7));
+      unawaited(controller.load(1));
+      expect(reads, hasLength(3));
+
+      reads[0].complete(const TaskDetails(commentCount: 1));
+      reads[1].complete(const TaskDetails(commentCount: 2));
+      await pumpEventQueue();
+      expect(controller.value, isA<TaskDetailsLoading>());
+
+      reads[2].complete(const TaskDetails(commentCount: 3));
+      await pumpEventQueue();
+      expect((controller.value as TaskDetailsLoaded).details.commentCount, 3);
+    });
+
+    test('a file uploaded while a refresh runs after a failed first read '
+        'drops that refresh too, whose answer shows with the file', () async {
+      const offline = NetworkFailure(NetworkProblem.unreachable);
+      final reads = <Completer<TaskDetails>>[];
+      final controller = TaskDetailsController(
+        read: (_) => (reads..add(Completer())).last.future,
+        markRead: (_) async {},
+      );
+      addTearDown(controller.dispose);
+      final scan = sampleAttachment(id: 7, name: 'scan.pdf');
+      final loading = controller.load(1);
+      reads.single.completeError(offline);
+      await expectLater(loading, throwsA(offline));
+      expect(controller.value, isA<TaskDetailsFailed>());
+
+      final refreshing = controller.refresh();
+      controller.addAttachment(scan);
+      expect(reads, hasLength(3));
+
+      reads[1].complete(const TaskDetails());
+      await refreshing;
+      expect((controller.value as TaskDetailsLoaded).details.attachments, [
+        scan,
+      ]);
+
+      reads[2].complete(TaskDetails(attachments: [scan]));
+      await pumpEventQueue();
+      expect((controller.value as TaskDetailsLoaded).details.attachments, [
+        scan,
+      ]);
+    });
   });
 
   group('CommentsController', () {
@@ -852,7 +986,8 @@ void main() {
       });
 
       test('a change made while they stand in drops the first read, which '
-          'may not have it, and reads again once written', () async {
+          'may not have it: its answer shows with the change, and the '
+          'details are read again once written', () async {
         const mine = {
           '👍': [User(id: 1, username: 'me')],
         };
@@ -869,12 +1004,57 @@ void main() {
 
         expect(reads, hasLength(2));
         expect(shown().details.reactions, mine);
-        expect(shown().storedAt, morning);
+        expect(shown().storedAt, isNull);
 
         reads.last.complete(const TaskDetails(reactions: mine));
         await pumpEventQueue();
         expect(shown().details.reactions, mine);
         expect(shown().storedAt, isNull);
+      });
+
+      test('a change made before what is stored shows drops the first read; '
+          'what is stored stands in until that read answers, which then '
+          'shows with the change, also when the next one fails '
+          'offline', () async {
+        final upload = sampleAttachment(id: 9);
+        unawaited(controller.load(1).catchError((_) => storedDetails));
+        controller.addAttachment(upload);
+        expect(reads, hasLength(2));
+
+        stored.complete((value: storedDetails, readAt: morning));
+        await pumpEventQueue();
+        expect(shown().details, same(storedDetails));
+        expect(shown().storedAt, morning);
+
+        reads.first.complete(const TaskDetails());
+        await pumpEventQueue();
+        expect(shown().storedAt, isNull);
+        expect(shown().details.attachments, [upload]);
+
+        reads.last.completeError(offline);
+        await pumpEventQueue();
+        expect(shown().details.attachments, [upload]);
+        expect(shown().failure, isNull);
+      });
+
+      test('a change made while what is stored shows after a failure keeps '
+          'it, changed and with the failure, when the reads after it fail '
+          'too', () async {
+        stored.complete((value: storedDetails, readAt: morning));
+        unawaited(controller.load(1).catchError((_) => storedDetails));
+        reads.last.completeError(offline);
+        await pumpEventQueue();
+        expect(shown().failure, offline);
+
+        final refreshing = controller.refresh();
+        controller.countComments(1);
+        reads[1].completeError(offline);
+        await refreshing;
+        reads.last.completeError(offline);
+        await pumpEventQueue();
+        expect(shown().storedAt, morning);
+        expect(shown().failure, offline);
+        expect(shown().details.commentCount, 3);
       });
     });
 

@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart'
+    show ApplyInterceptor, QueryExecutor, QueryInterceptor;
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
@@ -729,6 +732,72 @@ void main() {
       expect((await db.tasksDao.find(1))!.commentCount, 0);
     });
 
+    test('a details read answered while the count of a comment written or '
+        'deleted here is stored leaves that count on the task', () async {
+      final counts = _AfterCommentCount();
+      db = AppDatabase(NativeDatabase.memory().interceptWith(counts));
+      addTearDown(db.close);
+      await db.tasksDao.upsertAll(read.allTasks);
+      repository = LocalTaskDetailsRepository(
+        db,
+        read,
+        write,
+        me: me,
+        now: () => now,
+      );
+
+      Future<void> answeredWhileCounted(Future<void> Function() change) async {
+        final held = Completer<void>();
+        read.beforeRequest = (_) => held.future;
+        final stale = repository.details(1);
+        await pumpEventQueue();
+        read.beforeRequest = null;
+        counts.afterCount = () async {
+          held.complete();
+          await stale;
+        };
+        await change();
+        expect(held.isCompleted, isTrue);
+      }
+
+      read.taskDetails[1] = const TaskDetails();
+      await repository.details(1);
+      late TaskComment mine;
+      await answeredWhileCounted(() async {
+        mine = await repository.addComment(
+          1,
+          const CommentDraft('<p>Mine</p>'),
+        );
+      });
+      expect((await db.tasksDao.find(1))!.commentCount, 1);
+
+      read.taskDetails[1] = const TaskDetails(commentCount: 1);
+      await answeredWhileCounted(() => repository.deleteComment(1, mine.id));
+      expect((await db.tasksDao.find(1))!.commentCount, 0);
+    });
+
+    test('a details read the server answered after a new comment, arriving '
+        "before that comment's own answer, counts it once on the "
+        'task', () async {
+      read.taskDetails[1] = const TaskDetails();
+      await repository.details(1);
+      final sent = Completer<void>();
+      write.beforeRequest = (_) => sent.future;
+      final adding = repository.addComment(
+        1,
+        const CommentDraft('<p>Mine</p>'),
+      );
+      await pumpEventQueue();
+      write.beforeRequest = null;
+
+      read.taskDetails[1] = const TaskDetails(commentCount: 1);
+      await repository.details(1);
+      sent.complete();
+      await adding;
+
+      expect((await db.tasksDao.find(1))!.commentCount, 1);
+    });
+
     test("a cover change queued here stands over the server's in what is read "
         'and kept, until it is sent', () async {
       final attachments = [sampleAttachment(id: 3), sampleAttachment(id: 5)];
@@ -830,4 +899,23 @@ void main() {
       },
     );
   });
+}
+
+final class _AfterCommentCount extends QueryInterceptor {
+  Future<void> Function()? afterCount;
+
+  @override
+  Future<int> runUpdate(
+    QueryExecutor executor,
+    String statement,
+    List<Object?> args,
+  ) async {
+    final changed = await super.runUpdate(executor, statement, args);
+    if (statement.contains('comment_count + ?')) {
+      final after = afterCount;
+      afterCount = null;
+      await after?.call();
+    }
+    return changed;
+  }
 }

@@ -104,7 +104,9 @@ typedef _Subject = ({String description, int? projectId});
 ///
 /// A task's description can take images while online: each is uploaded as
 /// an attachment of the task first and then inserted the way the web
-/// writes it; the page shows it as a placeholder, like every image.
+/// writes it. Like every attachment image in the editor, it shows as a
+/// preview the app loads, with a placeholder until that arrives or when
+/// none can be had.
 class DescriptionEditorPage extends ConsumerStatefulWidget {
   const new({required this.target, super.key});
 
@@ -394,10 +396,15 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       _revision = 0;
     });
     _syncDraft();
+    final details = ref.read(taskDetailsRepositoryProvider);
     _previews = switch (ref.read(attachmentImagesProvider)) {
       final images? => EditorImagePreviews(
         images: images,
         roots: bases?.taskLinkBases ?? const [],
+        attachmentsOf: details == null
+            ? null
+            : (taskId) async =>
+                  (await details.storedDetails(taskId))?.value.attachments,
       ),
       null => null,
     };
@@ -699,6 +706,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         mimeType: picked.mimeType,
         cancel: cancel,
       );
+      _previews?.addUploaded(attachment);
       final links = _links;
       if (cancel.isCancelled ||
           !mounted ||

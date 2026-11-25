@@ -175,6 +175,64 @@ void main() {
     });
   });
 
+  group('a task item reads its content from the first div below it, '
+      'as TipTap does', () {
+    test(
+      'only that div, also inside inline elements, and nothing around it',
+      () {
+        const html =
+            '<ul data-type="taskList"><li data-type="taskItem">'
+            '<label>label</label><span><b><div><p>first</p></div></b></span>'
+            '<div><p>second</p></div></li></ul>';
+
+        final document = _parse(html);
+
+        expect(document.plainText, 'first');
+        expect(_taskItems(document), hasLength(1));
+      },
+    );
+
+    test('nested items without a div keep their own content', () {
+      const html =
+          '<ul data-type="taskList"><li data-type="taskItem"><p>a</p>'
+          '<ul data-type="taskList"><li data-type="taskItem"><p>b</p>'
+          '<ul data-type="taskList"><li data-type="taskItem"><p>c</p>'
+          '</li></ul></li></ul></li></ul>';
+
+      final document = _parse(html);
+
+      expect(document.plainText, 'a\nb\nc');
+      expect(_taskItems(document), hasLength(3));
+    });
+
+    test('an item without a div of its own reads the first div of an item '
+        'nested in it', () {
+      const html =
+          '<ul data-type="taskList">'
+          '<li data-type="taskItem" data-checked="false"><p>outer</p>'
+          '<ul data-type="taskList">'
+          '<li data-type="taskItem" data-checked="true"><div><p>inner</p></div>'
+          '</li></ul></li></ul>';
+
+      final document = _parse(html);
+
+      expect(document.plainText, 'inner');
+      expect(_taskItems(document).single.checked, isFalse);
+    });
+
+    test('a list nested straight in the task list moves into the item before '
+        'it first', () {
+      const html =
+          '<ul data-type="taskList"><li data-type="taskItem"><p>a</p></li>'
+          '<ul><li><div><p>moved</p></div></li></ul></ul>';
+
+      final document = _parse(html);
+
+      expect(document.plainText, 'moved');
+      expect(_taskItems(document), hasLength(1));
+    });
+  });
+
   group('hostile markup', () {
     const dropped = {
       'script': '<p>a<script>LEAK()</script>b</p>',
@@ -479,6 +537,32 @@ void main() {
           'external':
               'https://evil.example/vikunja/api/v2/tasks/3/attachments/8',
         },
+      ]);
+    });
+
+    test('attachment images come in document order, each once, also from '
+        'lists, task items, quotes and tables; images elsewhere are left '
+        'out', () {
+      String image(int id) =>
+          '<img src="https://tasks.example.com/api/v1/tasks/9/attachments/$id">';
+      final document = _parse(
+        '<p>before${image(1)}after</p>'
+        '<img src="https://example.com/photo.png">'
+        '<ul><li><p>item</p>${image(2)}</li></ul>'
+        '<ul data-type="taskList"><li data-type="taskItem">'
+        '<label><input type="checkbox"></label><div><p>parent</p>'
+        '<ul data-type="taskList"><li data-type="taskItem">'
+        '<label><input type="checkbox"></label><div><p>child</p>${image(4)}'
+        '</div></li></ul>'
+        '${image(3)}</div></li></ul>'
+        '<blockquote>${image(5)}</blockquote>'
+        '<table><tr><td><p>cell</p></td><td>${image(6)}</td></tr></table>'
+        '${image(1)}',
+      );
+
+      expect(document.attachmentImages, [
+        for (final id in [1, 2, 3, 4, 5, 6])
+          AttachmentRef(taskId: 9, attachmentId: id),
       ]);
     });
 

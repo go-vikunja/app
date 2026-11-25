@@ -127,6 +127,7 @@ void main() {
     WidgetTester tester, {
     int taskId = 4,
     int? commentId,
+    bool settle = true,
   }) async {
     final context = containerOf(tester)
         .read(appRouterProvider)
@@ -140,7 +141,13 @@ void main() {
         commentId: commentId,
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      // A comment being sent keeps the Send button's progress turning.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
   }
 
   Future<void> openDetail(WidgetTester tester, {Size? size}) async {
@@ -349,6 +356,82 @@ void main() {
       data.details.addCommentFailure = null;
       await showDetail(tester);
       expect(fieldText(tester), 'Not yet');
+    });
+
+    testWidgets('a comment still being sent when the sheet is opened again '
+        'shows as sending there and is posted once', (tester) async {
+      final hold = Completer<void>();
+      data.details.beforeCall = (call) async {
+        if (call.startsWith('addComment')) await hold.future;
+      };
+      await openDetail(tester);
+      await type(tester, 'Looks good');
+
+      await tester.tap(sendButton());
+      await tester.pump();
+      await close(tester);
+      await showDetail(tester, settle: false);
+
+      expect(fieldText(tester), 'Looks good');
+      expect(sendEnabled(tester), isFalse);
+      expect(inSheet(find.byTooltip(en.commentSending)), findsOneWidget);
+
+      await tester.tap(sendButton(), warnIfMissed: false);
+      hold.complete();
+      await tester.pumpAndSettle();
+
+      expect(
+        data.details.calls.where((call) => call == 'addComment 4'),
+        hasLength(1),
+      );
+      expect(data.details.sentHtml, ['<p>Looks good</p>']);
+      expect(fieldText(tester), isEmpty);
+      expect(inSheet(find.text('Looks good')), findsOneWidget);
+      expect(inSheet(find.text(en.taskDetailComments(1))), findsOneWidget);
+      expect(find.text(en.commentPosted), findsNothing);
+      expect(announced(tester), contains(en.commentPosted));
+
+      await close(tester);
+      await showDetail(tester);
+      expect(fieldText(tester), isEmpty);
+    });
+
+    testWidgets('a send that fails while the sheet is open again keeps the '
+        'text there with Send on and says why once', (tester) async {
+      final hold = Completer<void>();
+      data.details
+        ..beforeCall = (call) async {
+          if (call.startsWith('addComment')) await hold.future;
+        }
+        ..addCommentFailure = const NetworkFailure(NetworkProblem.unreachable);
+      await openDetail(tester);
+      await type(tester, 'Not yet');
+
+      await tester.tap(sendButton());
+      await tester.pump();
+      await close(tester);
+      data.details.addCommentFailure = null;
+      await showDetail(tester, settle: false);
+
+      expect(fieldText(tester), 'Not yet');
+      expect(sendEnabled(tester), isFalse);
+
+      hold.complete();
+      await tester.pumpAndSettle();
+
+      expect(fieldText(tester), 'Not yet');
+      expect(sendEnabled(tester), isTrue);
+      expect(find.text(en.commentFailedNeedsConnection), findsOneWidget);
+      expect(
+        inSheet(find.text(en.commentFailedNeedsConnection)),
+        findsOneWidget,
+      );
+
+      // The message lies over Send until it times out.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await send(tester);
+      expect(data.details.sentHtml, ['<p>Not yet</p>']);
     });
 
     testWidgets("@ suggests the project's people and sends the web's "

@@ -436,98 +436,87 @@ void main() {
                 expect(beyond.hasMore, isFalse);
               });
 
-              test(
-                'previews: an image at the width asked for; a text file '
-                'and an SVG have none, before 2.7.1 their original',
-                () async {
-                  final taskId = task['id']! as int;
-                  Future<Object> preview(
-                    String name, [
-                    AttachmentPreviewSize size = AttachmentPreviewSize.medium,
-                  ]) => attachments
-                      .fetch(taskId, attachmentIds[name]!, preview: size)
-                      .then<Object>((blob) => blob, onError: (Object e) => e);
+              test('previews: an image at the width asked for; a text file '
+                  'and an SVG have none', () async {
+                final taskId = task['id']! as int;
+                Future<Object> preview(
+                  String name, [
+                  AttachmentPreviewSize size = AttachmentPreviewSize.medium,
+                ]) => attachments
+                    .fetch(taskId, attachmentIds[name]!, preview: size)
+                    .then<Object>((blob) => blob, onError: (Object e) => e);
 
-                  final strip = await preview('strip.png');
-                  final stripLarge = await preview(
-                    'strip.png',
-                    AttachmentPreviewSize.extraLarge,
-                  );
-                  final pixel = await preview('pixel.png');
-                  final text = await preview('notes.txt');
-                  final vector = await preview('vector.svg');
-                  final original = await attachments.fetch(
-                    taskId,
-                    attachmentIds['pixel.png']!,
-                  );
+                final strip = await preview('strip.png');
+                final stripLarge = await preview(
+                  'strip.png',
+                  AttachmentPreviewSize.extraLarge,
+                );
+                final pixel = await preview('pixel.png');
+                final text = await preview('notes.txt');
+                final vector = await preview('vector.svg');
+                final original = await attachments.fetch(
+                  taskId,
+                  attachmentIds['pixel.png']!,
+                );
 
-                  expect(original.contentType, 'image/png');
-                  expect(original.bytes, _pixel);
-                  if (connection.info.version!.isAtLeast(2, 7, 1)) {
-                    // JPEGs, PNGs for transparency, never upscaled.
-                    for (final (blob, type, width) in [
-                      (strip, 'image/jpeg', 200),
-                      (stripLarge, 'image/jpeg', 400),
-                      (pixel, 'image/png', 1),
-                    ]) {
-                      expect(
-                        blob,
-                        isA<AttachmentBlob>().having(
-                          (b) => b.contentType,
-                          'contentType',
-                          type,
-                        ),
-                      );
-                      final bytes = (blob as AttachmentBlob).bytes;
-                      expect(
-                        type == 'image/png'
-                            ? _pngWidth(bytes)
-                            : _jpegWidth(bytes),
-                        width,
-                      );
-                    }
-                    for (final none in [text, vector]) {
-                      expect(
-                        none,
-                        isA<DomainError>()
-                            .having((f) => f.statusCode, 'statusCode', 422)
-                            .having((f) => f.code, 'code', 4038),
-                      );
-                      expect(isNoAttachmentPreview(none), isTrue);
-                    }
-                  } else {
-                    // 2.7.0 and older: PNGs, small images upscaled, and the
-                    // original of what the server cannot preview.
-                    for (final (blob, width) in [
-                      (strip, 200),
-                      (stripLarge, 800),
-                      (pixel, 200),
-                    ]) {
-                      expect((blob as AttachmentBlob).contentType, 'image/png');
-                      expect(_pngWidth(blob.bytes), width);
-                    }
-                    final textBlob = text as AttachmentBlob;
-                    expect(textBlob.contentType, 'text/plain');
-                    expect(utf8.decode(textBlob.bytes), _notes);
-                    final vectorBlob = vector as AttachmentBlob;
-                    expect(vectorBlob.contentType, 'image/svg+xml');
-                    expect(vectorBlob.isSvg, isTrue);
-                    expect(utf8.decode(vectorBlob.bytes), _vector);
+                expect(original.contentType, 'image/png');
+                expect(original.bytes, _pixel);
+                if (connection.info.version!.isAtLeast(2, 7, 1)) {
+                  // JPEGs, PNGs for transparency, never upscaled.
+                  for (final (blob, type, width) in [
+                    (strip, 'image/jpeg', 200),
+                    (stripLarge, 'image/jpeg', 400),
+                    (pixel, 'image/png', 1),
+                  ]) {
+                    expect(
+                      blob,
+                      isA<AttachmentBlob>().having(
+                        (b) => b.contentType,
+                        'contentType',
+                        type,
+                      ),
+                    );
+                    final bytes = (blob as AttachmentBlob).bytes;
+                    expect(
+                      type == 'image/png'
+                          ? _pngWidth(bytes)
+                          : _jpegWidth(bytes),
+                      width,
+                    );
                   }
-                  await expectLater(
-                    attachments.fetch(taskId, 99999999),
-                    throwsA(isA<NotFound>()),
+                } else {
+                  // 2.7.0 and older: PNGs, small images upscaled.
+                  for (final (blob, width) in [
+                    (strip, 200),
+                    (stripLarge, 800),
+                    (pixel, 200),
+                  ]) {
+                    expect((blob as AttachmentBlob).contentType, 'image/png');
+                    expect(_pngWidth(blob.bytes), width);
+                  }
+                }
+                for (final none in [text, vector]) {
+                  expect(
+                    none,
+                    isA<DomainError>()
+                        .having((f) => f.statusCode, 'statusCode', 422)
+                        .having((f) => f.code, 'code', 4038),
                   );
-                  await expectLater(
-                    attachments.fetch(
-                      taskId,
-                      99999999,
-                      preview: AttachmentPreviewSize.medium,
-                    ),
-                    throwsA(isA<NotFound>()),
-                  );
-                },
-              );
+                  expect(isNoAttachmentPreview(none), isTrue);
+                }
+                await expectLater(
+                  attachments.fetch(taskId, 99999999),
+                  throwsA(isA<NotFound>()),
+                );
+                await expectLater(
+                  attachments.fetch(
+                    taskId,
+                    99999999,
+                    preview: AttachmentPreviewSize.medium,
+                  ),
+                  throwsA(isA<NotFound>()),
+                );
+              });
 
               test('by index: by project id and identifier in any case; an '
                   'unknown project or index is NotFound', () async {

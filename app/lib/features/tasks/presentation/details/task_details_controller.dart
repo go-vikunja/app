@@ -67,9 +67,12 @@ typedef StoredDetailsReader = Future<StoredRead<TaskDetails>?> Function(
 /// comment count, unread, subscription), read once when the sheet opens
 /// and again on Retry, when a queued create got its server id or when the
 /// task changed on the server; changes made here to the attachments, the
-/// reactions and the comments apply at once. A refresh under way when one
-/// of them comes may have read the server before it, so it is dropped and
-/// read again once [writing] has nothing pending. A result that says the
+/// reactions and the comments apply at once. A read under way when one of
+/// them comes, the first one included, may have read the server before it,
+/// so it is dropped and read again once [writing] has nothing pending.
+/// While no answer of the server shows, a dropped read that answers shows
+/// with the changes made here since then applied, until the read in its
+/// place answers, and stays when that one fails. A result that says the
 /// task is unread marks it read, fire and forget.
 ///
 /// Until the first answer comes, and when it fails for a reason that may
@@ -85,11 +88,22 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   late final _guard = RefreshGuard(refresh);
   int? _id;
 
+  /// The generation of the latest [load]: reads before it are of another
+  /// opening.
+  var _loadGeneration = 0;
+
+  /// Changes made here since the latest [load] while no answer of the
+  /// server showed, each with the generation current when it was made: a
+  /// read of that generation or an earlier one began before it.
+  final _unanswered =
+      <(int generation, TaskDetails? Function(TaskDetails details) change)>[];
+
   int? get id => _id;
 
   /// The read, whose failure is also in [value]; the follow bell takes
   /// its subscription from it. Stored details of the task that show stay
-  /// while it runs; a change made here meanwhile drops it like a refresh.
+  /// while it runs; a change made here meanwhile drops it like a refresh,
+  /// also while nothing shows yet.
   Future<TaskDetails> load(int taskId) {
     final stored = switch (value) {
       final TaskDetailsLoaded shown
@@ -98,22 +112,21 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
       _ => null,
     };
     _id = taskId;
-    final generation = ++_guard.generation;
+    final generation = _loadGeneration = _guard.refreshing =
+        ++_guard.generation;
+    _unanswered.clear();
     if (stored != null) {
       _set(TaskDetailsLoaded(stored.details, storedAt: stored.storedAt));
-      _guard.refreshing = generation;
     } else {
       _set(const TaskDetailsLoading());
-      unawaited(_showStored(taskId, generation));
+      unawaited(_showStored(taskId));
     }
     final request = Future.sync(() => _read(taskId));
     unawaited(
       request.then(
         (details) {
           if (_guard.refreshing == generation) _guard.refreshing = null;
-          if (generation != _guard.generation) return;
-          _set(TaskDetailsLoaded(details));
-          if (details.isUnread) unawaited(_markReadQuietly(taskId));
+          _answered(taskId, generation, details);
         },
         onError: (Object error) {
           if (_guard.refreshing == generation) _guard.refreshing = null;
@@ -139,20 +152,34 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
     }
     final generation = _guard.refreshing = ++_guard.generation;
     try {
-      final details = await _read(taskId);
-      if (generation != _guard.generation) return;
-      _set(TaskDetailsLoaded(details));
-      if (details.isUnread) unawaited(_markReadQuietly(taskId));
+      _answered(taskId, generation, await _read(taskId));
     } on Object catch (error) {
       _log.fine('Refreshing task details failed: ${error.runtimeType}');
-      final answered = switch (value) {
-        TaskDetailsLoaded(storedAt: null) => true,
-        _ => false,
-      };
-      if (generation == _guard.generation && !answered) _fail(error);
+      if (generation == _guard.generation && !_showsAnswer) _fail(error);
     } finally {
       if (_guard.refreshing == generation) _guard.refreshing = null;
     }
+  }
+
+  bool get _showsAnswer => switch (value) {
+    TaskDetailsLoaded(storedAt: null) => true,
+    _ => false,
+  };
+
+  void _answered(int taskId, int generation, TaskDetails details) {
+    var shown = details;
+    if (generation == _guard.generation) {
+      _unanswered.clear();
+    } else {
+      if (generation < _loadGeneration || taskId != _id || _showsAnswer) {
+        return;
+      }
+      for (final (since, change) in _unanswered) {
+        if (since >= generation) shown = change(shown) ?? shown;
+      }
+    }
+    _set(TaskDetailsLoaded(shown));
+    if (details.isUnread) unawaited(_markReadQuietly(taskId));
   }
 
   void _fail(Object error) {
@@ -165,9 +192,10 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
     _set(TaskDetailsFailed(error));
   }
 
-  /// Shows what is stored while the read runs, or once it failed for a
-  /// reason that keeps it.
-  Future<void> _showStored(int taskId, int generation) async {
+  /// Shows what is stored while a read of the task runs, the first or one a
+  /// change made here put in its place, or once it failed for a reason that
+  /// keeps it.
+  Future<void> _showStored(int taskId) async {
     final read = _stored;
     if (read == null) return;
     final StoredRead<TaskDetails>? stored;
@@ -177,11 +205,10 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
       _log.warning('Reading stored task details failed: ${error.runtimeType}');
       return;
     }
-    if (stored == null || generation != _guard.generation) return;
+    if (stored == null || taskId != _id) return;
     switch (value) {
       case TaskDetailsLoading():
         _set(TaskDetailsLoaded(stored.value, storedAt: stored.readAt));
-        _guard.refreshing = generation;
       case TaskDetailsFailed(:final failure) when keepsStored(failure):
         _set(
           TaskDetailsLoaded(
@@ -199,13 +226,14 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   Future<T> writing<T>(Future<T> Function() write) => _guard.writing(write);
 
   /// An attachment the server has now, shown without a read.
-  void addAttachment(TaskAttachment attachment) => _change((details) {
-    if (attachment.taskId != _id ||
-        details.attachments.any((known) => known.id == attachment.id)) {
-      return null;
-    }
-    return _withAttachments(details, [...details.attachments, attachment]);
-  });
+  void addAttachment(TaskAttachment attachment) {
+    if (attachment.taskId != _id) return;
+    _change(
+      (details) => details.attachments.any((known) => known.id == attachment.id)
+          ? null
+          : _withAttachments(details, [...details.attachments, attachment]),
+    );
+  }
 
   /// The server deleted the attachment, and with it the cover if it was.
   void removeAttachment(int attachmentId) => _change(
@@ -238,17 +266,18 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
 
   void _change(TaskDetails? Function(TaskDetails details) change) {
     if (value case final TaskDetailsLoaded shown) {
-      if (change(shown.details) case final changed?) {
-        _set(
-          TaskDetailsLoaded(
-            changed,
-            storedAt: shown.storedAt,
-            failure: shown.failure,
-          ),
-        );
-        _guard.drop();
-      }
+      final changed = change(shown.details);
+      if (changed == null) return;
+      _set(
+        TaskDetailsLoaded(
+          changed,
+          storedAt: shown.storedAt,
+          failure: shown.failure,
+        ),
+      );
     }
+    if (!_showsAnswer) _unanswered.add((_guard.generation, change));
+    _guard.drop();
   }
 
   static TaskDetails _withAttachments(

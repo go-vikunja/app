@@ -35,6 +35,7 @@ final class TaskDetailsDao extends DatabaseAccessor<AppDatabase>
   // them.
   final _detailsVersions = <int, int>{};
   final _commentsVersions = <int, int>{};
+  final _commentWrites = <int, int>{};
 
   /// Taken before a read for [storeDetails]; every write to the task's
   /// stored attachments, cover and reactions changes it.
@@ -43,6 +44,30 @@ final class TaskDetailsDao extends DatabaseAccessor<AppDatabase>
   /// Taken before a read for [storeComments]; every write to the task's
   /// stored comments and their reactions changes it.
   int commentsVersion(int taskId) => _commentsVersions[taskId] ?? 0;
+
+  /// Whether a details read that took [version] ([commentsVersion]) before
+  /// it started may store the task's comment count it read: no comment of
+  /// the task was written or deleted here since ([writingComment]), and none
+  /// is on its way, which the server may or may not have counted.
+  bool commentCountHolds(int taskId, int version) =>
+      version == commentsVersion(taskId) && !_commentWrites.containsKey(taskId);
+
+  /// Runs [write], which writes or deletes a comment of the task on the
+  /// server and then moves its stored count.
+  Future<T> writingComment<T>(int taskId, Future<T> Function() write) async {
+    _commentWrites.update(taskId, (writes) => writes + 1, ifAbsent: () => 1);
+    try {
+      return await write();
+    } finally {
+      final left = _commentWrites[taskId]! - 1;
+      if (left == 0) {
+        _commentWrites.remove(taskId);
+      } else {
+        _commentWrites[taskId] = left;
+      }
+      _changed(_commentsVersions, taskId);
+    }
+  }
 
   /// Nothing when [version] is given and no longer the task's.
   Future<void> storeDetails(

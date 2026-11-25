@@ -20,6 +20,7 @@ class RichHtml extends ConsumerStatefulWidget {
     this.style,
     this.projectId,
     this.replyAuthorOf,
+    this.attachments,
     super.key,
   });
 
@@ -31,6 +32,12 @@ class RichHtml extends ConsumerStatefulWidget {
   final TextStyle? style;
   final int? projectId;
   final User? Function(int commentId)? replyAuthorOf;
+
+  /// The task's attachments as its details list them, null where none are
+  /// at hand. An original stands in by itself for a missing preview only
+  /// for a small image named here, and a file named here as something
+  /// other than an image is never asked for.
+  final List<TaskAttachment>? attachments;
 
   @override
   ConsumerState<RichHtml> createState() => _RichHtmlState();
@@ -72,6 +79,7 @@ class _RichHtmlState extends ConsumerState<RichHtml> {
       style: widget.style,
       projectId: widget.projectId,
       replyAuthorOf: widget.replyAuthorOf,
+      attachments: widget.attachments,
     );
   }
 }

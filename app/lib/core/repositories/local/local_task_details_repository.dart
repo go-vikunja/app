@@ -53,8 +53,9 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
         ? read
         : read.copyWith(coverImageAttachmentId: queued);
     // The sync cannot see a task read elsewhere: mark-read bumps nothing.
-    // A comment written since the read started already moved the count.
-    if (_db.taskDetailsDao.commentsVersion(id) == commentsVersion) {
+    // A comment written or deleted here since the read started, or on its
+    // way, moves the count itself; the server may have counted it or not.
+    if (_db.taskDetailsDao.commentCountHolds(id, commentsVersion)) {
       await _db.tasksDao.storeCommentState(
         id,
         commentCount: details.commentCount,
@@ -147,10 +148,15 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
   Future<TaskComment> addComment(int taskId, CommentDraft draft) async {
     _checkContent(draft);
     final id = await serverTaskId(_db.tasksDao, taskId);
-    final created = await _write.comments.create(id, draft.html);
-    await _db.tasksDao.addToCommentCount(id, 1);
-    await _keep('a comment', () => _db.taskDetailsDao.putComment(id, created));
-    return created;
+    return await _db.taskDetailsDao.writingComment(id, () async {
+      final created = await _write.comments.create(id, draft.html);
+      await _db.tasksDao.addToCommentCount(id, 1);
+      await _keep(
+        'a comment',
+        () => _db.taskDetailsDao.putComment(id, created),
+      );
+      return created;
+    });
   }
 
   @override
@@ -181,12 +187,14 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
   @override
   Future<void> deleteComment(int taskId, int commentId) async {
     final id = await serverTaskId(_db.tasksDao, taskId);
-    await _write.comments.delete(id, commentId);
-    await _db.tasksDao.addToCommentCount(id, -1);
-    await _keep(
-      'a deletion',
-      () => _db.taskDetailsDao.removeComment(id, commentId),
-    );
+    await _db.taskDetailsDao.writingComment(id, () async {
+      await _write.comments.delete(id, commentId);
+      await _db.tasksDao.addToCommentCount(id, -1);
+      await _keep(
+        'a deletion',
+        () => _db.taskDetailsDao.removeComment(id, commentId),
+      );
+    });
   }
 
   @override

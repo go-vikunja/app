@@ -91,6 +91,19 @@ final class LocalAttachmentRepository implements AttachmentRepository {
       target: target,
       cancel: cancel,
     );
+    // A captive portal's or a proxy's page can answer in the file's place; a
+    // server that lists no size gives 0 (decision log: Descriptions,
+    // comments, attachments).
+    if (attachment.size > 0 && await target.length() != attachment.size) {
+      _log.info('A download did not have its listed size and was discarded');
+      try {
+        await target.delete();
+      } on FileSystemException catch (error) {
+        _log.info('Could not delete a download: ${error.osError?.errorCode}');
+      }
+      // Without a message: the section would show it as the server's words.
+      throw const UnexpectedResponse(null);
+    }
     return target;
   }
 

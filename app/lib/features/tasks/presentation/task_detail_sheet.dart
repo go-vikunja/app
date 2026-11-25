@@ -41,6 +41,7 @@ import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
+import 'package:vikunja_mobile/features/tasks/application/comment_sends.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
@@ -214,7 +215,8 @@ final class TaskDetailPaneHost {
 /// on the server; a read that fails is one line with Retry, above what was
 /// last read where that stays (offline, a failure that may pass) and says
 /// as of when. Comments are written in a field pinned below the list,
-/// which keeps an unsent one as a draft. Messages about what happens in
+/// which keeps an unsent one as a draft and shows one still on its way from
+/// an earlier detail of the task as sending. Messages about what happens in
 /// the sheet show inside it.
 class TaskDetailSheet extends ConsumerStatefulWidget {
   const new({
@@ -271,6 +273,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     ..addListener(_composerChanged);
   // Read up front: an unsent comment is kept also while the sheet goes.
   late final CommentDrafts _drafts;
+  late final CommentSends _sends;
+  CommentSend? _followed;
   late final String? _account;
   late final TaskWriteAccess _access;
   final GlobalKey _commentsHeader = GlobalKey();
@@ -297,6 +301,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   void initState() {
     super.initState();
     _drafts = ref.read(commentDraftsProvider);
+    _sends = ref.read(commentSendsProvider);
     _account = ref.read(activeAccountIdProvider);
     _access = ref.read(taskWriteAccessProvider);
     _actions = TaskDetailActions(
@@ -361,6 +366,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
 
   @override
   void dispose() {
+    _followed?.shownIn.remove(this);
     unawaited(_uploaded?.cancel());
     unawaited(_serverChanges?.cancel());
     _highlightEnd?.cancel();
@@ -474,11 +480,15 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     );
   }
 
-  /// The task's unsent comment, unless something was typed meanwhile.
+  /// The task's unsent comment, unless something was typed meanwhile; one
+  /// still on its way from an earlier detail of the task shows as sending.
   Future<void> _restoreDraft(int taskId) async {
     final account = _account;
     if (account == null || _draftAsked) return;
     _draftAsked = true;
+    if (_sends.of(account, taskId) case final send? when _composer.isEmpty) {
+      return await _followSend(send);
+    }
     try {
       final draft = await _drafts.read(account: account, taskId: taskId);
       if (draft == null || !mounted || !_composer.isEmpty) return;
@@ -491,6 +501,43 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       }
     } on Object catch (error) {
       _log.warning('Reading a comment draft failed: ${error.runtimeType}');
+    }
+  }
+
+  /// A comment an earlier detail of the task sent, still on its way: shown
+  /// as sending, not as a draft that Send would post again. It empties once
+  /// the server has it and stays, Send on, if the send failed.
+  Future<void> _followSend(CommentSend send) async {
+    _followed = send;
+    send.shownIn.add(this);
+    _keptDraft = send.draft;
+    _restoringDraft = true;
+    try {
+      _composer
+        ..restore(send.draft)
+        ..sending = true;
+    } finally {
+      _restoringDraft = false;
+    }
+    try {
+      final comment = await send.result;
+      if (!mounted) return;
+      _draftWrite?.cancel();
+      _draftWrite = null;
+      _keptDraft = null;
+      _composer.clear();
+      // Its count and thread may have been read before the comment arrived.
+      unawaited(_details.refresh());
+      await _comments.add(comment, wasEmpty: false);
+      if (mounted) announce(context, context.l10n.commentPosted);
+    } on Object catch (error) {
+      if (mounted) {
+        _showMessage(
+          commentFailureText(context.l10n, error, CommentWrite.send),
+        );
+      }
+    } finally {
+      if (mounted) _composer.sending = false;
     }
   }
 
@@ -518,25 +565,31 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     }
   }
 
-  /// The sheet may close before the server answers: the draft goes all the
-  /// same, and what happened shows below.
+  /// The sheet may close before the server answers: the comment goes all
+  /// the same, and what happened shows below, unless a detail of the task
+  /// opened meanwhile shows it.
   Future<void> _sendComment(Task task) async {
     final repository = ref.read(taskDetailsRepositoryProvider);
     if (repository == null || _composer.isBlank || _composer.sending) return;
     final l10n = context.l10n;
     final account = _account;
     final drafts = _drafts;
+    final sends = _sends;
     final below = widget.messengerBelow;
     final screenMessenger = ScaffoldMessenger.maybeOf(context);
     void showBelow(String text) => (below?.currentState ?? screenMessenger)
         ?.showSnackBar(SnackBar(content: Text(text)));
     final wasEmpty = _loadedDetails()?.commentCount == 0;
+    final send = CommentSend(
+      _composer.toDraft(),
+      Future.sync(
+        () => repository.addComment(task.id, CommentDraft(_composer.html())),
+      ),
+    );
+    if (account != null) sends.start(account, task.id, send);
     _composer.sending = true;
     try {
-      final comment = await repository.addComment(
-        task.id,
-        CommentDraft(_composer.html()),
-      );
+      final comment = await send.result;
       _draftWrite?.cancel();
       _draftWrite = null;
       // After any save of the text still queued, e.g. the closing sheet's.
@@ -550,9 +603,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 ),
               ),
         );
+        // Not before: a detail opened from now on reads the draft after its
+        // discard.
+        sends.end(account, task.id, send);
       }
       if (!mounted) {
-        showBelow(l10n.commentPosted);
+        if (send.shownIn.isEmpty) showBelow(l10n.commentPosted);
         return;
       }
       _keptDraft = null;
@@ -561,7 +617,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       // In a long thread this reads the pages up to its end.
       await _comments.add(comment, wasEmpty: wasEmpty);
       if (!mounted) {
-        showBelow(l10n.commentPosted);
+        if (send.shownIn.isEmpty) showBelow(l10n.commentPosted);
         return;
       }
       announce(context, l10n.commentPosted);
@@ -571,11 +627,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
         if (mounted) await _scrollTo(_commentKey(comment.id));
       }
     } on Object catch (error) {
+      if (account != null) sends.end(account, task.id, send);
       _log.info('Sending a comment failed: ${error.runtimeType}');
       final message = commentFailureText(l10n, error, CommentWrite.send);
       if (mounted) {
         _showMessage(message);
-      } else {
+      } else if (send.shownIn.isEmpty) {
         showBelow(message);
       }
     } finally {
@@ -1436,6 +1493,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                               item,
                             ),
                           ),
+                    attachments: details?.attachments,
                   ),
                   if (_details.value case TaskDetailsFailed(:final failure)
                       when task.id > 0)
@@ -1505,6 +1563,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         canComment: canComment,
                         mayReact: mayReact,
                       ),
+                      attachments: details.attachments,
                       headerKey: _commentsHeader,
                       keyOf: _commentKey,
                       highlighted: _highlighted,

@@ -752,6 +752,7 @@ final class FakeAttachmentsPort implements AttachmentsPort {
     int taskId,
     int attachmentId, {
     AttachmentPreviewSize? preview,
+    CancelToken? cancel,
   }) async {
     await _client._request(
       'attachment $taskId $attachmentId ${preview?.wireName ?? 'original'}',

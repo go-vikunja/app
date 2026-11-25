@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -64,8 +65,12 @@ void main() {
       (await db.taskDetailsDao.storedDetails(1))!.value;
 
   AttachmentImageCache imagesOver(ImageDiskCache disk) => AttachmentImageCache(
-    (taskId, attachmentId, preview) =>
-        read.attachments.fetch(taskId, attachmentId, preview: preview),
+    (taskId, attachmentId, preview, cancel) => read.attachments.fetch(
+      taskId,
+      attachmentId,
+      preview: preview,
+      cancel: cancel,
+    ),
     disk: disk,
   );
 
@@ -431,6 +436,46 @@ void main() {
       expect(read.requests, ['download 1 300']);
     },
   );
+
+  test("a download of another length than listed, such as a captive portal's "
+      "page in the file's place, is deleted and fails as an unexpected answer; "
+      'the next one reads it again', () async {
+    read.attachmentBlobs[(1, 300, null)] = AttachmentBlob(
+      bytes: utf8.encode('<html>Sign in</html>'),
+      contentType: 'text/html',
+    );
+
+    await expectLater(
+      repository.download(1, photo),
+      throwsA(isA<UnexpectedResponse>()),
+    );
+    expect(
+      (await downloads.fileFor(accountId, 1, photo)).existsSync(),
+      isFalse,
+    );
+
+    read.attachmentBlobs[(1, 300, null)] = AttachmentBlob(
+      bytes: Uint8List.fromList(const [1, 2, 3]),
+      contentType: 'image/png',
+    );
+    final file = await repository.download(1, photo);
+
+    expect(file.readAsBytesSync(), const [1, 2, 3]);
+    expect(read.requests, ['download 1 300', 'download 1 300']);
+  });
+
+  test('an attachment listed with a size of 0, as from a server that lists '
+      'none, is handed on as it arrives', () async {
+    const notes = TaskAttachment(id: 301, taskId: 1, name: 'notes.txt');
+    read.attachmentBlobs[(1, 301, null)] = AttachmentBlob(
+      bytes: Uint8List.fromList(const [1, 2, 3, 4, 5]),
+      contentType: 'text/plain',
+    );
+
+    final file = await repository.download(1, notes);
+
+    expect(file.readAsBytesSync(), const [1, 2, 3, 4, 5]);
+  });
 
   test('a cancelled download fails with the cancel', () async {
     final cancel = CancelToken()..cancel();

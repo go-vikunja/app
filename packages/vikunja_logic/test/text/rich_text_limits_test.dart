@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/src/text/bounded_html_parser.dart';
+import 'package:vikunja_logic/src/text/rich_text_parser.dart'
+    show taskItemContentVisits;
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 final Uri _apiRoot = Uri.parse('https://tasks.example.com');
@@ -18,6 +20,14 @@ final String _tooDeep = '<div>' * maxOpenElements;
 /// [unit] repeated to about [kilobytes] of HTML.
 String _repeat(String unit, int kilobytes) =>
     unit * (kilobytes * 1000 ~/ unit.length);
+
+const int _emptyTags = 870 * 1000 ~/ 5;
+
+/// 47 items take 94 levels: one more and the markup below them would be
+/// flattened to text.
+final String _taskItemsAboveEmptyTags =
+    '${'<ul data-type="taskList"><li data-type="taskItem">' * 47}'
+    '${'<wbr>' * _emptyTags}';
 
 /// Each cell leaves the marker of its `object` in the list of active
 /// formatting elements.
@@ -78,6 +88,148 @@ void main() {
     expect(quotedTextOf('$quote<p>own</p>$_tooDeep'), 'own …');
     expect(quotedTextOf('$quote$_tooDeep'), 'quoted …');
     expect(quotedTextOf(_tooDeep), '…');
+    expect(quotedTextOf('<p>x</p>' * (maxRichNodes + 1)), endsWith('x …'));
+  });
+
+  test('a document of tens of thousands of short paragraphs keeps its '
+      'beginning and ends with an ellipsis', () {
+    final document = _parse(
+      [for (var i = 0; i < 20000; i++) '<p>Line $i</p>'].join(),
+    );
+
+    expect(document.truncated, isTrue);
+    expect(document.blocks, hasLength(maxRichNodes + 1));
+    expect(document.plainText, startsWith('Line 0\nLine 1\n'));
+    expect(document.plainText, endsWith('Line ${maxRichNodes - 1}\n…'));
+  });
+
+  test('the block and the character past the budgets cut the document, not '
+      'the last that fits', () {
+    final full = _parse('<p>x</p>' * maxRichNodes);
+    final over = _parse('<p>x</p>' * (maxRichNodes + 1));
+
+    expect(full.truncated, isFalse);
+    expect(full.blocks, hasLength(maxRichNodes));
+    expect(over.truncated, isTrue);
+    expect(over.blocks, hasLength(maxRichNodes + 1));
+
+    final whole = _parse('<p>${'x' * maxRichCharacters}</p>');
+    final long = _parse('<p>${'x' * (maxRichCharacters + 1)}</p>');
+
+    expect(whole.truncated, isFalse);
+    expect(whole.plainText, hasLength(maxRichCharacters));
+    expect(long.truncated, isTrue);
+    final run = (long.blocks.first as RichParagraph).inlines.single;
+    expect((run as RichTextRun).text, hasLength(maxRichCharacters));
+  });
+
+  test('blocks inside a list count, an item the cut leaves empty is left '
+      'out, and the ellipsis follows at the top level', () {
+    final document = _parse('<ul>${'<li><p>x</p></li>' * maxRichNodes}</ul>');
+
+    expect(document.blocks, hasLength(2));
+    final list = document.blocks.first as RichBulletList;
+    expect(list.items, hasLength((maxRichNodes - 1) ~/ 2));
+    expect(
+      list.items.every((item) => item.blocks.single is RichParagraph),
+      isTrue,
+    );
+    expect(document.blocks.last, isA<RichParagraph>());
+    expect(document.plainText, endsWith('x\n…'));
+  });
+
+  test('a checklist longer than a document may draw: its items before the '
+      'cut can be ticked, those after it cannot', () {
+    String item(int i) =>
+        '<li data-checked="false" data-task-id="t$i" '
+        'data-type="taskItem"><p>Item $i</p></li>';
+    final html =
+        '<ul data-type="taskList">'
+        '${[for (var i = 0; i < 3000; i++) item(i)].join()}</ul>';
+
+    final items = _parse(html).taskItems;
+
+    expect(items, hasLength((maxRichNodes - 1) ~/ 2));
+    expect(toggleTaskItem(html, items.last, checked: true), isNotNull);
+    final pastTheCut = RichTaskItem(
+      checked: false,
+      blocks: const [],
+      sourceOffset: findCheckboxesInText(html).last,
+      taskId: 't2999',
+    );
+    expect(toggleTaskItem(html, pastTheCut, checked: true), isNull);
+  });
+
+  test('a very long text is cut inside it, never inside a surrogate pair', () {
+    final document = _parse('<p>a${'\u{1F600}' * maxRichCharacters}</p>');
+
+    expect(document.truncated, isTrue);
+    final run = (document.blocks.first as RichParagraph).inlines.first;
+    final text = (run as RichTextRun).text;
+    expect(text, hasLength(maxRichCharacters - 1));
+    expect(
+      text.codeUnitAt(text.length - 1),
+      isNot(inInclusiveRange(0xD800, 0xDBFF)),
+    );
+    expect(document.plainText, endsWith('\u{1F600}\n…'));
+  });
+
+  test('a paragraph of thousands of links keeps as many as a document may '
+      'draw', () {
+    final links = [
+      for (var i = 0; i < maxRichNodes; i++)
+        '<a href="https://example.com/$i">x</a>',
+    ].join();
+
+    final document = _parse('<p>$links</p>');
+
+    expect(document.truncated, isTrue);
+    final paragraph = document.blocks.first as RichParagraph;
+    expect(paragraph.inlines, hasLength(maxRichNodes - 1));
+  });
+
+  test('a document whose images are not attachments of the server ends '
+      'where it would with them', () {
+    // An attachment under the server root; under another root it is dropped,
+    // since its src is relative.
+    final image =
+        '<img src="photo.png" '
+        'data-src="https://tasks.example.com/api/v1/tasks/1/attachments/2" '
+        'alt="${'a' * 200}">';
+    RichDocument withoutImages(RichDocument document) => RichDocument([
+      for (final block in document.blocks)
+        if (block is! RichImage) block,
+    ]);
+
+    for (final (budget, html) in [
+      ('nodes', '${'<p>x</p>' * (maxRichNodes - 1)}$image<p>y</p>'),
+      ('characters', '<p>${'x' * (maxRichCharacters - 100)}</p>$image<p>y</p>'),
+    ]) {
+      final attachment = _parse(html);
+      final elsewhere = parseRichText(
+        html,
+        apiRoot: Uri.parse('https://checklist.invalid'),
+        taskLinkBases: const [],
+      );
+
+      expect(attachment.truncated, isTrue, reason: budget);
+      expect(elsewhere.truncated, isTrue, reason: budget);
+      expect(
+        withoutImages(elsewhere).plainText,
+        withoutImages(attachment).plainText,
+        reason: budget,
+      );
+      expect(
+        withoutImages(elsewhere).blocks,
+        hasLength(withoutImages(attachment).blocks.length),
+        reason: budget,
+      );
+      expect(elsewhere.blocks.whereType<RichImage>(), isEmpty, reason: budget);
+    }
+    expect(
+      _parse('${'<p>x</p>' * (maxRichNodes - 1)}$image').blocks.last,
+      isA<RichImage>(),
+    );
   });
 
   test('a number too large for package:html is U+FFFD everywhere', () {
@@ -193,17 +345,23 @@ void main() {
         () => '<b><div>${_repeat('x<br>', 900)}</b>',
       ),
       'blank TipTap text between paragraphs': (
-        false,
+        true,
         () => _repeat('<p>x</p>\n', 900),
       ),
       'lists nested in a list': (
-        false,
+        true,
         () => '<ul><li>x</li>${_repeat('<ul></ul>', 900)}',
       ),
-      'text split by comments': (false, () => '<p>${_repeat('abc<!>', 900)}'),
+      'text split by comments': (true, () => '<p>${_repeat('abc<!>', 900)}'),
       'numbers too large for package:html': (
         false,
         () => _repeat('&#99999999999999999999;', 900),
+      ),
+      // Took 0.6 s with a walk per item too, under the bar: the test of
+      // the walk below tells them apart.
+      'checklist items nested above a long run of empty tags': (
+        false,
+        () => _taskItemsAboveEmptyTags,
       ),
     };
     for (final MapEntry(key: name, value: (truncated, build))
@@ -223,5 +381,17 @@ void main() {
         expect(watch.elapsed, lessThan(const Duration(seconds: 3)));
       });
     }
+
+    test('the content of checklist items nested above a long run of empty '
+        'tags is found in one walk, not one per item', () {
+      taskItemContentVisits = 0;
+
+      final document = _parse(_taskItemsAboveEmptyTags);
+
+      expect(document.truncated, isFalse);
+      // A walk per item looked at each empty tag 47 times, 8 million visits.
+      expect(taskItemContentVisits, lessThan(_emptyTags + 1000));
+      expect(taskItemContentVisits, greaterThanOrEqualTo(_emptyTags));
+    });
   });
 }

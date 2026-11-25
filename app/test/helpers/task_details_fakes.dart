@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
@@ -335,13 +336,15 @@ final class FakeTaskResolver implements TaskResolver {
 /// images loaded before, like the real cache. A failed load is
 /// remembered until it is forgotten, a failure that cannot pass for good.
 /// Every load is recorded in [loads] (`3 7 md`, `3 7 original`);
-/// [beforeLoad] can hold one. A drop is recorded in [drops] (`3 7`) and
-/// forgets what was loaded of the attachment.
+/// [beforeLoad] can hold one, and a load given up while held ends with its
+/// cancel and is recorded in [cancels]. A drop is recorded in [drops]
+/// (`3 7`) and forgets what was loaded of the attachment.
 final class FakeAttachmentImages implements AttachmentImages {
   final Map<(int, int, AttachmentPreviewSize?), AttachmentImage> images = {};
   final Map<(int, int, AttachmentPreviewSize?), Exception> failures = {};
   AttachmentImage? fallback;
   final List<String> loads = [];
+  final List<String> cancels = [];
   final List<String> drops = [];
   Future<void> Function(String load)? beforeLoad;
   final _loaded = <(int, int, AttachmentPreviewSize?)>{};
@@ -352,11 +355,19 @@ final class FakeAttachmentImages implements AttachmentImages {
     int taskId,
     int attachmentId, {
     AttachmentPreviewSize? preview,
+    CancelToken? cancel,
   }) async {
     final description =
         '$taskId $attachmentId ${preview?.wireName ?? 'original'}';
     loads.add(description);
-    await beforeLoad?.call(description);
+    final held = beforeLoad?.call(description);
+    if (held != null) {
+      await Future.any<Object?>([held, ?cancel?.whenCancel]);
+      if (cancel?.cancelError case final given?) {
+        cancels.add(description);
+        throw given;
+      }
+    }
     final key = (taskId, attachmentId, preview);
     final image = images[key] ?? fallback;
     final failure =

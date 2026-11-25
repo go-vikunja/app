@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 
 void main() {
@@ -30,6 +31,28 @@ void main() {
         ' &#x41;&#66; caf&eacute;&nbsp;!</p>',
       ),
       'Tom & Jerry <3 "quotes" \'x\' AB caf&eacute;\u00a0!',
+    );
+  });
+
+  test('a reference to half a surrogate pair is one replacement mark in its '
+      'spot', () {
+    expect(
+      htmlToPlainText('<p>a&#xD800;b &#56320;c &#xdfff;</p>'),
+      'a\uFFFDb \uFFFDc \uFFFD',
+    );
+  });
+
+  test('two halves of a pair are a mark each, as the rich text reads them', () {
+    const html = '<p>&#xD83D;&#xDE00; &#x1F600;</p>';
+
+    expect(htmlToPlainText(html), '\uFFFD\uFFFD \u{1F600}');
+    expect(
+      htmlToPlainText(html),
+      parseRichText(
+        html,
+        apiRoot: Uri.parse('https://tasks.example.com'),
+        taskLinkBases: const [],
+      ).plainText,
     );
   });
 

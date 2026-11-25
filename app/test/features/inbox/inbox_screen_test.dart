@@ -253,6 +253,31 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('a quoted comment shows half a surrogate pair as one '
+      'replacement mark in its spot', (tester) async {
+    data.activity.notifications = [
+      inboxNotification(
+        id: 6,
+        name: 'task.comment',
+        created: DateTime(2026, 10, 13, 14),
+        payload: {
+          'doer': anna,
+          'task': plants,
+          'comment': {
+            'id': 1,
+            'comment': '<p>Fix &#xD800; the &#xD83D;&#xDE00; tap</p>',
+          },
+        },
+      ),
+    ];
+    await openInbox(tester);
+
+    expect(
+      inInbox(find.text(en.inboxQuoted('Fix \uFFFD the \uFFFD\uFFFD tap'))),
+      findsOne,
+    );
+  });
+
   group('a tap', () {
     testWidgets('on a task on this device marks it read and opens it', (
       tester,

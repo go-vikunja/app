@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui'
     show DisplayFeature, DisplayFeatureState, DisplayFeatureType, Tristate;
 
@@ -141,6 +142,59 @@ void main() {
         semantics.dispose();
       }, variant: variant);
     }
+
+    testWidgets('a comment still being sent when the pane turns into a sheet '
+        'shows as sending there and is posted once', (tester) async {
+      useWindow(tester, androidTabletLandscape);
+      final data = sweepData();
+      _seedComments(data);
+      final hold = Completer<void>();
+      data.details.beforeCall = (call) async {
+        if (call.startsWith('addComment')) await hold.future;
+      };
+      await pumpSweepApp(tester, data: data);
+      await tapTaskRow(tester, 1);
+
+      await tester.enterText(
+        _composerIn(find.byType(TaskDetailPane)),
+        'Friday works',
+      );
+      await tester.pump();
+      await tester.tap(inPane(find.byTooltip(en.commentSend)));
+      await tester.pump();
+
+      useWindow(tester, androidTabletPortrait);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expectSheet(tester, taskId: 1);
+      final sheet = find.byType(TaskDetailSheet);
+      expect(
+        tester.widget<TextField>(_composerIn(sheet)).controller!.text,
+        'Friday works',
+      );
+      final sending = tester.widget<IconButton>(
+        find.descendant(
+          of: sheet,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is IconButton && widget.tooltip == en.commentSending,
+          ),
+        ),
+      );
+      expect(sending.onPressed, isNull);
+
+      hold.complete();
+      await tester.pumpAndSettle();
+
+      expect(data.details.sentHtml, ['<p>Friday works</p>']);
+      expect(
+        tester.widget<TextField>(_composerIn(sheet)).controller!.text,
+        isEmpty,
+      );
+      expect(find.text(en.commentPosted), findsNothing);
+    }, variant: _android);
   });
 
   group('a resize that keeps the room keeps the pane as it was', () {

@@ -63,4 +63,67 @@ void main() {
       expect(sameReminders(const [], const []), isTrue);
     });
   });
+
+  group('relative period', () {
+    test('a period beyond ten thousand years either way is cut to them', () {
+      expect(reminderPeriodOf(9000000000000), TaskReminder.maxRelativePeriod);
+      expect(reminderPeriodOf(-9000000000000), -TaskReminder.maxRelativePeriod);
+      expect(
+        reminderPeriodOf(9223372036854775807),
+        TaskReminder.maxRelativePeriod,
+      );
+      expect(reminderPeriodOf(-3600), const Duration(hours: -1));
+    });
+
+    test('any date a server writes moved by the longest period is still a '
+        'date', () {
+      expect(
+        relativeReminderInstant(
+          DateTime.utc(9999, 12, 31),
+          TaskReminder.maxRelativePeriod,
+        ),
+        DateTime.utc(19999, 12, 31),
+      );
+      expect(
+        relativeReminderInstant(
+          DateTime.utc(1),
+          -TaskReminder.maxRelativePeriod,
+        ),
+        DateTime.utc(-9999),
+      );
+    });
+
+    test('a moment past the dates a DateTime holds is none, whatever the '
+        'period', () {
+      expect(
+        relativeReminderInstant(
+          DateTime.utc(275760, 9, 12),
+          const Duration(days: 1),
+        ),
+        DateTime.utc(275760, 9, 13),
+      );
+      expect(
+        relativeReminderInstant(
+          DateTime.utc(275760, 9, 12),
+          const Duration(days: 2),
+        ),
+        isNull,
+      );
+      expect(
+        relativeReminderInstant(
+          DateTime.utc(-271821, 4, 21),
+          const Duration(days: -2),
+        ),
+        isNull,
+      );
+      expect(
+        relativeReminderInstant(
+          DateTime.utc(2026),
+          const Duration(microseconds: 9223372036854775807),
+        ),
+        isNull,
+      );
+      expect(relativeReminderInstant(null, const Duration(days: 1)), isNull);
+    });
+  });
 }

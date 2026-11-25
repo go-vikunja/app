@@ -37,9 +37,11 @@ export function newTaskItemId() {
   return id
 }
 
-// context: {taskLinkBases, apiRoot, placeholder, imageLabel,
-// mention: {onStart(props), onUpdate(props), onExit()}}; read when used, so
-// that it may change while the editor lives.
+// context: {taskLinkBases, apiRoot, placeholder, imageLabel, shownImageLabel,
+// previews (attachment URL to data: URL), imageViews (the image node views
+// on the page, so that a preview arriving redraws them), mention:
+// {onStart(props), onUpdate(props), onExit()}}; read when used, so that it
+// may change while the editor lives.
 export function createExtensions(context) {
   return [
     StarterKit.configure(Object.fromEntries(replacedStarterKitParts.map(part => [part, false]))),

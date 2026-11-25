@@ -2,6 +2,16 @@ import 'package:meta/meta.dart';
 import 'package:vikunja_logic/src/links/attachment_urls.dart';
 import 'package:vikunja_logic/src/text/rich_text_parser.dart';
 
+/// The most nodes a [RichDocument] keeps: blocks, list and task items,
+/// table rows and cells, links, mentions and task links, each counting one.
+/// The app draws a description or comment all at once (decision log:
+/// Descriptions, comments, attachments).
+const int maxRichNodes = 5000;
+
+/// The most characters of text a [RichDocument] keeps, line breaks and the
+/// text of mentions, task links and image descriptions included.
+const int maxRichCharacters = 100000;
+
 /// A task description or comment as the web editor's schema reads it
 /// (TipTap 3 / ProseMirror: 20 node types, 8 marks): whatever is not part of
 /// that schema is gone, so nothing in the tree can run, load or leak by
@@ -12,8 +22,9 @@ final class RichDocument {
 
   final List<RichBlock> blocks;
 
-  /// The parser stopped at one of its limits: the rest of the HTML was not
-  /// read, and the last block is a paragraph `…`.
+  /// The parser stopped at one of its limits, or the text holds more than
+  /// [maxRichNodes] or [maxRichCharacters]: the rest was left out, and the
+  /// last block is a paragraph `…`.
   final bool truncated;
 
   /// No visible content: no text other than whitespace, no image, mention,
@@ -28,6 +39,13 @@ final class RichDocument {
   /// Every task item in document order, nested ones right after their
   /// parent, including those in quotes, lists and tables.
   List<RichTaskItem> get taskItems => List.unmodifiable(_taskItems(blocks));
+
+  /// Every attachment image in document order, each attachment once, also
+  /// those in lists, task items, quotes and table cells; other images are
+  /// left out. A task item's own blocks come before its nested lists, as
+  /// they are drawn.
+  List<AttachmentRef> get attachmentImages =>
+      List.unmodifiable(_attachmentImages(blocks, <AttachmentRef>{}));
 }
 
 @immutable
@@ -263,8 +281,11 @@ final class RichTaskLink extends RichInline {
 ///   dropped (the web shows the last kind as a broken image);
 /// - markup nested deeper than 96 elements is reduced to its text;
 /// - the parse stops where the HTML would make `package:html` work too
-///   long or create too much (`bounded_html_parser.dart`), and the document
-///   is then [RichDocument.truncated].
+///   long or create too much (`bounded_html_parser.dart`), and the result
+///   keeps at most [maxRichNodes] nodes and [maxRichCharacters] characters
+///   in document order, cut inside a text but never inside a surrogate
+///   pair; a list item, task item, row or cell the cut leaves empty is left
+///   out. The document is then [RichDocument.truncated].
 ///
 /// Unlike the web: no link is created for a bare URL (the web's autolink
 /// runs once on load), and no empty paragraph is appended after a last
@@ -362,4 +383,51 @@ Iterable<RichTaskItem> _taskItems(List<RichBlock> blocks) sync* {
         break;
     }
   }
+}
+
+Set<AttachmentRef> _attachmentImages(
+  List<RichBlock> blocks,
+  Set<AttachmentRef> found,
+) {
+  for (final block in blocks) {
+    switch (block) {
+      case RichImage(source: RichAttachmentImage(:final attachment)):
+        found.add(attachment);
+      case RichImage():
+        break;
+      case RichBulletList(:final items) || RichOrderedList(:final items):
+        for (final item in items) {
+          _attachmentImages(item.blocks, found);
+        }
+      case RichTaskList(:final items):
+        for (final item in items) {
+          final own = <RichBlock>[];
+          final nested = <RichBlock>[];
+          for (final inner in item.blocks) {
+            (inner is RichBulletList ||
+                        inner is RichOrderedList ||
+                        inner is RichTaskList
+                    ? nested
+                    : own)
+                .add(inner);
+          }
+          _attachmentImages(own, found);
+          _attachmentImages(nested, found);
+        }
+      case RichBlockquote(:final blocks):
+        _attachmentImages(blocks, found);
+      case RichTable(:final rows):
+        for (final row in rows) {
+          for (final cell in row.cells) {
+            _attachmentImages(cell.blocks, found);
+          }
+        }
+      case RichParagraph() ||
+          RichHeading() ||
+          RichCodeBlock() ||
+          RichHorizontalRule():
+        break;
+    }
+  }
+  return found;
 }

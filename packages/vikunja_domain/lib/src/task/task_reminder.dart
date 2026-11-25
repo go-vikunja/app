@@ -29,6 +29,10 @@ final class TaskReminder {
   final Duration relativePeriod;
   final ReminderRelativeTo? relativeTo;
 
+  /// Ten thousand years either way. A server writes dates up to the year
+  /// 9999, and any of them moved by this much is still a date.
+  static const maxRelativePeriod = Duration(days: 3652425);
+
   bool get isRelative => relativeTo != null;
 
   @override
@@ -62,4 +66,28 @@ bool sameReminders(List<TaskReminder> a, List<TaskReminder> b) {
     unmatched.removeAt(index);
   }
   return true;
+}
+
+/// [seconds] as a relative period, cut to [TaskReminder.maxRelativePeriod]
+/// either way.
+Duration reminderPeriodOf(int seconds) {
+  final max = TaskReminder.maxRelativePeriod.inSeconds;
+  return Duration(seconds: seconds.clamp(-max, max));
+}
+
+// A DateTime holds 100,000,000 days either side of 1970.
+const int _dateTimeLimit = 100000000 * Duration.microsecondsPerDay;
+
+/// [date] plus [period], when a relative reminder fires; null without a
+/// date or when no date can hold the sum, which only an impossible date or
+/// period from a server reaches.
+DateTime? relativeReminderInstant(DateTime? date, Duration period) {
+  if (date == null) return null;
+  final from = date.microsecondsSinceEpoch;
+  final by = period.inMicroseconds;
+  // Compared without adding: an uncut period would overflow the sum.
+  final fits = by >= 0
+      ? from <= _dateTimeLimit - by
+      : from >= -_dateTimeLimit - by;
+  return fits ? date.add(period) : null;
 }

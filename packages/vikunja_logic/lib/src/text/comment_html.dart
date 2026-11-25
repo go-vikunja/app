@@ -59,8 +59,8 @@ final class QuotedComment {
 /// far as the web's editor keeps it, in a `blockquote` carrying its id, its
 /// mentions turned into `@label` text so that quoting notifies nobody again
 /// (the server notifies the quoted author instead); plain text in it
-/// becomes a paragraph, and a comment the parser stops in (see
-/// [RichDocument.truncated]) is quoted up to there, then `…`. Without text
+/// becomes a paragraph, and a comment the parser stops in (past one of its
+/// work budgets) is quoted up to there, then `…`. Without text
 /// the reply ends in an empty paragraph, as the web's does.
 ///
 /// Empty text without a reply is the editor's empty `<p></p>`.

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -16,6 +17,7 @@ import '../../helpers/task_details_fakes.dart';
 void main() {
   late List<String> requests;
   late Map<String, FutureOr<AttachmentBlob> Function()> answers;
+  late Map<String, CancelToken> tokens;
   late DateTime now;
   late AttachmentImageCache cache;
 
@@ -32,9 +34,10 @@ void main() {
     int maxImageBytes = 600,
     ImageDiskCache? disk,
   }) => AttachmentImageCache(
-    (task, attachment, preview) async {
+    (task, attachment, preview, cancel) async {
       final key = describe(task, attachment, preview);
       requests.add(key);
+      tokens[key] = cancel;
       final answer = answers[key];
       if (answer == null) throw const NotFound(code: 4002);
       return await answer();
@@ -52,13 +55,14 @@ void main() {
   setUp(() {
     requests = [];
     answers = {};
+    tokens = {};
     pixelsByLength = {};
     now = DateTime.utc(2026, 10, 19, 12);
     cache = build();
   });
 
   test('memory holds 32 MB of images, one may have 25 MB and 40 MP', () {
-    final defaults = AttachmentImageCache((_, _, _) async => png(1));
+    final defaults = AttachmentImageCache((_, _, _, _) async => png(1));
 
     expect(defaults.maxBytes, 32 * 1024 * 1024);
     expect(defaults.maxImageBytes, 25 * 1024 * 1024);
@@ -88,8 +92,8 @@ void main() {
       throwsA(isA<AttachmentImageTooLarge>()),
     );
     expect((await cache.load(1, 3)).bytes, hasLength(8));
-    expect((await cache.load(1, 4)).isSvg, isTrue);
-    expect((await cache.load(1, 5)).contentType, 'text/plain');
+    await expectLater(cache.load(1, 4), throwsA(isA<AttachmentNotAnImage>()));
+    await expectLater(cache.load(1, 5), throwsA(isA<AttachmentNotAnImage>()));
     cache.forgetFailures();
     now = now.add(const Duration(days: 1));
     await expectLater(
@@ -163,8 +167,7 @@ void main() {
 
   test('an image is fetched once per size and kept in memory', () async {
     answers['1/2/md'] = () => png(10);
-    answers['1/2/original'] = () =>
-        AttachmentBlob(bytes: Uint8List(20), contentType: 'image/svg+xml');
+    answers['1/2/original'] = () => png(20);
 
     final preview = await cache.load(
       1,
@@ -177,7 +180,8 @@ void main() {
     expect(preview.bytes, hasLength(10));
     expect(preview.contentType, 'image/png');
     expect(again, same(preview));
-    expect(original.isSvg, isTrue);
+    expect(original.contentType, 'image/png');
+    expect(original.bytes, hasLength(20));
     expect(requests, ['1/2/md', '1/2/original']);
     expect(
       cache.peek(1, 2, preview: AttachmentPreviewSize.medium),
@@ -198,6 +202,94 @@ void main() {
 
     expect(await second, same(await first));
     expect(requests, ['1/2/xl']);
+  });
+
+  group('a load given up', () {
+    const xl = AttachmentPreviewSize.extraLarge;
+    final cancelled = throwsA(
+      isA<DioException>().having(
+        (e) => e.type,
+        'type',
+        DioExceptionType.cancel,
+      ),
+    );
+
+    /// [answer], or the cancel of the request once it comes, as the read
+    /// client does.
+    FutureOr<AttachmentBlob> Function() until(
+      String key,
+      Future<AttachmentBlob> answer,
+    ) =>
+        () => Future.any([
+          answer,
+          tokens[key]!.whenCancel.then<AttachmentBlob>((given) => throw given),
+        ]);
+
+    test('ends at once with its cancel, while the request goes on for a '
+        'load that still waits', () async {
+      final answer = Completer<AttachmentBlob>();
+      answers['1/2/xl'] = until('1/2/xl', answer.future);
+      final leaving = CancelToken();
+      final giving = cache.load(1, 2, preview: xl, cancel: leaving);
+      final staying = cache.load(1, 2, preview: xl, cancel: CancelToken());
+      final plain = cache.load(1, 2, preview: xl);
+
+      leaving.cancel();
+      await expectLater(giving, cancelled);
+      expect(tokens['1/2/xl']!.isCancelled, isFalse);
+
+      answer.complete(png(5));
+      expect((await staying).bytes, hasLength(5));
+      expect(await plain, same(await staying));
+      expect(requests, ['1/2/xl']);
+    });
+
+    test('by every load cancels the request, and no failure is remembered, '
+        'so the next load asks again', () async {
+      answers['1/3/xl'] = until('1/3/xl', Completer<AttachmentBlob>().future);
+      final first = CancelToken();
+      final second = CancelToken();
+      final loads = [
+        cache.load(1, 3, preview: xl, cancel: first),
+        cache.load(1, 3, preview: xl, cancel: second),
+      ];
+
+      first.cancel();
+      await expectLater(loads.first, cancelled);
+      expect(tokens['1/3/xl']!.isCancelled, isFalse);
+      second.cancel();
+      await expectLater(loads.last, cancelled);
+      expect(tokens['1/3/xl']!.isCancelled, isTrue);
+      await pumpEventQueue();
+
+      expect(cache.remembersFailure(1, 3, preview: xl), isFalse);
+      answers['1/3/xl'] = () => png(6);
+      expect((await cache.load(1, 3, preview: xl)).bytes, hasLength(6));
+      expect(requests, ['1/3/xl', '1/3/xl']);
+    });
+
+    test('before it starts asks nothing', () async {
+      answers['1/4/xl'] = () => png(6);
+      final cancel = CancelToken()..cancel();
+
+      await expectLater(
+        cache.load(1, 4, preview: xl, cancel: cancel),
+        cancelled,
+      );
+      expect(requests, isEmpty);
+    });
+
+    test('by a sign-out cancels every request under way', () async {
+      answers['1/5/xl'] = until('1/5/xl', Completer<AttachmentBlob>().future);
+      final load = cache.load(1, 5, preview: xl);
+      await pumpEventQueue();
+
+      cache.clear();
+
+      await expectLater(load, cancelled);
+      expect(tokens['1/5/xl']!.isCancelled, isTrue);
+      expect(cache.remembersFailure(1, 5, preview: xl), isFalse);
+    });
   });
 
   test(
@@ -243,6 +335,40 @@ void main() {
       expect(cache.cachedBytes, 0);
     },
   );
+
+  test('an answer that is no image it can draw is not kept in memory, only '
+      'remembered for the session', () async {
+    const xl = AttachmentPreviewSize.extraLarge;
+    answers['1/1/original'] = () => png(10);
+    answers['1/2/original'] = () =>
+        AttachmentBlob(bytes: Uint8List(20), contentType: 'text/plain');
+    answers['1/3/xl'] = () => png(30);
+    pixelsByLength[30] = null;
+    await cache.load(1, 1);
+
+    Future<void> refused() async {
+      for (final (attachmentId, preview) in [(2, null), (3, xl)]) {
+        await expectLater(
+          cache.load(1, attachmentId, preview: preview),
+          throwsA(isA<AttachmentNotAnImage>()),
+        );
+        expect(cache.peek(1, attachmentId, preview: preview), isNull);
+        expect(
+          cache.remembersFailure(1, attachmentId, preview: preview),
+          isTrue,
+        );
+        expect(cache.cachedBytes, 10);
+      }
+    }
+
+    await refused();
+    await refused();
+    cache.forgetFailures();
+    now = now.add(const Duration(days: 1));
+    await refused();
+
+    expect(requests, ['1/1/original', '1/2/original', '1/3/xl']);
+  });
 
   test(
     'a failure that may pass is answered from memory for two minutes',
@@ -342,6 +468,10 @@ void main() {
   group('on disk', () {
     const xl = AttachmentPreviewSize.extraLarge;
     const offline = NetworkFailure(NetworkProblem.unreachable);
+    final login = AttachmentBlob(
+      bytes: Uint8List.fromList(utf8.encode('<html>Sign in</html>')),
+      contentType: 'text/html',
+    );
     late Directory folder;
 
     ImageDiskCache disk() => ImageDiskCache(
@@ -503,7 +633,10 @@ void main() {
           AttachmentBlob(bytes: Uint8List(7), contentType: 'image/svg+xml');
       answers['1/3/xl'] = () => png(8);
       pixelsByLength[8] = 101;
-      await cache.load(1, 2, preview: xl);
+      await expectLater(
+        cache.load(1, 2, preview: xl),
+        throwsA(isA<AttachmentNotAnImage>()),
+      );
       await expectLater(
         cache.load(1, 3, preview: xl),
         throwsA(isA<AttachmentImageTooLarge>()),
@@ -529,6 +662,7 @@ void main() {
       );
 
       cache.clear();
+      expect(tokens['1/2/xl']!.isCancelled, isTrue);
       late.complete(png(10));
       failing.completeError(offline);
       await pending;
@@ -569,11 +703,6 @@ void main() {
 
     group('an answer that is no image, such as a login page in front of the '
         'server, while a copy is kept', () {
-      final login = AttachmentBlob(
-        bytes: Uint8List.fromList(utf8.encode('<html>Sign in</html>')),
-        contentType: 'text/html',
-      );
-
       test(
         'shows the copy of an xl preview or an original, which stays',
         () async {
@@ -583,18 +712,12 @@ void main() {
           await online.write('attachment-1-4-xl', kept(50));
           answers['1/2/xl'] = () => login;
           answers['1/2/original'] = () => login;
-          answers['1/3/xl'] = () => login;
           answers['1/4/xl'] = () => png(7);
           pixelsByLength[7] = null;
           cache = build(disk: online);
 
           expect((await cache.load(1, 2, preview: xl)).bytes, hasLength(30));
           expect((await cache.load(1, 2)).bytes, hasLength(40));
-          expect(
-            (await cache.load(1, 3, preview: xl)).contentType,
-            'text/html',
-            reason: 'nothing kept to show instead',
-          );
           expect(
             (await cache.load(1, 4, preview: xl)).bytes,
             hasLength(50),
@@ -642,6 +765,74 @@ void main() {
           );
         },
       );
+    });
+
+    test('a page answered in place of an image not kept, such as a Wi-Fi '
+        'sign-in page in front of a plain-http server, is neither shown nor '
+        "kept; Retry and the sheet's retry ask again, and the image comes "
+        'once the page is gone', () async {
+      const md = AttachmentPreviewSize.medium;
+      final online = disk();
+      cache = build(disk: online);
+      answers['1/2/md'] = () => login;
+      answers['1/2/xl'] = () => login;
+      answers['1/2/original'] = () => AttachmentBlob(
+        bytes: login.bytes,
+        contentType: 'application/xhtml+xml',
+      );
+
+      for (final preview in [md, xl, null]) {
+        await expectLater(
+          cache.load(1, 2, preview: preview),
+          throwsA(isA<AttachmentImagePageInstead>()),
+        );
+        expect(cache.peek(1, 2, preview: preview), isNull);
+        expect(cache.remembersFailure(1, 2, preview: preview), isTrue);
+      }
+      await online.flush();
+      expect(cache.cachedBytes, 0);
+      expect(folder.listSync(), isEmpty);
+
+      answers['1/2/md'] = () => png(10);
+      answers['1/2/xl'] = () => png(30);
+      answers['1/2/original'] = () => png(40);
+      cache.forgetFailure(1, 2, preview: xl);
+      expect((await cache.load(1, 2, preview: xl)).bytes, hasLength(30));
+      expect(cache.remembersFailure(1, 2, preview: md), isTrue);
+      cache.forgetFailures();
+      expect((await cache.load(1, 2, preview: md)).bytes, hasLength(10));
+      expect((await cache.load(1, 2)).bytes, hasLength(40));
+
+      expect(requests, [
+        '1/2/md',
+        '1/2/xl',
+        '1/2/original',
+        '1/2/xl',
+        '1/2/md',
+        '1/2/original',
+      ]);
+    });
+
+    test('a redirect, such as a proxy sending to its login page, may pass '
+        'too: a kept copy stands in, and with none Retry asks again', () async {
+      final online = disk();
+      await online.write('attachment-1-2-xl', kept(30));
+      answers['1/2/xl'] = () => throw const UnexpectedResponse(302);
+      answers['1/3/xl'] = () => throw const UnexpectedResponse(302);
+      cache = build(disk: online);
+
+      expect((await cache.load(1, 2, preview: xl)).bytes, hasLength(30));
+      await expectLater(
+        cache.load(1, 3, preview: xl),
+        throwsA(isA<UnexpectedResponse>()),
+      );
+      expect(cache.remembersFailure(1, 3, preview: xl), isTrue);
+
+      answers['1/3/xl'] = () => png(20);
+      cache.forgetFailure(1, 3, preview: xl);
+      expect((await cache.load(1, 3, preview: xl)).bytes, hasLength(20));
+
+      expect(requests, ['1/2/xl', '1/3/xl', '1/3/xl']);
     });
 
     test('a kept original that turns out unreadable does not stand in for '

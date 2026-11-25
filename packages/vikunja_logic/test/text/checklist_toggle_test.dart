@@ -647,9 +647,11 @@ void main() {
       final html = _taskList([
         for (var i = 0; i < 6000; i++) _tipTapItem('item $i', id: 'i$i'),
       ]);
+      // On the 2,499 items a document keeps (maxRichNodes): later ones
+      // cannot be ticked.
       final toggles = [
         for (var i = 0; i < 100; i++)
-          ChecklistToggle.byId('i${i * 60}', checked: true),
+          ChecklistToggle.byId('i${i * 24}', checked: true),
       ];
       final watch = Stopwatch()..start();
 

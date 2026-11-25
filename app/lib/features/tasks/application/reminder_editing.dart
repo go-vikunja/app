@@ -125,12 +125,16 @@ ReminderRelativeTo? defaultReminderReference(ReminderDates dates) {
 }
 
 /// When [reminder] fires with [dates]; null for a relative reminder whose
-/// date is unset. Recomputed from the draft, because the stored instant of
-/// a relative reminder is the server's answer to the dates it had.
+/// date is unset or whose moment no date can hold. Recomputed from the
+/// draft, because the stored instant of a relative reminder is the server's
+/// answer to the dates it had.
 DateTime? reminderInstant(TaskReminder reminder, ReminderDates dates) {
   final relativeTo = reminder.relativeTo;
   if (relativeTo == null) return reminder.reminder;
-  return referenceDate(relativeTo, dates)?.add(reminder.relativePeriod);
+  return relativeReminderInstant(
+    referenceDate(relativeTo, dates),
+    reminder.relativePeriod,
+  );
 }
 
 /// Whether two of [reminders] fire at the same moment with [dates]. The

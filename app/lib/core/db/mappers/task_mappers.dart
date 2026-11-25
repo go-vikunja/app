@@ -85,7 +85,8 @@ Task taskFromRow(
   startDate: row.startDate,
   endDate: row.endDate,
   priority: TaskPriority.fromValue(row.priority),
-  percentDone: row.percentDone,
+  // A row stored by an earlier version keeps the server's value.
+  percentDone: row.percentDone.clamp(0, 1),
   hexColor: row.hexColor,
   identifier: row.identifier,
   index: row.taskIndex,
@@ -107,6 +108,6 @@ Task taskFromRow(
 
 TaskReminder reminderFromRow(TaskReminderRow row) => TaskReminder(
   reminder: row.reminder,
-  relativePeriod: Duration(seconds: row.relativePeriod),
+  relativePeriod: reminderPeriodOf(row.relativePeriod),
   relativeTo: ReminderRelativeTo.fromWire(row.relativeTo),
 );

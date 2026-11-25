@@ -327,5 +327,36 @@ void main() {
       expect(back.commentCount, 0);
       expect(back.isUnread, isFalse);
     });
+
+    test('a progress and a reminder offset an earlier version stored come '
+        'back cut', () {
+      expect(
+        taskFromRow(
+          taskRow(
+            const Task(id: 1, title: 'Far', projectId: 2, percentDone: 1e307),
+          ),
+        ).percentDone,
+        1.0,
+      );
+      expect(
+        taskFromRow(
+          taskRow(
+            const Task(id: 1, title: 'Far', projectId: 2, percentDone: -2),
+          ),
+        ).percentDone,
+        0.0,
+      );
+      expect(
+        reminderFromRow(
+          const TaskReminderRow(
+            taskId: 1,
+            ordinal: 0,
+            relativePeriod: 9000000000000,
+            relativeTo: 'due_date',
+          ),
+        ).relativePeriod,
+        TaskReminder.maxRelativePeriod,
+      );
+    });
   });
 }

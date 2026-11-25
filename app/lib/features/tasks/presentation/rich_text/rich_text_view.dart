@@ -10,6 +10,8 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_images.dart'
+    show listsNoImage, maxImagesByThemselves;
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
@@ -46,6 +48,7 @@ class RichTextView extends ConsumerStatefulWidget {
     this.style,
     this.projectId,
     this.replyAuthorOf,
+    this.attachments,
     super.key,
   });
 
@@ -68,12 +71,49 @@ class RichTextView extends ConsumerStatefulWidget {
   /// Who wrote the comment a reply quotes, when it is loaded.
   final User? Function(int commentId)? replyAuthorOf;
 
+  /// The task's attachments as its details list them, null where none are
+  /// at hand. An original stands in by itself for a missing preview only
+  /// for a small image named here, and a file named here as something
+  /// other than an image is never asked for.
+  final List<TaskAttachment>? attachments;
+
   @override
   ConsumerState<RichTextView> createState() => _RichTextViewState();
 }
 
 class _RichTextViewState extends ConsumerState<RichTextView> {
   final _recognizers = <GestureRecognizer>[];
+  (RichDocument, List<TaskAttachment>?)? _imagesOf;
+  var _listed = <AttachmentRef, TaskAttachment>{};
+
+  /// The text's first images that load by themselves; a file the list
+  /// names as no image takes no place among them.
+  var _automatic = <AttachmentRef>{};
+
+  void _countImages() {
+    final document = widget.document;
+    final attachments = widget.attachments;
+    if (_imagesOf case (final counted, final listed)
+        when identical(counted, document) && identical(listed, attachments)) {
+      return;
+    }
+    _imagesOf = (document, attachments);
+    _listed = {
+      for (final attachment in attachments ?? const <TaskAttachment>[])
+        AttachmentRef(taskId: attachment.taskId, attachmentId: attachment.id):
+            attachment,
+    };
+    _automatic = {
+      ...document.attachmentImages
+          .where(
+            (image) => switch (_listed[image]) {
+              final listed? => !listsNoImage(listed),
+              null => true,
+            },
+          )
+          .take(maxImagesByThemselves),
+    };
+  }
 
   Uri? _addressOf(String href) {
     if (widget.linkAddress case final resolve?) return resolve(href);
@@ -142,6 +182,7 @@ class _RichTextViewState extends ConsumerState<RichTextView> {
   @override
   Widget build(BuildContext context) {
     _disposeRecognizers();
+    _countImages();
     final theme = Theme.of(context);
     final renderer = _Renderer(
       view: widget,
@@ -151,6 +192,8 @@ class _RichTextViewState extends ConsumerState<RichTextView> {
       textScaler: MediaQuery.textScalerOf(context),
       onLinkTap: _onLinkTap,
       onLinkLongPress: _onLinkLongPress,
+      listed: _listed,
+      automatic: _automatic,
     );
     return renderer.column(
       renderer.blocks(
@@ -203,6 +246,8 @@ final class _Renderer {
     required this.textScaler,
     required this.onLinkTap,
     required this.onLinkLongPress,
+    required this.listed,
+    required this.automatic,
   });
 
   final RichTextView view;
@@ -214,6 +259,8 @@ final class _Renderer {
   /// With the href and the whole text of the link.
   final void Function(String href, String text) onLinkTap;
   final void Function(String href, String text) onLinkLongPress;
+  final Map<AttachmentRef, TaskAttachment> listed;
+  final Set<AttachmentRef> automatic;
 
   ColorScheme get colors => theme.colorScheme;
 
@@ -786,6 +833,8 @@ final class _Renderer {
         RichAttachmentImage(:final attachment) => InlineAttachmentImage(
           attachment: attachment,
           description: description,
+          listed: listed[attachment],
+          deferred: !automatic.contains(attachment),
         ),
         RichExternalImage(:final url) => ExternalImagePlaceholder(
           url: url,

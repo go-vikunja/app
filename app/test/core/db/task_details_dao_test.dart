@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -394,6 +396,36 @@ void main() {
     );
     expect((await dao.storedDetails(1))!.value.attachments, isEmpty);
     expect((await dao.storedComments(1))!.value, isEmpty);
+  });
+
+  test('a comment count read across a comment written or deleted here does '
+      'not hold, nor one read while it is on its way; one read after it '
+      'does, also after a failed write', () async {
+    final before = dao.commentsVersion(1);
+    final sent = Completer<void>();
+    final writing = dao.writingComment(1, () => sent.future);
+    final during = dao.commentsVersion(1);
+
+    expect(dao.commentCountHolds(1, before), isFalse);
+    expect(dao.commentCountHolds(1, during), isFalse);
+    expect(dao.commentCountHolds(2, dao.commentsVersion(2)), isTrue);
+
+    sent.complete();
+    await writing;
+    expect(dao.commentCountHolds(1, before), isFalse);
+    expect(dao.commentCountHolds(1, during), isFalse);
+    expect(dao.commentCountHolds(1, dao.commentsVersion(1)), isTrue);
+
+    final after = dao.commentsVersion(1);
+    await expectLater(
+      dao.writingComment<void>(
+        1,
+        () async => throw const NetworkFailure(NetworkProblem.unreachable),
+      ),
+      throwsA(isA<NetworkFailure>()),
+    );
+    expect(dao.commentCountHolds(1, after), isFalse);
+    expect(dao.commentCountHolds(1, dao.commentsVersion(1)), isTrue);
   });
 
   test('everything stored goes with its task', () async {
