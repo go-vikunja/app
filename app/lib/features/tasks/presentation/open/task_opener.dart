@@ -180,9 +180,11 @@ final class TaskOpener {
   /// lock controller.
   bool _lockedNow() {
     _unlocks ??= _ref.listen(
-      appLockControllerProvider.select((state) => state.locked),
-      (_, locked) {
-        if (!locked) _runWhenReady();
+      appLockControllerProvider.select(
+        (state) => state.locked || state.checking,
+      ),
+      (_, waits) {
+        if (!waits) _runWhenReady();
       },
     );
     return _ref.read(appLockControllerProvider.notifier).isLockedNow();

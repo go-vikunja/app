@@ -10,19 +10,22 @@ part of 'app_lock_controller.dart';
 // ignore_for_file: type=lint, type=warning
 /// The app lock: a gate over the UI, not encryption. Locked on every cold
 /// start while it is on, and again when the app was out of sight for the
-/// chosen time (wall clock, so deep sleep counts). Bootstrap listens.
+/// chosen time, by the wall clock or by [BootClock], which counts sleep too
+/// and cannot be set back. Bootstrap listens.
 
 @ProviderFor(AppLockController)
 final appLockControllerProvider = AppLockControllerProvider._();
 
 /// The app lock: a gate over the UI, not encryption. Locked on every cold
 /// start while it is on, and again when the app was out of sight for the
-/// chosen time (wall clock, so deep sleep counts). Bootstrap listens.
+/// chosen time, by the wall clock or by [BootClock], which counts sleep too
+/// and cannot be set back. Bootstrap listens.
 final class AppLockControllerProvider
     extends $NotifierProvider<AppLockController, AppLockState> {
   /// The app lock: a gate over the UI, not encryption. Locked on every cold
   /// start while it is on, and again when the app was out of sight for the
-  /// chosen time (wall clock, so deep sleep counts). Bootstrap listens.
+  /// chosen time, by the wall clock or by [BootClock], which counts sleep too
+  /// and cannot be set back. Bootstrap listens.
   AppLockControllerProvider._()
     : super(
         from: null,
@@ -50,11 +53,12 @@ final class AppLockControllerProvider
   }
 }
 
-String _$appLockControllerHash() => r'326128707c86c968fe339fb73fd4dc637e5de1d0';
+String _$appLockControllerHash() => r'c19ef94e06f2c0b2fe72c89f489eb8efaa9956da';
 
 /// The app lock: a gate over the UI, not encryption. Locked on every cold
 /// start while it is on, and again when the app was out of sight for the
-/// chosen time (wall clock, so deep sleep counts). Bootstrap listens.
+/// chosen time, by the wall clock or by [BootClock], which counts sleep too
+/// and cannot be set back. Bootstrap listens.
 
 abstract class _$AppLockController extends $Notifier<AppLockState> {
   AppLockState build();

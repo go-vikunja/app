@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PersistableBundle
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Base64
 import android.util.Log
@@ -51,6 +52,7 @@ internal class DeviceChannel(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "osVersion" -> result.success(Build.VERSION.RELEASE)
+            "sinceBoot" -> result.success(SystemClock.elapsedRealtime())
             "copySensitive" -> copySensitive(call.argument<String>("text"), result)
             "setSecure" -> setSecure(call.argument<Boolean>("secure"), result)
             "setRecentsScreenshotEnabled" ->

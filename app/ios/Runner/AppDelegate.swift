@@ -102,10 +102,21 @@ private enum DeviceChannel {
         UIApplication.shared.open(url) { opened in result(opened) }
       case "backgroundState":
         result(DeviceChannel.backgroundState())
+      case "sinceBoot":
+        result(DeviceChannel.sinceBoot())
       default:
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  /// Milliseconds on a clock that goes on while the device sleeps and that the user cannot set,
+  /// for the app lock. Not `systemUptime` or `mach_absolute_time`, which stop in sleep.
+  private static func sinceBoot() -> Int64 {
+    var timebase = mach_timebase_info_data_t()
+    mach_timebase_info(&timebase)
+    let nanos = Double(mach_continuous_time()) * Double(timebase.numer) / Double(timebase.denom)
+    return Int64(nanos / 1_000_000)
   }
 
   @MainActor

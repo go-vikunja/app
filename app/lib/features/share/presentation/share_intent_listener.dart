@@ -61,9 +61,11 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     _router = ref.read(appRouterProvider)
       ..routerDelegate.addListener(_runWhenReady);
     ref.listenManual(
-      appLockControllerProvider.select((state) => state.locked),
-      (_, locked) {
-        if (!locked) _runWhenReady();
+      appLockControllerProvider.select(
+        (state) => state.locked || state.checking,
+      ),
+      (_, waits) {
+        if (!waits) _runWhenReady();
       },
     );
     _shares = _source.shares.listen(_onShare);

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/platform/recents_screenshots.dart';
@@ -10,6 +11,7 @@ import 'package:vikunja_mobile/core/security/device_authenticator.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings_store.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
+import 'package:vikunja_mobile/core/time/boot_clock.dart';
 
 /// The system prompt: answers [result] at once, or waits for [finish]
 /// while [holdPrompts] is on. Every prompt is in [promptTexts], its reason
@@ -92,6 +94,35 @@ final class FakeSecureWindow implements SecureWindow {
   void setCaptured(bool captured) {
     this.captured = captured;
     _captures!.add(captured);
+  }
+}
+
+/// The clock that counts sleep: answers [read] at once, or while [hold]
+/// is on takes the reading at the call, as the platform does, and answers
+/// it only on [release].
+final class FakeBootClock implements BootClock {
+  new(this.read);
+
+  Duration? Function() read;
+  bool hold = false;
+  final List<(Completer<Duration?>, Duration?)> _held = [];
+
+  int get held => _held.length;
+
+  @override
+  Future<Duration?> sinceBoot() {
+    if (!hold) return SynchronousFuture(read());
+    final answer = Completer<Duration?>();
+    _held.add((answer, read()));
+    return answer.future;
+  }
+
+  void release() {
+    final held = [..._held];
+    _held.clear();
+    for (final (answer, reading) in held) {
+      answer.complete(reading);
+    }
   }
 }
 

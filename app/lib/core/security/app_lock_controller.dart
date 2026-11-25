@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/security/device_authenticator.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
+import 'package:vikunja_mobile/core/time/boot_clock.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 part 'app_lock_controller.g.dart';
@@ -38,6 +39,7 @@ final class AppLockState {
     this.locked = false,
     this.authenticating = false,
     this.covered = false,
+    this.checking = false,
     this.error,
     this.notice,
   });
@@ -53,6 +55,10 @@ final class AppLockState {
   /// out of sight.
   final bool covered;
 
+  /// Back in sight, the time away is read on the clock that counts sleep;
+  /// until then the app stays covered and links wait as if it were locked.
+  final bool checking;
+
   /// Of the last unlock attempt.
   final AppLockError? error;
 
@@ -66,6 +72,7 @@ final class AppLockState {
     bool? locked,
     bool? authenticating,
     bool? covered,
+    bool? checking,
     Object? error = _unchanged,
     Object? notice = _unchanged,
   }) => AppLockState(
@@ -73,6 +80,7 @@ final class AppLockState {
     locked: locked ?? this.locked,
     authenticating: authenticating ?? this.authenticating,
     covered: covered ?? this.covered,
+    checking: checking ?? this.checking,
     error: identical(error, _unchanged) ? this.error : error as AppLockError?,
     notice: identical(notice, _unchanged)
         ? this.notice
@@ -86,23 +94,32 @@ final class AppLockState {
       other.locked == locked &&
       other.authenticating == authenticating &&
       other.covered == covered &&
+      other.checking == checking &&
       other.error == error &&
       other.notice == notice;
 
   @override
-  int get hashCode =>
-      Object.hash(enabled, locked, authenticating, covered, error, notice);
+  int get hashCode => Object.hash(
+    enabled,
+    locked,
+    authenticating,
+    covered,
+    checking,
+    error,
+    notice,
+  );
 
   @override
   String toString() =>
       'AppLockState(enabled: $enabled, locked: $locked, '
-      'authenticating: $authenticating, covered: $covered, error: $error, '
-      'notice: $notice)';
+      'authenticating: $authenticating, covered: $covered, '
+      'checking: $checking, error: $error, notice: $notice)';
 }
 
 /// The app lock: a gate over the UI, not encryption. Locked on every cold
 /// start while it is on, and again when the app was out of sight for the
-/// chosen time (wall clock, so deep sleep counts). Bootstrap listens.
+/// chosen time, by the wall clock or by [BootClock], which counts sleep too
+/// and cannot be set back. Bootstrap listens.
 @Riverpod(keepAlive: true)
 class AppLockController extends _$AppLockController {
   /// How long the app stays in front before it prompts on its own: Android
@@ -119,12 +136,27 @@ class AppLockController extends _$AppLockController {
   /// part of that prompt (its PIN screen) and does not prompt again.
   static const _promptLoopWindow = Duration(seconds: 3);
 
+  /// Less than this between the two clocks is the delay of their readings
+  /// and the rounding to milliseconds, not a clock set back.
+  static const _clockTolerance = Duration(seconds: 1);
+
   late DateTime Function() _now;
+  late BootClock _bootClock;
   late AppExcursions _excursions;
   LockAfter _lockAfter = const PrivacySettings().lockAfter;
   var _settingsKnown = false;
   var _visible = true;
   DateTime? _hiddenAt;
+
+  /// [BootClock] at the last hide, once it answered.
+  _Reading? _hideReading;
+
+  /// Drops a reading that comes after the one it was for is no longer
+  /// wanted.
+  var _readings = 0;
+
+  /// The reading on the return that [AppLockState.checking] waits for.
+  _Check? _check;
 
   /// The system prompt that is up.
   _Prompt? _prompt;
@@ -148,6 +180,7 @@ class AppLockController extends _$AppLockController {
   @override
   AppLockState build() {
     _now = ref.watch(clockProvider);
+    _bootClock = ref.watch(bootClockProvider);
     _excursions = ref.watch(appExcursionsProvider);
     final lifecycle = AppLifecycleListener(
       onInactive: _onInactive,
@@ -171,6 +204,9 @@ class AppLockController extends _$AppLockController {
       _ => false,
     };
     _hiddenAt = null;
+    _hideReading = null;
+    _readings++;
+    _check = null;
     _prompt = null;
     _promptEndedOutOfSightAt = null;
     _promptOnShow = false;
@@ -192,9 +228,14 @@ class AppLockController extends _$AppLockController {
 
   /// Whether the UI must wait, with the time out of sight evaluated now:
   /// a link or a notification tap can arrive before the app's show event.
+  /// Out of sight it waits for the show once [BootClock] was read at the
+  /// hide, since only the show checks the time away on it.
   bool isLockedNow() {
-    if (!_visible && _prompt == null) _lockIfDue();
-    return state.locked;
+    if (!_visible && _prompt == null) {
+      _lockIfDue();
+      if (state.enabled && _hideReading != null) return true;
+    }
+    return state.locked || state.checking;
   }
 
   /// Whether [limit] has passed from [since] to [now]; a clock that went
@@ -390,12 +431,22 @@ class AppLockController extends _$AppLockController {
   void _onHide() {
     _visible = false;
     if (_prompt case final prompt?) {
+      if (prompt.hiddenAt == null) _readAtHide();
       prompt.hiddenAt ??= _now();
       prompt.grace?.cancel();
       prompt.grace = null;
       return;
     }
-    _hiddenAt = _now();
+    if (_check case final check?) {
+      // Covered all along: the time away goes on from the earlier hide.
+      _check = null;
+      _hiddenAt = check.hiddenAt ?? _now();
+      _hideReading = check.atHide;
+      state = state.copyWith(checking: false);
+    } else {
+      _hiddenAt = _now();
+      _readAtHide();
+    }
     _promptOnShow = true;
     _promptEndedOutOfSightAt = null;
     // Also during an excursion and where Recents is hidden natively: back
@@ -414,12 +465,70 @@ class AppLockController extends _$AppLockController {
     }
     final wasLocked = state.locked;
     _lockIfDue();
+    final hiddenAt = _hiddenAt;
     _hiddenAt = null;
     if (wasLocked && _promptOnShow) _promptPending = true;
     _promptOnShow = false;
     if (_returnsFromPrompt()) _promptPending = false;
     _promptEndedOutOfSightAt = null;
+    final atHide = _hideReading;
+    _hideReading = null;
+    _readings++;
+    if (atHide != null && state.enabled && !state.locked) {
+      _checkTimeAway(hiddenAt, atHide);
+    }
     _uncover();
+  }
+
+  void _readAtHide() {
+    _hideReading = null;
+    final reading = ++_readings;
+    final wall = _now();
+    unawaited(
+      _bootClock.sinceBoot().then((sinceBoot) {
+        if (!ref.mounted || reading != _readings || sinceBoot == null) return;
+        _hideReading = (wall: wall, sinceBoot: sinceBoot);
+      }),
+    );
+  }
+
+  /// A wall clock set back while the app was out of sight would shorten the
+  /// time away; [BootClock] tells by how much, and that is added back.
+  /// Without a reading, or after a restart of the device, it locks.
+  void _checkTimeAway(DateTime? hiddenAt, _Reading atHide) {
+    final check = _check = _Check(hiddenAt, atHide);
+    state = state.copyWith(checking: true);
+    // As the app came back: an excursion often ends on the resume, before
+    // the reading answers.
+    final excursionStartedAt = _excursions.active
+        ? _excursions.startedAt
+        : null;
+    final now = _now();
+    unawaited(
+      _bootClock.sinceBoot().then((sinceBoot) {
+        if (!ref.mounted || !identical(_check, check)) return;
+        _check = null;
+        if (sinceBoot == null || sinceBoot < atHide.sinceBoot) {
+          _lock();
+        } else {
+          final setBack =
+              sinceBoot - atHide.sinceBoot - now.difference(atHide.wall);
+          final at = now.add(setBack);
+          final since = _countedFrom(hiddenAt, excursionStartedAt, at);
+          if (setBack >= _clockTolerance &&
+              since != null &&
+              overdue(since, at, _lockAfter.duration)) {
+            _lock();
+          }
+        }
+        state = state.copyWith(checking: false);
+        // Inactive, the resume takes the cover off.
+        if (WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.resumed) {
+          _uncover();
+        }
+      }),
+    );
   }
 
   bool _returnsFromPrompt() {
@@ -476,30 +585,47 @@ class AppLockController extends _$AppLockController {
   }
 
   void _uncover() {
-    if (state.covered) state = state.copyWith(covered: false);
+    if (state.covered && !state.checking) {
+      state = state.copyWith(covered: false);
+    }
   }
 
   void _lockIfDue() {
     if (!state.enabled || state.locked) return;
     final since = _outOfSightSince();
     if (since == null) return;
-    if (overdue(since, _now(), _lockAfter.duration)) {
-      state = state.copyWith(locked: true, error: null);
-      _promptPending = true;
-      _scheduleAutoPrompt();
-    }
+    if (overdue(since, _now(), _lockAfter.duration)) _lock();
+  }
+
+  void _lock() {
+    if (!state.enabled || state.locked) return;
+    state = state.copyWith(locked: true, error: null);
+    _promptPending = true;
+    _scheduleAutoPrompt();
   }
 
   Duration get _excursionGrace => AppExcursions.graceFor(_lockAfter.duration);
 
-  DateTime? _outOfSightSince() {
-    if (!_excursions.active) return _hiddenAt;
-    final startedAt = _excursions.startedAt!;
+  DateTime? _outOfSightSince() => _countedFrom(
+    _hiddenAt,
+    _excursions.active ? _excursions.startedAt : null,
+    _now(),
+  );
+
+  DateTime? _countedFrom(
+    DateTime? hiddenAt,
+    DateTime? excursionStartedAt,
+    DateTime now,
+  ) {
+    if (excursionStartedAt == null) return hiddenAt;
     // One that began out of sight, such as a download that finished there,
     // keeps none of the time before it.
-    final hiddenAt = _hiddenAt;
-    if (hiddenAt != null && hiddenAt.isBefore(startedAt)) return hiddenAt;
-    return overdue(startedAt, _now(), _excursionGrace) ? startedAt : null;
+    if (hiddenAt != null && hiddenAt.isBefore(excursionStartedAt)) {
+      return hiddenAt;
+    }
+    return overdue(excursionStartedAt, now, _excursionGrace)
+        ? excursionStartedAt
+        : null;
   }
 
   void _scheduleAutoPrompt() {
@@ -535,6 +661,15 @@ class AppLockController extends _$AppLockController {
     if (!resumed) _promptPending = true;
     return resumed;
   }
+}
+
+typedef _Reading = ({DateTime wall, Duration sinceBoot});
+
+final class _Check {
+  new(this.hiddenAt, this.atHide);
+
+  final DateTime? hiddenAt;
+  final _Reading atHide;
 }
 
 /// What lives only while the system prompt is up.

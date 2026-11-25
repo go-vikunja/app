@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings_store.dart';
 import 'package:vikunja_mobile/core/security/screen_protection.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
+import 'package:vikunja_mobile/core/time/boot_clock.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 import '../../helpers/app_lock_fakes.dart';
@@ -30,12 +31,25 @@ void main() {
   late MemoryPreferencesStore preferences;
   late FakeDeviceAuthenticator auth;
   late DateTime now;
+  final bootedAt = DateTime.utc(2026, 10, 27, 8);
+
+  /// How far the wall clock was set back in all; the clock that counts
+  /// sleep goes on.
+  late Duration clockSetBack;
+  late FakeBootClock bootClock;
 
   setUp(() {
     preferences = MemoryPreferencesStore();
     auth = FakeDeviceAuthenticator();
     now = DateTime.utc(2026, 10, 27, 9);
+    clockSetBack = Duration.zero;
+    bootClock = FakeBootClock(() => now.difference(bootedAt) + clockSetBack);
   });
+
+  void setClockBack(Duration by) {
+    now = now.subtract(by);
+    clockSetBack += by;
+  }
 
   /// The containers of the running test, disposed at the end of the test
   /// itself: the binding wants the lock's timers gone before tear-downs
@@ -90,6 +104,7 @@ void main() {
       overrides: [
         preferencesStoreProvider.overrideWithValue(store ?? preferences),
         clockProvider.overrideWithValue(() => now),
+        bootClockProvider.overrideWithValue(bootClock),
         deviceAuthenticatorProvider.overrideWithValue(auth),
       ],
     );
@@ -436,9 +451,23 @@ void main() {
   });
 
   group('isLockedNow', () {
-    testLock('evaluates the time out of sight before the show event', (
-      tester,
-    ) async {
+    testLock('out of sight waits for the return, which reads the clock that '
+        'counts sleep, and locks by the wall clock at once', (tester) async {
+      final container = await startUnlocked(tester);
+      leave(tester);
+
+      now = now.add(const Duration(seconds: 30));
+      expect(controllerOf(container).isLockedNow(), isTrue);
+      expect(lockOf(container).locked, isFalse);
+
+      now = now.add(const Duration(seconds: 30));
+      expect(controllerOf(container).isLockedNow(), isTrue);
+      expect(lockOf(container).locked, isTrue);
+    });
+
+    testLock('without the clock that counts sleep evaluates the wall clock '
+        'alone before the show event', (tester) async {
+      bootClock.read = () => null;
       final container = await startUnlocked(tester);
       leave(tester);
 
@@ -450,11 +479,247 @@ void main() {
       expect(lockOf(container).locked, isTrue);
     });
 
+    testLock('is true while the return reads the clock', (tester) async {
+      final container = await startUnlocked(tester);
+      leave(tester);
+      bootClock.hold = true;
+      now = now.add(const Duration(seconds: 30));
+
+      comeBack(tester);
+      expect(controllerOf(container).isLockedNow(), isTrue);
+
+      bootClock.release();
+      await tester.pump();
+      expect(controllerOf(container).isLockedNow(), isFalse);
+    });
+
     testLock('is false while open and in sight', (tester) async {
       final container = await startUnlocked(tester);
       now = now.add(const Duration(hours: 2));
 
       expect(controllerOf(container).isLockedNow(), isFalse);
+    });
+  });
+
+  group('a clock set back while out of sight', () {
+    testLock('to a moment within the time still locks once the time has '
+        'really passed', (tester) async {
+      final container = await startUnlocked(
+        tester,
+        const PrivacySettings(appLock: true, lockAfter: LockAfter.oneHour),
+      );
+
+      leave(tester);
+      now = now.add(const Duration(hours: 3));
+      setClockBack(const Duration(hours: 2, minutes: 55));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 2);
+    });
+
+    testLock('by less than the time left stays open', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      now = now.add(const Duration(seconds: 40));
+      setClockBack(const Duration(seconds: 30));
+      comeBack(tester);
+      await pumpPastPromptSettle(tester);
+
+      expect(lockOf(container).locked, isFalse);
+      expect(lockOf(container).covered, isFalse);
+      expect(auth.prompts, 1);
+    });
+
+    testLock('cannot stretch an excursion past its grace', (tester) async {
+      final container = await startUnlocked(tester);
+      final picker = Completer<void>();
+      unawaited(controllerOf(container).excursion(() => picker.future));
+
+      leave(tester);
+      now = now.add(const Duration(minutes: 20));
+      setClockBack(const Duration(minutes: 19, seconds: 50));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+      picker.complete();
+    });
+
+    testLock('keeps the app covered and links waiting until the reading is '
+        'in', (tester) async {
+      final container = await startUnlocked(tester);
+      final waits = <bool>[];
+      container.listen(
+        appLockControllerProvider.select(
+          (state) => state.locked || state.checking,
+        ),
+        (_, next) => waits.add(next),
+      );
+
+      leave(tester);
+      bootClock.hold = true;
+      now = now.add(const Duration(seconds: 30));
+      comeBack(tester);
+
+      expect(lockOf(container).checking, isTrue);
+      expect(lockOf(container).covered, isTrue);
+      expect(lockOf(container).locked, isFalse);
+
+      bootClock.release();
+      await tester.pump();
+
+      expect(lockOf(container).checking, isFalse);
+      expect(lockOf(container).covered, isFalse);
+      expect(lockOf(container).locked, isFalse);
+      expect(waits, [true, false]);
+    });
+
+    testLock('locks when the reading comes in past the time', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      bootClock.hold = true;
+      now = now.add(const Duration(minutes: 2));
+      setClockBack(const Duration(minutes: 2));
+      comeBack(tester);
+      expect(lockOf(container).locked, isFalse);
+      expect(lockOf(container).covered, isTrue);
+
+      bootClock.release();
+      await tester.pump();
+
+      expect(lockOf(container).locked, isTrue);
+      expect(lockOf(container).checking, isFalse);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 2);
+    });
+
+    testLock('locks when the clock gives no reading on the return', (
+      tester,
+    ) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      bootClock.read = () => null;
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+    });
+
+    testLock('locks after a restart of the device', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      bootClock.read = () => const Duration(seconds: 5);
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+    });
+
+    testLock('counts from the first hide when the app leaves again before '
+        'the reading is in', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      now = now.add(const Duration(hours: 3));
+      setClockBack(const Duration(hours: 3));
+      bootClock.hold = true;
+      comeBack(tester);
+      leave(tester);
+      expect(lockOf(container).checking, isFalse);
+
+      bootClock.hold = false;
+      now = now.add(const Duration(seconds: 10));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+    });
+
+    testLock('with immediately, an excursion that ends on the resume before '
+        'the reading is in stays open', (tester) async {
+      final container = await startUnlocked(tester, _immediately);
+      final picker = Completer<void>();
+      unawaited(controllerOf(container).excursion(() => picker.future));
+
+      leave(tester);
+      bootClock.hold = true;
+      now = now.add(const Duration(seconds: 5));
+      setClockBack(const Duration(seconds: 3));
+      comeBack(tester);
+      picker.complete();
+      await tester.pump();
+      bootClock.release();
+      await tester.pump();
+
+      expect(lockOf(container).locked, isFalse);
+      expect(lockOf(container).covered, isFalse);
+    });
+
+    testLock("a difference under a second is the reading's delay, not a "
+        'clock set back', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      now = now.add(const Duration(seconds: 59, milliseconds: 500));
+      bootClock.read = () =>
+          now.difference(bootedAt) + const Duration(milliseconds: 800);
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isFalse);
+    });
+
+    testLock('pairs the reading at the hide with the wall clock of the hide, '
+        'not of its answer', (tester) async {
+      final container = await startUnlocked(tester);
+
+      bootClock.hold = true;
+      leave(tester);
+      now = now.add(const Duration(seconds: 20));
+      bootClock.release();
+      await tester.pump();
+      bootClock.hold = false;
+      now = now.add(const Duration(seconds: 20));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isFalse);
+    });
+
+    testLock('a reading that comes in before the resume leaves the cover to '
+        'the resume', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      bootClock.hold = true;
+      now = now.add(const Duration(seconds: 10));
+      lifecycle(tester, const [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+      ]);
+      bootClock.release();
+      await tester.pump();
+
+      expect(lockOf(container).checking, isFalse);
+      expect(lockOf(container).covered, isTrue);
+
+      lifecycle(tester, const [AppLifecycleState.resumed]);
+      expect(lockOf(container).covered, isFalse);
+      expect(lockOf(container).locked, isFalse);
+    });
+
+    testLock('without the clock that counts sleep, only the wall clock '
+        'counts', (tester) async {
+      bootClock.read = () => null;
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      now = now.add(const Duration(hours: 3));
+      setClockBack(const Duration(hours: 3));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isFalse);
+      expect(lockOf(container).covered, isFalse);
     });
   });
 

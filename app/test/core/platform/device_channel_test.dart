@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
@@ -7,6 +10,7 @@ import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/platform/recents_screenshots.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
+import 'package:vikunja_mobile/core/time/boot_clock.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -244,5 +248,66 @@ void main() {
 
     expect(deviceCalls.map((call) => call.method), ['setBackMovesTaskToBack']);
     expect(deviceCalls.single.arguments, {'enabled': true});
+  });
+
+  group('the clock that counts sleep', () {
+    test('on Android and iOS reads the milliseconds since boot', () async {
+      messenger.setMockMethodCallHandler(deviceChannel, (call) async {
+        deviceCalls.add(call);
+        return 7200123;
+      });
+
+      expect(
+        await PlatformBootClock(supported: true).sinceBoot(),
+        const Duration(milliseconds: 7200123),
+      );
+      expect(deviceCalls.single.method, 'sinceBoot');
+    });
+
+    test('elsewhere has no reading, at once', () {
+      final reading = PlatformBootClock(supported: false).sinceBoot();
+
+      expect(reading, isA<SynchronousFuture<Duration?>>());
+      expect(deviceCalls, isEmpty);
+    });
+
+    for (final failure in [
+      MissingPluginException(),
+      PlatformException(code: 'unavailable'),
+    ]) {
+      test('has no reading when the channel fails with '
+          '${failure.runtimeType}', () async {
+        messenger.setMockMethodCallHandler(
+          deviceChannel,
+          (call) async => throw failure,
+        );
+
+        expect(await PlatformBootClock(supported: true).sinceBoot(), isNull);
+      });
+    }
+
+    testWidgets('has no reading when the answer does not come in time', (
+      tester,
+    ) async {
+      final never = Completer<Object?>();
+      messenger.setMockMethodCallHandler(deviceChannel, (call) => never.future);
+      Duration? reading = const Duration(days: 1);
+      var done = false;
+      unawaited(
+        PlatformBootClock(supported: true).sinceBoot().then((value) {
+          reading = value;
+          done = true;
+        }),
+      );
+
+      await tester.pump(
+        PlatformBootClock.timeLimit - const Duration(milliseconds: 1),
+      );
+      expect(done, isFalse);
+      await tester.pump(const Duration(milliseconds: 1));
+
+      expect(done, isTrue);
+      expect(reading, isNull);
+    });
   });
 }

@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
+import io.flutter.embedding.android.FlutterActivityLaunchConfigs.BackgroundMode
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
@@ -23,7 +24,7 @@ class MainActivity : FlutterFragmentActivity() {
     private var shareInbox: ShareInbox? = null
     private var fileActions: FileActionsChannel? = null
     private var documents: DocumentPickerChannel? = null
-    private var restartedInOwnTask = false
+    private var throwaway = false
 
     // On while the app lock is up, when Flutter leaves back to the platform:
     // Android would otherwise close the activity, and the app's state with
@@ -35,13 +36,26 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (OwnTask.startedInAnotherTask(isTaskRoot, intent.flags)) {
-            restartedInOwnTask = true
-            startActivity(OwnTask.restart(this, intent))
+        val start = OwnTask.start(
+            isTaskRoot = isTaskRoot,
+            flags = intent.flags,
+            restored = savedInstanceState != null,
+            launcher = OwnTask.isLauncherStart(intent.action, intent.categories),
+        ) { OwnTask.rootIsMainActivity(this) }
+        start.plan?.let { plan ->
+            throwaway = true
             // Nothing restored and no kept engine: the fragment this adds gets
             // an engine of its own on the way out, which never runs Dart.
-            super.onCreate(null)
-            finish()
+            OwnTask.handOver(
+                plan = plan,
+                intent = intent,
+                finish = ::finish,
+                restart = { OwnTask.restart(this, it) },
+                start = ::startActivity,
+                withoutExtras = LaunchExtras::dropped,
+                setIntent = { intent = it },
+                create = { super.onCreate(null) },
+            )
             return
         }
         // Before super: a restored FlutterFragment looks its engine up at once.
@@ -157,11 +171,13 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    override fun shouldAttachEngineToActivity(): Boolean = !restartedInOwnTask
+    override fun shouldAttachEngineToActivity(): Boolean = !throwaway
+
+    override fun getBackgroundMode(): BackgroundMode = LaunchExtras.backgroundMode
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        if (restartedInOwnTask) return
+        if (throwaway) return
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         device = DeviceChannel(applicationContext, messenger, engineState.window, this)
         applyWindowState()
