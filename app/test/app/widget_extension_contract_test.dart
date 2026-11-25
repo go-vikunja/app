@@ -7,21 +7,43 @@ import 'package:vikunja_mobile/core/notifications/notification_plan.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 
 // The iOS extension decodes the app's JSON by property name and finds the
-// app's notifications by their payload; a name that drifts decodes as nil
-// or matches nothing, without an error. The XCTests (ios/RunnerTests) run
-// only on a Mac, so the contract with the Dart side is checked here.
+// app's notifications by their payload, and the Android widgets read the
+// same JSON by key; a name that drifts decodes as nil or null or matches
+// nothing, without an error. The XCTests (ios/RunnerTests) run only on a
+// Mac and the JVM tests parse a hand-written sample, so the contract with
+// the Dart side is checked here.
 void main() {
   const extensionFolder = 'ios/VikunjaWidgets';
   final widgetData = File('$extensionFolder/WidgetData.swift')
       .readAsStringSync();
   final markDone = File('$extensionFolder/MarkDoneIntent.swift')
       .readAsStringSync();
+  final widgetModel = File(
+    'android/app/src/main/kotlin/io/vikunja/app/widgets/WidgetModel.kt',
+  ).readAsStringSync();
 
   String block(String source, String header, {required String indent}) {
     final start = source.indexOf(header);
     if (start == -1) throw StateError('No $header');
     return source.substring(start, source.indexOf('\n$indent}\n', start));
   }
+
+  String kotlinFunction(String source, String header) {
+    final start = source.indexOf(header);
+    if (start == -1) throw StateError('No $header');
+    final indent = source.substring(source.lastIndexOf('\n', start) + 1, start);
+    return source.substring(
+      start,
+      source.indexOf(RegExp('\n$indent[)}]\n'), start),
+    );
+  }
+
+  Set<String> kotlinReads(String function) => {
+    for (final match in RegExp(
+      r'\bjson\??\.\w+\("(\w+)"\)',
+    ).allMatches(function))
+      match[1]!,
+  };
 
   Set<String> storedProperties(String block, {required String indent}) => {
     for (final match in RegExp(
@@ -116,6 +138,51 @@ void main() {
 
       expect(swift, isNotEmpty);
       expect(keys(text.toJson()), containsAll(swift));
+    });
+  });
+
+  group('every key the Android widgets read is a key the app writes', () {
+    Set<String> reads(String header) =>
+        kotlinReads(kotlinFunction(widgetModel, header));
+
+    test('a row', () {
+      final kotlin = reads('private fun rowOf(');
+
+      expect(kotlin, containsAll(['id', 'canDone', 'colorDark']));
+      expect(keys(row.toJson()), containsAll(kotlin));
+    });
+
+    test('a list', () {
+      final kotlin = reads('fun parse(text: String): Snapshot?');
+
+      expect(kotlin, containsAll(['key', 'rows', 'moreLabel']));
+      expect(keys(snapshot.toJson()), containsAll(kotlin));
+    });
+
+    test('a text', () {
+      final kotlin = reads('private fun textOf(');
+
+      expect(kotlin, containsAll(['title', 'action']));
+      expect(keys(text.toJson()), containsAll(kotlin));
+    });
+  });
+
+  test('the Android widgets know every state the app writes and every tone '
+      'they color', () {
+    Set<String> cases(String header) => {
+      for (final match in RegExp(
+        r'"(\w+)" ->',
+      ).allMatches(kotlinFunction(widgetModel, header)))
+        match[1]!,
+    };
+
+    expect(cases('private fun stateOf('), {
+      for (final state in WidgetSnapshotState.values) state.name,
+    });
+    // Any other tone reads as none.
+    expect(cases('private fun toneOf('), {
+      for (final tone in WidgetDueTone.values)
+        if (tone != WidgetDueTone.none) tone.name,
     });
   });
 

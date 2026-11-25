@@ -19,7 +19,16 @@ Stream<NotificationPreferences> accountNotificationPreferences(
     if (changedAccountId == accountId) controller.add(preferences);
   });
   unawaited(
-    store.read(accountId).then(controller.add, onError: controller.addError),
+    store
+        .read(accountId)
+        .then(
+          (preferences) {
+            if (!controller.isClosed) controller.add(preferences);
+          },
+          onError: (Object error, StackTrace stack) {
+            if (!controller.isClosed) controller.addError(error, stack);
+          },
+        ),
   );
   ref.onDispose(() {
     unawaited(subscription.cancel());

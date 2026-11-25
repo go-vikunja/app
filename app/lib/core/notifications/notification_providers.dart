@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
@@ -29,19 +30,24 @@ part 'notification_providers.g.dart';
 
 final _log = Logger('Notifications');
 
-/// How many of an account's soonest notifications the OS is given. iOS
-/// keeps 64 pending for the whole app and drops what goes beyond, so the
-/// [accounts] signed in share 60 evenly. Each share keeps one for the
-/// account's reminder to open the app before its session ends
-/// (`SessionReminders`) and one for the snoozed entry `diffSchedule` adds
-/// beyond the window, both pending too. An even share needs nothing from
-/// the other accounts' schedulers, which a headless isolate does not run.
-/// Android keeps 100 per account; it has room for more but gains nothing
-/// from it.
-int notificationWindow({TargetPlatform? platform, int accounts = 1}) =>
-    (platform ?? defaultTargetPlatform) == TargetPlatform.iOS
-    ? math.max(1, 60 ~/ math.max(1, accounts) - 2)
-    : 100;
+/// How many of an account's soonest notifications the OS is given. The
+/// [accounts] signed in share evenly what the system lets the app hold:
+/// iOS keeps 64 pending and drops what goes beyond, so they share 60;
+/// Android refuses every alarm once the app holds 500, even one that
+/// replaces another under its id, so they share 480, at most 100 each as
+/// more gains nothing, the rest left for the widget's redraw alarm and
+/// WorkManager's own (decision log: Notifications and widgets). Each share
+/// keeps one for the account's reminder to open the app before its session
+/// ends (`SessionReminders`) and one for the snoozed entry `diffSchedule`
+/// adds beyond the window, both pending too. An even share needs nothing
+/// from the other accounts' schedulers, which a headless isolate does not
+/// run.
+int notificationWindow({TargetPlatform? platform, int accounts = 1}) {
+  final sharing = math.max(1, accounts);
+  return (platform ?? defaultTargetPlatform) == TargetPlatform.iOS
+      ? math.max(1, 60 ~/ sharing - 2)
+      : math.min(100, math.max(1, 480 ~/ sharing - 2));
+}
 
 @Riverpod(keepAlive: true)
 NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
@@ -60,10 +66,10 @@ NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
 /// content that shows less also withdraws what the account has in the
 /// tray. Built again, and so reconciling at once, when a refreshed `/info`
 /// moves the server to one whose reminders follow the subscriptions, and
-/// on iOS when the number of accounts changes their share of the window.
-/// Null once the account is gone. Disposed with the account's database on
-/// sign-out, after which [NotificationSchedulers] still holds it for the
-/// wipe.
+/// when the number of accounts changes their share of the window (on
+/// Android from five accounts on). Null once the account is gone. Disposed
+/// with the account's database on sign-out, after which
+/// [NotificationSchedulers] still holds it for the wipe.
 @Riverpod(keepAlive: true)
 NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
   final user = ref.watch(
@@ -80,6 +86,9 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
           notificationWindow(accounts: accounts.value?.accounts.length ?? 1),
     ),
   );
+  final registry = ref.watch(runsHeadlessProvider)
+      ? ref.watch(accountRegistryProvider)
+      : null;
   final gateway = ref.watch(notificationGatewayProvider);
   final scheduler = NotificationScheduler(
     accountId: accountId,
@@ -92,7 +101,9 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
       final privacy = await currentPrivacySettings(ref);
       return _presentation(ref.read(deviceAppLocalizationsProvider), privacy);
     },
-    window: window,
+    window: registry == null
+        ? () async => window
+        : () => _storedAccountsWindow(registry, window),
     linkKey: () => readWidgetLinkKey(ref.read(preferencesStoreProvider)),
     now: ref.watch(clockProvider),
   );
@@ -145,6 +156,16 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
   return scheduler;
 }
 
+/// A headless container does not see an account the app signed in after
+/// the container read the registry, and its share would then push the
+/// accounts past what the system holds (decision log: Notifications and
+/// widgets), so each of its runs counts the stored accounts again. The
+/// smaller window wins: an unreadable registry reads as empty.
+Future<int> _storedAccountsWindow(AccountRegistry registry, int known) async {
+  final stored = await registry.load();
+  return math.min(known, notificationWindow(accounts: stored.accounts.length));
+}
+
 /// Android answers the pending ids from the plugin's own record, which a
 /// force stop leaves behind while it drops every alarm, and from which the
 /// plugin re-arms only after a boot or an update. So the app's first run
@@ -168,16 +189,18 @@ NotificationPresentation _presentation(
     l10n,
     content: settings.notificationContent,
   ),
-  privacy: _privacyOf(settings),
+  privacy: reminderPrivacyOf(settings),
 );
 
 /// While the app lock is on, Done on iOS asks for the device unlock, and
 /// Android leaves Done out (decision log: Security and privacy).
-NotificationPrivacy _privacyOf(PrivacySettings settings) => NotificationPrivacy(
-  hiddenOnLockScreen:
-      settings.notificationContent == NotificationContent.hiddenOnLockScreen,
-  doneNeedsUnlock: settings.appLock,
-);
+NotificationPrivacy reminderPrivacyOf(PrivacySettings settings) =>
+    NotificationPrivacy(
+      hiddenOnLockScreen:
+          settings.notificationContent ==
+          NotificationContent.hiddenOnLockScreen,
+      doneNeedsUnlock: settings.appLock,
+    );
 
 /// Loading the settings changes nothing; the first value is what the
 /// scheduler reads anyway.

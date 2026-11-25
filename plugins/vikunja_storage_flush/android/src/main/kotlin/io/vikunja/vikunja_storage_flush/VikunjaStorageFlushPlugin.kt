@@ -33,20 +33,25 @@ class VikunjaStorageFlushPlugin : FlutterPlugin, MethodChannel.MethodCallHandler
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        if (call.method != "flushSharedPreferences") {
-            result.notImplemented()
-            return
-        }
-        val name = call.argument<String>("name")
-        if (name == null) {
-            result.error("argument", "name is missing", null)
-            return
-        }
-        val written = context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().commit()
-        if (written) result.success(null) else result.error("io", "could not write $name", null)
+        answerFlush(call, result) { name -> context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().commit() }
     }
 
     private companion object {
         const val CHANNEL = "io.vikunja.vikunja_storage_flush"
     }
+}
+
+// Apart from the plugin, so the app's JVM tests run it.
+fun answerFlush(call: MethodCall, result: MethodChannel.Result, commit: (String) -> Boolean) {
+    if (call.method != "flushSharedPreferences") {
+        result.notImplemented()
+        return
+    }
+    val name = call.argument<String>("name")
+    if (name == null) {
+        result.error("argument", "name is missing", null)
+        return
+    }
+    val written = commit(name)
+    if (written) result.success(null) else result.error("io", "could not write $name", null)
 }

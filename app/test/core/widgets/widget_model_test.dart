@@ -18,12 +18,14 @@ void main() {
       OverdueKind(),
       ProjectTasksKind(12),
       LabelTasksKind(3),
+      LabelTasksKind(-3),
       FavoritesKind(),
       SavedFilterKind(1),
       QuickAddKind(),
     ];
 
-    test('round-trips every kind through its JSON and its key', () {
+    test('round-trips every kind through its JSON and its key, a label '
+        'created on the device under its temporary id too', () {
       for (final kind in kinds) {
         final config = WidgetConfig(accountId: account, kind: kind);
         expect(WidgetConfig.decode(config.encode()), config);
@@ -58,6 +60,7 @@ void main() {
         '$account.overdue',
         '$account.project_12',
         '$account.label_3',
+        '$account.label_-3',
         '$account.favorites',
         '$account.filter_1',
         '$account.quick_add',
@@ -83,7 +86,9 @@ void main() {
         '$account.upcoming_5',
         '$account.project_',
         '$account.project_x',
-        '$account.label_-3',
+        '$account.project_-3',
+        '$account.label_-0',
+        '$account.project_012',
         '$account.board',
       ]) {
         expect(WidgetConfig.fromKey(key), isNull, reason: key);

@@ -13,6 +13,8 @@ void main() {
     required int osId,
     required int taskId,
     DateTime? at,
+    DateTime? snoozedUntil,
+    DateTime? snoozeOriginalFireAt,
   }) => ScheduledNotificationRow(
     key: key,
     osId: osId,
@@ -21,9 +23,12 @@ void main() {
     fireAt: at ?? monday,
     title: 'T',
     body: 'B',
+    snoozedUntil: snoozedUntil,
+    snoozeOriginalFireAt: snoozeOriginalFireAt,
     exact: true,
     hiddenOnLockScreen: false,
     doneNeedsUnlock: false,
+    snoozeOnly: false,
   );
 
   setUp(() => db = testDatabase());
@@ -56,10 +61,15 @@ void main() {
       row('1:due', osId: 5, taskId: 1),
     ]);
     final read = await db.scheduledNotificationsDao.all();
-    await db.scheduledNotificationsDao.setSnooze(
-      '1:due',
-      until: tuesday,
-      originalFireAt: monday,
+    await db.scheduledNotificationsDao.upsert(
+      row(
+        '1:due',
+        osId: 5,
+        taskId: 1,
+        at: tuesday,
+        snoozedUntil: tuesday,
+        snoozeOriginalFireAt: monday,
+      ),
     );
 
     final written = await db.scheduledNotificationsDao.replaceAll([
@@ -119,23 +129,6 @@ void main() {
       ]),
       throwsA(anything),
     );
-  });
-
-  test('a snooze is set without touching the fire time', () async {
-    await db.scheduledNotificationsDao.replaceAll([
-      row('1:due', osId: 5, taskId: 1),
-    ]);
-    final until = monday.add(const Duration(minutes: 10));
-
-    await db.scheduledNotificationsDao.setSnooze(
-      '1:due',
-      until: until,
-      originalFireAt: monday,
-    );
-    final stored = (await db.scheduledNotificationsDao.find('1:due'))!;
-    expect(stored.fireAt, monday);
-    expect(stored.snoozedUntil, until);
-    expect(stored.snoozeOriginalFireAt, monday);
   });
 
   test('rows go by task ids or all at once', () async {

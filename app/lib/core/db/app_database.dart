@@ -82,14 +82,15 @@ final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     // From 1, version 2 adds the stored details, the label remaps and the
-    // outbox's label column. A later version's database after a rollback
-    // keeps its tables: `createTable` creates only what is missing, and the
-    // column is added only when it is.
+    // outbox's label column. From 2, version 3 adds the scheduled
+    // notifications' snooze-only column. A later version's database after a
+    // rollback keeps its tables: `createTable` creates only what is missing,
+    // and a column is added only when it is.
     onUpgrade: (m, from, to) async {
       for (final table in <TableInfo<Table, Object?>>[
         taskDetailLoads,
@@ -103,6 +104,18 @@ final class AppDatabase extends _$AppDatabase {
       }
       if (!await _hasColumn(outbox.actualTableName, outbox.labelId.name)) {
         await m.addColumn(outbox, outbox.labelId);
+      }
+      // `to` is below 3 only when drift_dev's verifier migrates to an older
+      // version with this code.
+      if (to >= 3 &&
+          !await _hasColumn(
+            scheduledNotifications.actualTableName,
+            scheduledNotifications.snoozeOnly.name,
+          )) {
+        await m.addColumn(
+          scheduledNotifications,
+          scheduledNotifications.snoozeOnly,
+        );
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

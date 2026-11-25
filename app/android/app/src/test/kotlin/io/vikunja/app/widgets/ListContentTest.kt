@@ -3,6 +3,7 @@ package io.vikunja.app.widgets
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -19,7 +20,7 @@ class ListContentTest {
     fun `asks to be set up without a config or an active account`() {
         val state = ListWidgetState.load(files, 5)
 
-        assertEquals(ListContent.SetUp(5), ListContent.of(state, now = 0))
+        assertEquals(ListContent.SetUp(5), ListContent.of(state))
         assertFalse(state.dynamicColor)
     }
 
@@ -50,7 +51,7 @@ class ListContentTest {
 
         val state = ListWidgetState.load(files, 5)
 
-        assertEquals(ListContent.NotLoaded("acc"), ListContent.of(state, now = 0))
+        assertEquals(ListContent.NotLoaded("acc"), ListContent.of(state))
     }
 
     @Test
@@ -71,7 +72,7 @@ class ListContentTest {
         write("widgets/host.json", """{"version":1,"activeAccountId":"acc"}""")
         WidgetActionQueue(files).add(WidgetAction("a", "acc", 1, 2_000), snapshotGeneratedAt = 1_000)
 
-        val content = ListContent.of(ListWidgetState.load(files, 5), now = 0) as ListContent.Shown
+        val content = ListContent.of(ListWidgetState.load(files, 5)) as ListContent.Shown
 
         assertEquals(listOf(-4L), content.rows.map { it.row.taskId })
         assertEquals(2, content.count)
@@ -94,6 +95,32 @@ class ListContentTest {
             shown(SampleJson.snapshot(), now = 5_000).rows.first().semanticsLabel,
         )
         assertEquals("Call the plumber", shown(SampleJson.snapshot(), now = 5_000).rows[1].semanticsLabel)
+    }
+
+    @Test
+    fun `reloads an equal state until a due instant passes, then one with the row overdue`() {
+        write("widgets/host.json", """{"version":1,"activeAccountId":"acc"}""")
+        write("widgets/snapshots/acc.today.json", SampleJson.snapshot())
+
+        val earlier = ListWidgetState.load(files, 5, now = 1_000)
+        val justBefore = ListWidgetState.load(files, 5, now = 4_999)
+        val after = ListWidgetState.load(files, 5, now = 5_000)
+
+        assertEquals(earlier, justBefore)
+        assertNotEquals(justBefore, after)
+        assertEquals(DueTone.TODAY, (ListContent.of(justBefore) as ListContent.Shown).rows.first().tone)
+        assertEquals(DueTone.OVERDUE, (ListContent.of(after) as ListContent.Shown).rows.first().tone)
+    }
+
+    @Test
+    fun `a row due today is overdue from its due instant, with a redraw planned until then`() {
+        val snapshot = Snapshot.parse(SampleJson.snapshot())!!
+
+        for (now in listOf(1_000L, 4_999L)) {
+            assertTrue(snapshot.turnedOverdueAt(now).isEmpty())
+            assertEquals(5_000L, snapshot.nextChangeAt(now))
+        }
+        assertEquals(setOf(1L), snapshot.turnedOverdueAt(5_000))
     }
 
     @Test
@@ -141,16 +168,18 @@ class ListContentTest {
     }
 
     private fun shown(json: String, now: Long = 0, configured: Boolean = true): ListContent.Shown {
+        val snapshot = Snapshot.parse(json)!!
         val state = ListWidgetState(
             appWidgetId = 5,
             configured = configured,
             key = "acc.today",
             accountId = "acc",
-            snapshot = Snapshot.parse(json)!!,
+            snapshot = snapshot,
             hiddenTaskIds = emptySet(),
+            turnedOverdueTaskIds = snapshot.turnedOverdueAt(now),
             dynamicColor = true,
         )
-        return ListContent.of(state, now) as ListContent.Shown
+        return ListContent.of(state) as ListContent.Shown
     }
 
     private fun write(path: String, text: String) {

@@ -56,16 +56,20 @@ class TasksWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(compact, narrow, medium, wide))
 
     override val stateDefinition: GlanceStateDefinition<*> = FileWidgetStateDefinition { context, appWidgetId ->
+        // One instant for the tones and the alarm: a due instant passing
+        // between two clock reads would get neither.
+        val now = System.currentTimeMillis()
         ListWidgetState.load(
             WidgetFiles.of(context),
             appWidgetId,
             // A widget of the previous app may have shown Upcoming or a
             // project; it asks instead of silently showing Today.
             followsActiveAccount = !LegacyWidgets.isLegacy(context, appWidgetId),
+            now = now,
         ).also { state ->
             val snapshot = state.snapshot
             if (snapshot != null) {
-                WidgetSchedule.onShown(context, snapshot)
+                WidgetSchedule.onShown(context, snapshot, now)
             } else {
                 state.key?.let { WidgetSchedule.onMissing(context, it) }
             }
@@ -76,7 +80,7 @@ class TasksWidget : GlanceAppWidget() {
         provideContent {
             val state = currentState<ListWidgetState>()
             WidgetTheme(state.dynamicColor) {
-                ListWidget(ListContent.of(state, System.currentTimeMillis()))
+                ListWidget(ListContent.of(state))
             }
         }
     }

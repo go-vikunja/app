@@ -32,7 +32,8 @@ enum BackgroundRunKind {
   sync,
 
   /// Only the outboxes, soon after a change that waited for a token
-  /// refresh.
+  /// refresh, then what their answers change: each account's notifications
+  /// and widgets.
   drain,
 }
 
@@ -488,7 +489,8 @@ final class _Run {
   /// sync, and so does one the queue phase left to the turn. The turn
   /// syncs, then fetches the activity. Once the
   /// server proved unreachable the account's other network steps are
-  /// skipped, each would wait for its own timeout. A drain run only drains.
+  /// skipped, each would wait for its own timeout. A drain run only drains,
+  /// then plans the notifications and redraws the widgets.
   Future<void> _account(
     RegisteredAccount entry,
     DateTime? lastSyncedAt, {
@@ -588,8 +590,11 @@ final class _Run {
         timedOut: synced == _Step.timedOut || sent == _Step.timedOut,
       );
     }
-    // What the sync brought (a reminder set on the web) is planned too.
-    if (synced == _Step.done) await _reconcile(account);
+    // What the sync brought (a reminder set on the web) is planned too, and
+    // in a drain run what its sends brought, whatever the drain's outcome: an
+    // op answered before a later one failed stored the server's task, a
+    // repeating one moved on by its Done (decision log: Sync).
+    if (!syncing || synced == _Step.done) await _reconcile(account);
     await _remindBeforeSessionEnds(account);
     await _publishWidgets(account);
   }

@@ -7,11 +7,20 @@ internal data class ListWidgetState(
     val accountId: String?,
     val snapshot: Snapshot?,
     val hiddenTaskIds: Set<Long>,
+    // Today's rows whose due instant had passed when the files were read;
+    // taken here, not while drawing, as a running Glance session draws again
+    // only for a state that differs.
+    val turnedOverdueTaskIds: Set<Long>,
     val dynamicColor: Boolean,
     val linkKey: String? = null,
 ) {
     companion object {
-        fun load(files: WidgetFiles, appWidgetId: Int, followsActiveAccount: Boolean = true): ListWidgetState {
+        fun load(
+            files: WidgetFiles,
+            appWidgetId: Int,
+            followsActiveAccount: Boolean = true,
+            now: Long = System.currentTimeMillis(),
+        ): ListWidgetState {
             val config = files.readConfig(appWidgetId)
             val host = files.readHost()
             val followed = host.takeIf { config != null || followsActiveAccount }
@@ -26,6 +35,7 @@ internal data class ListWidgetState(
                 hiddenTaskIds = snapshot
                     ?.let { WidgetActionQueue(files).hiddenTaskIds(it.accountId, it.generatedAt) }
                     .orEmpty(),
+                turnedOverdueTaskIds = snapshot?.turnedOverdueAt(now).orEmpty(),
                 dynamicColor = host?.dynamicColor ?: false,
                 linkKey = host?.linkKey,
             )
@@ -93,7 +103,7 @@ internal sealed interface ListContent {
     ) : ListContent
 
     companion object {
-        fun of(state: ListWidgetState, now: Long): ListContent {
+        fun of(state: ListWidgetState): ListContent {
             val snapshot = state.snapshot
                 ?: return if (!state.configured && state.accountId == null) {
                     SetUp(state.appWidgetId, state.linkKey)
@@ -123,7 +133,7 @@ internal sealed interface ListContent {
                 } else {
                     snapshot.messageLink ?: snapshot.link
                 },
-                rows = visible.map { ShownRow(it, toneAt(it, now)) },
+                rows = visible.map { ShownRow(it, toneOf(it, state.turnedOverdueTaskIds)) },
                 more = total - visible.size,
                 moreLabel = snapshot.moreLabel,
                 empty = snapshot.empty,
@@ -131,13 +141,16 @@ internal sealed interface ListContent {
             )
         }
 
-        // The app writes a row due later today as "today"; once its instant
-        // passes, it is overdue until the app writes the next snapshot.
-        private fun toneAt(row: SnapshotRow, now: Long): DueTone =
-            if (row.tone == DueTone.TODAY && row.dueAt != null && now >= row.dueAt) DueTone.OVERDUE else row.tone
+        private fun toneOf(row: SnapshotRow, turnedOverdue: Set<Long>): DueTone =
+            if (row.taskId in turnedOverdue) DueTone.OVERDUE else row.tone
     }
 }
 
 // The next instant the snapshot shows something else: a due instant turns a
 // row overdue, and at validUntil the app's texts go stale.
 internal fun Snapshot.nextChangeAt(now: Long): Long? = (changesAt + validUntil).filter { it > now }.minOrNull()
+
+// The app writes a row due later today as "today"; once its instant passes,
+// it is overdue until the app writes the next snapshot.
+internal fun Snapshot.turnedOverdueAt(now: Long): Set<Long> =
+    rows.filter { it.tone == DueTone.TODAY && it.dueAt != null && now >= it.dueAt }.mapTo(HashSet()) { it.taskId }

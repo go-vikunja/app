@@ -3,6 +3,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/mappers/server_notification_mappers.dart';
 import 'package:vikunja_mobile/core/db/tables/server_notifications.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 
 part 'server_notifications_dao.g.dart';
 
@@ -143,7 +144,8 @@ final class ServerNotificationsDao extends DatabaseAccessor<AppDatabase>
     serverNotifications,
   )..where((n) => n.id.isIn(ids) & n.readAt.isNull())).write(_markedRead(at));
 
-  /// Returns the ids it marked.
+  /// Returns the ids it marked, and records the choice with them
+  /// ([SyncStateKeys.activityMarkAllReadAt]).
   Future<List<int>> markAllRead({required DateTime at}) =>
       transaction(() async {
         final unread =
@@ -156,6 +158,9 @@ final class ServerNotificationsDao extends DatabaseAccessor<AppDatabase>
         await (update(
           serverNotifications,
         )..where((n) => n.id.isIn(unread))).write(_markedRead(at));
+        await attachedDatabase.syncStateDao.write({
+          SyncStateKeys.activityMarkAllReadAt: at.toUtc().toIso8601String(),
+        });
         return unread;
       });
 

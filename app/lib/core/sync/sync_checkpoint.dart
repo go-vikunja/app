@@ -74,6 +74,13 @@ abstract final class SyncStateKeys {
   /// stored notifications that are unread here, ISO 8601 UTC.
   static const activityWindowCheckedAt = 'activity_window_checked_at';
 
+  /// When the user chose Mark all read in the inbox, ISO 8601 UTC, written
+  /// with its marks. Only while it is set does the activity sync send them
+  /// as one "mark all read", which the server applies to every notification,
+  /// also those this device does not keep; it clears the key with them
+  /// unless a later choice replaced it. Absent otherwise.
+  static const activityMarkAllReadAt = 'activity_mark_all_read_at';
+
   /// The sync run that holds the account, see [SyncLease]; absent while
   /// none does. Every isolate's engine takes it before a run and renews it
   /// while the run makes progress.

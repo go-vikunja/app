@@ -71,7 +71,7 @@ void main() {
         describe: describeNotificationsWith(AppLocalizationsEn()),
         privacy: privacy,
       ),
-      window: window,
+      window: () async => window,
       linkKey: () async => linkKey,
       now: () => now,
       createTimer: timers.create,
@@ -326,7 +326,7 @@ void main() {
       'wanted', () async {
     final notifications = scheduler();
     await notifications.reconcile();
-    gateway.fire(dueId);
+    gateway.drop(dueId);
     gateway.calls.clear();
 
     await notifications.reconcile();
@@ -334,19 +334,28 @@ void main() {
     expect(gateway.calls, [...idle, 'schedule $dueId']);
   });
 
-  test('a snooze brings a fired reminder back at the snoozed time, under '
-      'its id', () async {
+  test('a snooze whose schedule failed after its row was written comes back '
+      'with the next run at the snoozed time, under its id', () async {
     final notifications = scheduler();
     await notifications.reconcile();
     now = reminderAt.add(const Duration(minutes: 1));
-    gateway.fire(reminderId);
     final until = now.add(const Duration(minutes: 10));
-    await db.scheduledNotificationsDao.setSnooze(
-      '1:reminder:0',
-      until: until,
-      originalFireAt: reminderAt,
+    gateway
+      ..fire(reminderId)
+      ..beforeCall = (call) async {
+        if (call == 'schedule $reminderId') throw StateError('plugin');
+      };
+    await expectLater(
+      notifications.snooze(
+        key: '1:reminder:0',
+        taskId: 1,
+        duration: const Duration(minutes: 10),
+      ),
+      throwsStateError,
     );
-    gateway.calls.clear();
+    gateway
+      ..beforeCall = null
+      ..calls.clear();
 
     await notifications.reconcile();
 
@@ -380,15 +389,15 @@ void main() {
         : Future.value();
 
     // The first run has read the table (without the snooze) and waits on
-    // the OS; the snooze lands and the second scheduler schedules it.
+    // the OS; the second scheduler's snooze writes its row and tells the OS
+    // meanwhile.
     final run = first.reconcile();
     await pumpEventQueue();
-    await db.scheduledNotificationsDao.setSnooze(
-      '1:reminder:0',
-      until: until,
-      originalFireAt: reminderAt,
+    await second.snooze(
+      key: '1:reminder:0',
+      taskId: 1,
+      duration: const Duration(minutes: 10),
     );
-    await second.reconcile();
     expect(gateway.pending[reminderId]!.fireAt, until);
     gate.complete();
     await run;
@@ -398,8 +407,9 @@ void main() {
     expect(stored.fireAt, until);
     expect(stored.snoozedUntil, until);
     expect(stored.snoozeOriginalFireAt, reminderAt);
-    // The first run saw the change at its write and went once more.
-    expect(pendingCalls, 3);
+    // The snooze and its run looked once each; the first run saw the change
+    // at its write and went once more.
+    expect(pendingCalls, 4);
   });
 
   ScheduledNotification pendingOf(String account, int osId, String key) =>
@@ -452,10 +462,7 @@ void main() {
       final notifications = scheduler();
       await notifications.reconcile();
       now = reminderAt.add(const Duration(minutes: 1));
-      final shown = gateway.pending[reminderId]!.payload;
-      gateway
-        ..fire(reminderId)
-        ..tray[reminderId] = shown;
+      gateway.fire(reminderId);
       final unrecorded = notificationOsIdFor(accountId, '2:due');
       final bobs = notificationOsIdFor('b1', '1:due');
       gateway.pending.addAll({
@@ -558,12 +565,11 @@ void main() {
       now = reminderAt.add(const Duration(minutes: 1));
       gateway.fire(reminderId);
       final until = now.add(const Duration(minutes: 10));
-      await db.scheduledNotificationsDao.setSnooze(
-        '1:reminder:0',
-        until: until,
-        originalFireAt: reminderAt,
+      await scheduler().snooze(
+        key: '1:reminder:0',
+        taskId: 1,
+        duration: const Duration(minutes: 10),
       );
-      await scheduler().reconcile();
       expect(gateway.pending.keys, unorderedEquals([reminderId, dueId]));
       final before = await rows();
       gateway.calls.clear();
@@ -595,10 +601,8 @@ void main() {
         'so does what is shown under an id it schedules again', () async {
       await scheduler().reconcile();
       now = reminderAt.add(const Duration(minutes: 1));
-      final shownReminder = gateway.pending[reminderId]!.payload;
       gateway
         ..fire(reminderId)
-        ..tray[reminderId] = shownReminder
         // An earlier due date of the task, shown by a build before step
         // 40e, under the id its pending one has.
         ..tray[dueId] = const NotificationPayload(
@@ -714,12 +718,11 @@ void main() {
       now = reminderAt.add(const Duration(minutes: 1));
       gateway.fire(reminderId);
       final until = now.add(const Duration(minutes: 10));
-      await db.scheduledNotificationsDao.setSnooze(
-        '1:reminder:0',
-        until: until,
-        originalFireAt: reminderAt,
+      await scheduler().snooze(
+        key: '1:reminder:0',
+        taskId: 1,
+        duration: const Duration(minutes: 10),
       );
-      await scheduler().reconcile();
       final before = await rows();
       gateway
         ..forceStop()
@@ -752,13 +755,18 @@ void main() {
     test('cancels nothing that is still wanted, so a notification shown '
         'under the same id stays in the tray', () async {
       await scheduler().reconcile();
-      // Both fired and stay in the tray; the task repeats, so its next due
-      // date is pending under the id of the shown one.
+      // Both fired and stay in the tray, the due date as a build before step
+      // 40e showed it, without its instant, which keeps it there while the
+      // task is open; the task's next due date is pending under its id.
       now = dueAt.add(const Duration(minutes: 1));
       gateway
         ..fire(reminderId)
         ..fire(dueId)
-        ..tray.addAll({reminderId: 'reminder', dueId: 'due'});
+        ..tray[dueId] = const NotificationPayload(
+          accountId: accountId,
+          taskId: 1,
+          key: '1:due',
+        ).toJson();
       final nextDue = dueAt.add(const Duration(days: 1));
       await db.tasksDao.upsertAll([
         water().copyWith(dueDate: nextDue),
@@ -978,6 +986,179 @@ void main() {
     });
   });
 
+  group('a task the user may not change '
+      '(decision log: Notifications and widgets)', () {
+    Map<String, bool> pendingSnoozeOnly() => {
+      for (final notification in gateway.pending.values)
+        NotificationPayload.fromJson(notification.payload).key:
+            notification.snoozeOnly,
+    };
+
+    Future<Map<String, bool>> storedSnoozeOnly() async => {
+      for (final row in await rows()) row.key: row.snoozeOnly,
+    };
+
+    Future<void> reconcileAfterDebounce(
+      NotificationScheduler notifications,
+    ) async {
+      await pumpEventQueue();
+      timers.fireNext();
+      await notifications.idle;
+    }
+
+    test('its reminders and due dates reach the OS without Done when its '
+        'project is read-only or archived, also through a parent, and the '
+        'table records it; a project whose permission is unknown keeps '
+        'Done', () async {
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 8,
+          title: 'Shared',
+        ).copyWith(maxPermission: Permission.read),
+        sampleProject(id: 9, title: 'Archive', archived: true),
+        sampleProject(
+          id: 10,
+          title: 'Below the archive',
+          parent: 9,
+        ).copyWith(maxPermission: Permission.admin),
+      ]);
+      await db.tasksDao.upsertAll([
+        for (final (id, projectId) in [(2, 8), (3, 9), (4, 10)])
+          sampleTask(
+            id: id,
+            title: 'Task $id',
+            projectId: projectId,
+            due: dueAt,
+            reminders: [TaskReminder(reminder: reminderAt)],
+          ).copyWith(createdBy: alice),
+      ], syncRunId: 'run');
+
+      await scheduler().reconcile();
+
+      final expected = {
+        '1:reminder:0': false,
+        '1:due': false,
+        for (final id in [2, 3, 4]) ...{
+          '$id:reminder:0': true,
+          '$id:due': true,
+        },
+      };
+      expect(pendingSnoozeOnly(), expected);
+      expect(await storedSnoozeOnly(), expected);
+    });
+
+    test('a permission change alone reconciles after the debounce and '
+        'schedules the entries again under their ids, without a cancel; '
+        'write access brings Done back', () async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      gateway.calls.clear();
+
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 7,
+          title: 'Work',
+        ).copyWith(maxPermission: Permission.read),
+      ]);
+      await reconcileAfterDebounce(notifications);
+
+      expect(gateway.calls, [
+        ...idle,
+        'schedule $reminderId',
+        'schedule $dueId',
+      ]);
+      expect(pendingSnoozeOnly(), {'1:reminder:0': true, '1:due': true});
+      expect(await storedSnoozeOnly(), {'1:reminder:0': true, '1:due': true});
+
+      gateway.calls.clear();
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 7,
+          title: 'Work',
+        ).copyWith(maxPermission: Permission.write),
+      ]);
+      await reconcileAfterDebounce(notifications);
+
+      expect(gateway.calls, [
+        ...idle,
+        'schedule $reminderId',
+        'schedule $dueId',
+      ]);
+      expect(pendingSnoozeOnly(), {'1:reminder:0': false, '1:due': false});
+      expect(await storedSnoozeOnly(), {'1:reminder:0': false, '1:due': false});
+
+      gateway.calls.clear();
+      await notifications.reconcile();
+      expect(gateway.calls, idle);
+    });
+
+    test("archiving a parent schedules its subprojects' entries again without "
+        'Done', () async {
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 9, title: 'Home'),
+        sampleProject(id: 7, title: 'Work', parent: 9),
+      ]);
+      final notifications = scheduler();
+      await notifications.reconcile();
+      expect(pendingSnoozeOnly(), {'1:reminder:0': false, '1:due': false});
+      gateway.calls.clear();
+
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 9, title: 'Home', archived: true),
+      ]);
+      await reconcileAfterDebounce(notifications);
+
+      expect(gateway.calls, [
+        ...idle,
+        'schedule $reminderId',
+        'schedule $dueId',
+      ]);
+      expect(pendingSnoozeOnly(), {'1:reminder:0': true, '1:due': true});
+      expect(await storedSnoozeOnly(), {'1:reminder:0': true, '1:due': true});
+    });
+
+    test('a snooze keeps it without Done, from its row and from the task '
+        'once the row is gone', () async {
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 7,
+          title: 'Work',
+        ).copyWith(maxPermission: Permission.read),
+      ]);
+      final notifications = scheduler();
+      await notifications.reconcile();
+      now = reminderAt.add(const Duration(minutes: 1));
+      gateway.fire(reminderId);
+
+      await scheduler().snooze(
+        key: '1:reminder:0',
+        taskId: 1,
+        duration: const Duration(minutes: 10),
+      );
+
+      expect(gateway.pending[reminderId]!.snoozeOnly, isTrue);
+      var stored = await db.scheduledNotificationsDao.find('1:reminder:0');
+      expect(stored!.snoozedUntil, now.add(const Duration(minutes: 10)));
+      expect(stored.snoozeOnly, isTrue);
+
+      now = now.add(const Duration(minutes: 11));
+      gateway.fire(reminderId);
+      await notifications.reconcile();
+      expect(await db.scheduledNotificationsDao.find('1:reminder:0'), isNull);
+
+      await scheduler().snooze(
+        key: '1:reminder:0',
+        taskId: 1,
+        duration: const Duration(minutes: 10),
+      );
+
+      expect(gateway.pending[reminderId]!.snoozeOnly, isTrue);
+      stored = await db.scheduledNotificationsDao.find('1:reminder:0');
+      expect(stored!.snoozedUntil, now.add(const Duration(minutes: 10)));
+      expect(stored.snoozeOnly, isTrue);
+    });
+  });
+
   group('following subscriptions '
       '(decision log: Notifications and widgets)', () {
     const followWork = Subscription(
@@ -1145,12 +1326,9 @@ void main() {
       final notifications = scheduler();
       await notifications.reconcile();
       now = dueAt.add(const Duration(minutes: 1));
-      final reminder = gateway.pending[reminderId]!.payload;
-      final due = gateway.pending[dueId]!.payload;
       gateway
         ..fire(reminderId)
-        ..fire(dueId)
-        ..tray.addAll({reminderId: reminder, dueId: due});
+        ..fire(dueId);
       return notifications;
     }
 

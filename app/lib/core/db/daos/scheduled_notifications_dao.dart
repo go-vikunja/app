@@ -60,21 +60,6 @@ final class ScheduledNotificationsDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsert(ScheduledNotificationRow row) =>
       into(scheduledNotifications).insertOnConflictUpdate(row);
 
-  /// Records that the entry is to fire at [until]; [originalFireAt] is the
-  /// task's own instant, so a later snooze of the same notification keeps
-  /// it. `fire_at` stays what the OS was told, until the next reconcile
-  /// reschedules the entry and writes the new time.
-  Future<void> setSnooze(
-    String key, {
-    required DateTime until,
-    required DateTime originalFireAt,
-  }) => (update(scheduledNotifications)..where((n) => n.key.equals(key))).write(
-    ScheduledNotificationsCompanion(
-      snoozedUntil: Value(until.toUtc()),
-      snoozeOriginalFireAt: Value(originalFireAt.toUtc()),
-    ),
-  );
-
   Future<List<ScheduledNotificationRow>> forTasks(Iterable<int> taskIds) =>
       (select(
         scheduledNotifications,

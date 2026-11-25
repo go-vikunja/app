@@ -34,9 +34,11 @@ class MarkDoneAction : ActionCallback {
             Log.w(TAG, "Could not queue a widget Done: ${error.javaClass.simpleName}")
             false
         }
+        // Before the redraw: it can fail on Glance's own state, and the queued
+        // tap would then wait for the next background run.
+        if (queued) WidgetActionsWorker.enqueue(context)
         // Also without a new entry: the redraw clears the tick the launcher drew.
         TasksWidget().updateAll(context)
-        if (queued) WidgetActionsWorker.enqueue(context)
     }
 
     internal companion object {

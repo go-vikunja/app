@@ -96,6 +96,20 @@ void main() {
     ));
   });
 
+  test('shows a widget set up for a label created on the device, placed on '
+      'Android or requested by the iOS extension', () async {
+    const placed = WidgetConfig(accountId: alice, kind: LabelTasksKind(-3));
+    await host.saveConfig(1, placed);
+    plugin.requestedKeys.add('$alice.label_-4');
+
+    expect(plugin.instances.first.snapshotKey, '$alice.label_-3');
+    expect(await host.configs(), {1: placed});
+    expect(await host.displayedConfigs(), {
+      placed,
+      const WidgetConfig(accountId: alice, kind: LabelTasksKind(-4)),
+    });
+  });
+
   test('asks the launcher for the right widget, with its config', () async {
     await host.requestPin(
       const WidgetConfig(accountId: alice, kind: QuickAddKind()),

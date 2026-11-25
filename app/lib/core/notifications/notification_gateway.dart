@@ -62,6 +62,7 @@ final class ScheduledNotification {
     required this.payload,
     required this.exact,
     this.privacy = const NotificationPrivacy(),
+    this.snoozeOnly = false,
   });
 
   final int osId;
@@ -75,6 +76,10 @@ final class ScheduledNotification {
   /// Exact alarm on Android when allowed, else inexact-allow-while-idle.
   final bool exact;
   final NotificationPrivacy privacy;
+
+  /// Without Done: the user may not change the task, its project read-only
+  /// or archived (decision log: Notifications and widgets).
+  final bool snoozeOnly;
 }
 
 /// The thin wrapper around `flutter_local_notifications`; everything above
@@ -135,7 +140,10 @@ abstract interface class NotificationGateway {
     required String payload,
   });
 
-  /// Shows a notification at once (the "Send a test notification" button).
+  /// Shows the notification of the "Send a test notification" button at
+  /// once, on the Reminders channel with the lock-screen visibility
+  /// [privacy] gives, and without the task actions: it names no task for a
+  /// Done or a snooze to act on.
   Future<void> showNow({
     required int osId,
     required String title,

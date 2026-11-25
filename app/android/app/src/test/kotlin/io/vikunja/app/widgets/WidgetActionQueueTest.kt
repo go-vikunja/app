@@ -1,8 +1,10 @@
 package io.vikunja.app.widgets
 
 import java.io.File
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -125,5 +127,32 @@ class WidgetActionQueueTest {
         files.queue.delete()
 
         assertEquals(setOf(2L), queue.hiddenTaskIds("acc", snapshotGeneratedAt = -1))
+    }
+
+    @Test
+    fun `counts a queued tap whose pending file could not be written`() {
+        // A regular file in place of the widgets folder; the queue beside it
+        // stays writable.
+        assertTrue(File(folder.root, "widgets").createNewFile())
+
+        assertTrue(queue.add(WidgetAction("a", "acc", 1, 10), snapshotGeneratedAt = 0))
+
+        assertFalse(files.pending.exists())
+        assertEquals(listOf("a"), queue.queued().map { it.id })
+        assertTrue(queue.hasWork())
+        assertFalse(queue.add(WidgetAction("b", "acc", 1, 11), snapshotGeneratedAt = 0))
+    }
+
+    @Test
+    fun `hides nothing when the tap could not be queued`() {
+        assertTrue(File(folder.root, "widget_actions.jsonl.tmp").mkdir())
+
+        assertThrows(IOException::class.java) {
+            queue.add(WidgetAction("a", "acc", 1, 10), snapshotGeneratedAt = 0)
+        }
+
+        assertFalse(queue.hasWork())
+        assertFalse(files.pending.exists())
+        assertEquals(emptySet<Long>(), queue.hiddenTaskIds("acc", snapshotGeneratedAt = 0))
     }
 }

@@ -1,11 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/widgets/plugin_widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/widget_catalog.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
+import 'package:vikunja_mobile/core/widgets/widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/widget_publisher.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot_builder.dart';
+import 'package:vikunja_widgets/testing.dart';
+import 'package:vikunja_widgets/vikunja_widgets.dart';
 
 import '../../helpers/fake_timers.dart';
 import '../../helpers/sample_data.dart';
@@ -84,11 +88,12 @@ void main() {
   WidgetPublisher publisher({
     Set<WidgetKind> alwaysKinds = const {},
     bool refreshesAtValidity = false,
+    WidgetHost? on,
   }) {
     final publisher = WidgetPublisher(
       accountId: alice,
       db: db,
-      host: host,
+      host: on ?? host,
       account: () => registered,
       build: build,
       alwaysKinds: alwaysKinds,
@@ -351,6 +356,60 @@ void main() {
     await pumpEventQueue();
 
     expect(host.snapshot('$alice.today')?.title, 'today: A new day');
+  });
+
+  test('a widget set up for a label created on the device is published on '
+      'every run, kept while task titles are hidden, and told when its '
+      'account is removed', () async {
+    // Over the plugin: FakeWidgetHost hands back configs, never reading
+    // them from the keys the widgets show.
+    final plugin = MemoryVikunjaWidgets(
+      instances: const [
+        WidgetInstance(appWidgetId: 1, provider: WidgetProviderKind.list),
+      ],
+    );
+    final pluginHost = PluginWidgetHost(plugin);
+    const key = '$alice.label_-3';
+    await pluginHost.saveConfig(
+      1,
+      const WidgetConfig(accountId: alice, kind: LabelTasksKind(-3)),
+    );
+    final widgets = publisher(on: pluginHost);
+
+    await widgets.publishNow();
+    title = 'Shed';
+    await widgets.publishNow();
+
+    expect(builds, [
+      {const LabelTasksKind(-3)},
+      {const LabelTasksKind(-3)},
+    ]);
+    expect(WidgetSnapshot.decode(plugin.snapshots[key]!).title, 'label: Shed');
+    expect(plugin.updates, [
+      [key],
+      [key],
+    ]);
+
+    showsTaskTitles = false;
+    await widgets.publishNow();
+    expect(plugin.snapshots, contains(key));
+
+    await WidgetPublishers(
+      host: pluginHost,
+      removedSnapshot: (key, accountId) => WidgetSnapshot(
+        key: key,
+        accountId: accountId,
+        state: WidgetSnapshotState.accountRemoved,
+        title: 'Account removed',
+        generatedAt: now,
+        validUntil: now,
+      ),
+    ).wipe(alice);
+
+    expect(
+      WidgetSnapshot.decode(plugin.snapshots[key]!).state,
+      WidgetSnapshotState.accountRemoved,
+    );
   });
 
   test('sign-out deletes the account, and its widgets say it was '

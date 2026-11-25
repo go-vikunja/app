@@ -73,7 +73,7 @@ final class AccountNotificationPreferencesProvider
 }
 
 String _$accountNotificationPreferencesHash() =>
-    r'1c29a57a08feaf5a2a160f3729cd59bc7e49f94a';
+    r'06c4c7aff2401806dbb9b1580a31cfcf7f4fa060';
 
 /// One account's switches: the stored value, then every write.
 

@@ -42,8 +42,11 @@ final class LocalActivityRepository implements ActivityRepository {
       _db.serverNotificationsDao.watchUnreadCount().distinct();
 
   @override
-  Future<void> refresh({bool wholeWindow = false}) async {
-    final fresh = await _sync.run(wholeWindow: wholeWindow);
+  Future<void> refresh({bool wholeWindow = false}) =>
+      _refresh(wholeWindow: wholeWindow);
+
+  Future<void> _refresh({bool wholeWindow = false, bool marked = false}) async {
+    final fresh = await _sync.run(wholeWindow: wholeWindow, marked: marked);
     if (fresh.isEmpty || _disposed) return;
     await _db.serverNotificationsDao.markHandled(fresh.map((n) => n.id));
   }
@@ -79,7 +82,7 @@ final class LocalActivityRepository implements ActivityRepository {
   void _sendQuietly() {
     if (_disposed) return;
     unawaited(
-      refresh().then<void>(
+      _refresh(marked: true).then<void>(
         (_) {},
         onError: (Object error) => _log.info(
           'Read marks stay queued for the next sync: ${error.runtimeType}',

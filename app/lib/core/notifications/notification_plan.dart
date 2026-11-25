@@ -3,6 +3,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart' show SubscribedTasks;
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 
 /// A notification the account should have pending, before the OS id and
 /// the window are applied. [key] is stable across reschedules:
@@ -17,6 +18,7 @@ final class DesiredNotification {
     required this.title,
     required this.body,
     this.snooze,
+    this.snoozeOnly = false,
   });
 
   final String key;
@@ -32,6 +34,9 @@ final class DesiredNotification {
   /// The snooze that moved [fireAt] away from the task's own instant, so
   /// the stored row keeps it for the next plan.
   final Snooze? snooze;
+
+  /// Only the snoozes: the task's project is read-only or archived.
+  final bool snoozeOnly;
 
   /// The task's own instant, which a snooze leaves alone.
   DateTime get occurrence => snooze?.originalFireAt.toUtc() ?? fireAt;
@@ -97,6 +102,17 @@ DateTime? notificationInstantOf(
 bool sameInstant(DateTime? a, DateTime? b) =>
     a?.millisecondsSinceEpoch == b?.millisecondsSinceEpoch;
 
+/// The projects whose tasks the user may not change: archived, also
+/// through a parent, or known to be read-only. Their notifications offer
+/// only the snoozes, as their widget rows offer no Done (decision log:
+/// Notifications and widgets); an unknown permission keeps Done, as the
+/// lists do.
+Set<int> snoozeOnlyProjectIds(Iterable<Project> projects) => {
+  ...archivedProjectIds(projects),
+  for (final project in projects)
+    if (project.maxPermission?.canWrite == false) project.id,
+};
+
 /// The notifications an account should have, from its local data alone:
 /// undone tasks, not queued for deletion, where [userId] is the creator or
 /// an assignee (a task created here under a temporary id has no creator yet and
@@ -109,6 +125,7 @@ bool sameInstant(DateTime? a, DateTime? b) =>
 /// `originalFireAt` is the entry's own instant and whose `until` is still ahead
 /// moves the entry there, which is how a notification that has fired comes
 /// back. Titles and bodies are built by [describe] (localised by the caller).
+/// Entries of a task in [snoozeOnlyProjects] offer only the snoozes.
 /// Sorted by [DesiredNotification.fireAt], then by key.
 ///
 /// With [late], entries whose instant passed at most that long ago are
@@ -129,6 +146,7 @@ List<DesiredNotification> planNotifications({
   describe,
   SubscribedTasks? subscribed,
   Duration late = Duration.zero,
+  Set<int> snoozeOnlyProjects = const {},
 }) {
   if (!preferences.anyEnabled) return const [];
   final since = now.subtract(late);
@@ -158,6 +176,7 @@ List<DesiredNotification> planNotifications({
       title: title,
       body: body,
       snooze: applies ? snooze : null,
+      snoozeOnly: snoozeOnlyProjects.contains(task.projectId),
     );
   }
 
@@ -221,13 +240,14 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
 /// The first snoozed entry after those joins the window too: the snooze
 /// lives only in the entry's row, which the caller keeps only for the
 /// window, and the task alone cannot bring it back. Only one, as each
-/// account's iOS share keeps room for one (`notificationWindow`).
+/// account's share keeps room for one (`notificationWindow`).
 ///
 /// Only what left the window is cancelled. A key still wanted is scheduled
 /// again under its id, which replaces it, when anything differs (instant,
-/// title, body, [exact], [privacy]) or with [everything]; a cancel first
-/// would, on Android, also take what the tray shows under that id. Cancels
-/// come in [scheduled] order, schedules in [desired] order.
+/// title, body, whether it offers Done, [exact], [privacy]) or with
+/// [everything]; a cancel first would, on Android, also take what the tray
+/// shows under that id. Cancels come in [scheduled] order, schedules in
+/// [desired] order.
 ({
   List<int> cancelOsIds,
   List<DesiredNotification> schedule,
@@ -244,6 +264,7 @@ diffSchedule({
       String body,
       bool exact,
       NotificationPrivacy privacy,
+      bool snoozeOnly,
     })
   >
   scheduled,
@@ -275,6 +296,7 @@ diffSchedule({
         want.fireAt == entry.fireAt.toUtc() &&
         want.title == entry.title &&
         want.body == entry.body &&
+        want.snoozeOnly == entry.snoozeOnly &&
         entry.exact == exact &&
         entry.privacy == privacy) {
       unchangedKeys.add(entry.key);

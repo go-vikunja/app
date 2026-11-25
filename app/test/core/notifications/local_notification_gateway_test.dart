@@ -175,9 +175,9 @@ void main() {
       expect(activity['importance'], Importance.defaultImportance.value);
     });
 
-    test('iOS: both task categories with background actions, no '
+    test('iOS: the three task categories with background actions, no '
         'prompt; the locked one asks for the device unlock for Done '
-        'only', () async {
+        'only, the snooze-only one has no Done', () async {
       // Implied by the first use.
       await gateway(platform: TargetPlatform.iOS).cancel(1);
 
@@ -193,12 +193,14 @@ void main() {
       expect(categories.map((c) => c['identifier']), [
         LocalNotificationGateway.darwinCategoryId,
         LocalNotificationGateway.darwinLockedCategoryId,
+        LocalNotificationGateway.darwinSnoozeOnlyCategoryId,
       ]);
       List<Map<String, Object?>> actionsOf(Map<String, Object?> category) =>
           (category['actions']! as List)
               .map((a) => Map<String, Object?>.from(a as Map))
               .toList();
-      for (final category in categories) {
+      final [plain, locked, snoozeOnly] = categories;
+      for (final category in [plain, locked]) {
         final actions = actionsOf(category);
         expect(actions.map((a) => a['identifier']), [
           NotificationActionIds.markDone,
@@ -216,15 +218,30 @@ void main() {
           expect(action['type'], 'plain');
         }
       }
-      for (final action in actionsOf(categories.first)) {
+      for (final action in actionsOf(plain)) {
         expect(action['options'], isEmpty, reason: 'no foreground option');
       }
-      expect(actionsOf(categories.last).map((a) => a['options']), [
+      expect(actionsOf(locked).map((a) => a['options']), [
         [DarwinNotificationActionOption.authenticationRequired.value],
         isEmpty,
         isEmpty,
         isEmpty,
       ]);
+      final snoozes = actionsOf(snoozeOnly);
+      expect(snoozes.map((a) => a['identifier']), [
+        NotificationActionIds.snooze10Minutes,
+        NotificationActionIds.snooze1Hour,
+        NotificationActionIds.snoozeTomorrow,
+      ]);
+      expect(snoozes.map((a) => a['title']), [
+        en.notificationActionSnooze10Minutes,
+        en.notificationActionSnooze1Hour,
+        en.notificationActionSnoozeTomorrow,
+      ]);
+      for (final action in snoozes) {
+        expect(action['type'], 'plain');
+        expect(action['options'], isEmpty);
+      }
     });
 
     test('without a background entry point', () async {
@@ -487,6 +504,66 @@ void main() {
           NotificationActionIds.snooze1Hour,
           NotificationActionIds.snoozeTomorrow,
         ], reason: method);
+      }
+    });
+
+    const privacies = [
+      NotificationPrivacy(),
+      NotificationPrivacy(doneNeedsUnlock: true),
+    ];
+
+    Future<void> scheduleSnoozeOnlyLaterAndAtOnce(
+      LocalNotificationGateway gateway0,
+      NotificationPrivacy privacy,
+    ) async {
+      calls.clear();
+      for (final (osId, fireAt) in [(1, notification.fireAt), (2, now)]) {
+        await gateway0.schedule(
+          ScheduledNotification(
+            osId: osId,
+            fireAt: fireAt,
+            title: 't',
+            body: 'b',
+            payload: 'p',
+            exact: true,
+            privacy: privacy,
+            snoozeOnly: true,
+          ),
+        );
+      }
+    }
+
+    test('Android: only 1 hour and Tomorrow for a task the user may not '
+        'change, also when shown at once', () async {
+      final gateway0 = gateway();
+      for (final privacy in privacies) {
+        await scheduleSnoozeOnlyLaterAndAtOnce(gateway0, privacy);
+
+        for (final method in ['zonedSchedule', 'show']) {
+          final actions = (platformSpecifics(call(method))['actions']! as List)
+              .map((a) => (a as Map)['id']);
+          expect(actions, [
+            NotificationActionIds.snooze1Hour,
+            NotificationActionIds.snoozeTomorrow,
+          ], reason: '$method, doneNeedsUnlock: ${privacy.doneNeedsUnlock}');
+        }
+      }
+    });
+
+    test('iOS: the snooze-only category for a task the user may not change, '
+        'also while Done needs the device unlocked and when shown at '
+        'once', () async {
+      final gateway0 = gateway(platform: TargetPlatform.iOS);
+      for (final privacy in privacies) {
+        await scheduleSnoozeOnlyLaterAndAtOnce(gateway0, privacy);
+
+        for (final method in ['zonedSchedule', 'show']) {
+          expect(
+            platformSpecifics(call(method))['categoryIdentifier'],
+            'task_snooze',
+            reason: '$method, doneNeedsUnlock: ${privacy.doneNeedsUnlock}',
+          );
+        }
       }
     });
 
@@ -777,6 +854,47 @@ void main() {
       platformSpecifics(call('show'))['visibility'],
       NotificationVisibility.secret.index,
     );
+  });
+
+  test('showNow: the Reminders channel without the task actions, which '
+      'would have no task to act on, also while Done needs the device '
+      'unlocked', () async {
+    final gateway0 = gateway();
+    await gateway0.showNow(osId: 1, title: 't', body: 'b', payload: 'p');
+    await gateway0.showNow(
+      osId: 2,
+      title: 't',
+      body: 'b',
+      payload: 'p',
+      privacy: const NotificationPrivacy(doneNeedsUnlock: true),
+    );
+
+    final shown = [
+      for (final call in calls)
+        if (call.method == 'show') platformSpecifics(call),
+    ];
+    expect(shown, hasLength(2));
+    for (final specifics in shown) {
+      expect(specifics['channelId'], LocalNotificationGateway.channelId);
+      expect(specifics['category'], 'reminder');
+      expect(specifics['actions'], anyOf(isNull, isEmpty));
+    }
+    expect(shown.first['visibility'], isNull);
+  });
+
+  test('showNow on iOS: no category, so no task actions, the locked one '
+      'neither', () async {
+    await gateway(platform: TargetPlatform.iOS).showNow(
+      osId: 1,
+      title: 't',
+      body: 'b',
+      payload: 'p',
+      privacy: const NotificationPrivacy(doneNeedsUnlock: true),
+    );
+
+    final specifics = platformSpecifics(call('show'));
+    expect(specifics['categoryIdentifier'], isNull);
+    expect(specifics['presentAlert'], isTrue);
   });
 
   group('showActivity', () {

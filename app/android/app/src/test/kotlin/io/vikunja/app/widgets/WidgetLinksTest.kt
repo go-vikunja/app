@@ -43,14 +43,15 @@ class WidgetLinksTest {
             accountId = null,
             snapshot = null,
             hiddenTaskIds = emptySet(),
+            turnedOverdueTaskIds = emptySet(),
             dynamicColor = true,
             linkKey = KEY,
         )
 
-        assertEquals(ListContent.SetUp(5, KEY), ListContent.of(state, now = 0))
+        assertEquals(ListContent.SetUp(5, KEY), ListContent.of(state))
         assertEquals(
             ListContent.NotLoaded("acc", KEY),
-            ListContent.of(state.copy(configured = true, accountId = "acc"), now = 0),
+            ListContent.of(state.copy(configured = true, accountId = "acc")),
         )
     }
 

@@ -162,15 +162,57 @@ void main() {
     },
   );
 
+  for (final from in [1, 2]) {
+    test('a version $from database upgrades to version 3 with every row '
+        'kept, its scheduled notifications offering Done as they were '
+        'scheduled', () async {
+      final schema = await verifier.schemaAt(from);
+      _fillVersion1(
+        schema.rawDatabase,
+        encodeTaskChanges(const TaskChanges(done: true)),
+      );
+      final tables = tablesOf(schema.rawDatabase);
+      final before = rowsOf(schema.rawDatabase, tables);
+      expect(before['scheduled_notifications'], hasLength(1));
+      final db = AppDatabase(schema.newConnection());
+      addTearDown(db.close);
+
+      await verifier.migrateAndValidate(db, 3);
+
+      expect(rowsOf(schema.rawDatabase, tables), {
+        ...before,
+        'scheduled_notifications': [
+          for (final row in before['scheduled_notifications']!)
+            {...row, 'snooze_only': 0},
+        ],
+        if (from == 1)
+          'outbox': [
+            for (final row in before['outbox']!) {...row, 'label_id': null},
+          ],
+      });
+      expect(
+        tablesOf(schema.rawDatabase),
+        from == 1
+            ? ([...tables, ..._storedDetailsTables, 'label_id_remaps']..sort())
+            : tables,
+      );
+      expect(schema.rawDatabase.userVersion, 3);
+      expect(
+        (await db.scheduledNotificationsDao.all()).single.snoozeOnly,
+        isFalse,
+      );
+    });
+  }
+
   test('a database a later version left behind opens with its tables as '
       'they are', () async {
-    final schema = await verifier.schemaAt(2);
+    final schema = await verifier.schemaAt(3);
     schema.rawDatabase
       ..execute(
         'INSERT INTO sync_state (key, value) '
         "VALUES ('last_synced_at', '2026-11-09T12:00:00.000Z')",
       )
-      ..userVersion = 3;
+      ..userVersion = 4;
     final tables = schemaOf(schema.rawDatabase);
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);

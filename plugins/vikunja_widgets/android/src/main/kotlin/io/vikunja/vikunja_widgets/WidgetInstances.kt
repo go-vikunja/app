@@ -6,10 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import org.json.JSONException
-import org.json.JSONObject
 import java.io.File
-import java.io.IOException
 import java.util.UUID
 
 // The second list receiver is the previous official app's provider: the
@@ -47,9 +44,14 @@ class WidgetInstances(val context: Context) {
     private val manager: AppWidgetManager
         get() = AppWidgetManager.getInstance(context)
 
+    // A getter: filesDir may touch the disk, and the plugin is attached on the
+    // main thread.
+    private val files: WidgetConfigFiles
+        get() = WidgetConfigFiles(widgetsDir(context))
+
     fun configs(): List<Map<String, Any?>> {
         val placed = WidgetProviderKind.entries.associateWith { placed(it) }
-        pruneConfigs(placed.values.flatMap { byReceiver -> byReceiver.values.flatMap { it.asIterable() } }.toSet())
+        files.prune(placed.values.flatMap { byReceiver -> byReceiver.values.flatMap { it.asIterable() } }.toSet())
         return placed.flatMap { (kind, byReceiver) ->
             byReceiver.flatMap { (receiver, ids) ->
                 ids.map { id ->
@@ -57,7 +59,7 @@ class WidgetInstances(val context: Context) {
                         "appWidgetId" to id,
                         "provider" to kind.channelName,
                         "followsActiveAccount" to kind.followsActiveAccount(receiver),
-                        "config" to readText(configFile(id)),
+                        "config" to files.read(id),
                     )
                 }
             }
@@ -65,20 +67,7 @@ class WidgetInstances(val context: Context) {
     }
 
     fun update(keys: Set<String>) {
-        if (keys.isEmpty()) return
-        val activeToday = activeAccountId()?.let { "$it.today" }
-        for (kind in WidgetProviderKind.entries) {
-            broadcast(
-                placed(kind) { id ->
-                    val config = readText(configFile(id))
-                    if (config == null) {
-                        kind == WidgetProviderKind.LIST && activeToday in keys
-                    } else {
-                        snapshotKeyOf(config) in keys
-                    }
-                },
-            )
-        }
+        broadcast(files.redrawn(keys, this::idsOf))
     }
 
     fun updateIds(appWidgetIds: IntArray) {
@@ -111,30 +100,12 @@ class WidgetInstances(val context: Context) {
         return manager.requestPinAppWidget(ComponentName(context, kind.pinReceiver), null, placed)
     }
 
-    fun saveConfigIfAbsent(appWidgetId: Int, config: String): Boolean {
-        val file = configFile(appWidgetId)
-        if (file.exists()) return false
-        file.parentFile?.mkdirs()
-        val temp = File(file.parentFile, "${file.name}.${UUID.randomUUID()}.tmp")
-        return try {
-            temp.writeText(config)
-            temp.renameTo(file)
-        } finally {
-            temp.delete()
-        }
-    }
+    fun saveConfigIfAbsent(appWidgetId: Int, config: String): Boolean = files.saveIfAbsent(appWidgetId, config)
 
     private fun placed(kind: WidgetProviderKind, include: (Int) -> Boolean = { true }): Map<String, IntArray> =
-        kind.idsByReceiver({ manager.getAppWidgetIds(ComponentName(context, it)) }, include)
+        kind.idsByReceiver(this::idsOf, include)
 
-    private fun pruneConfigs(placedIds: Set<Int>) {
-        val files = File(widgetsDir(context), "configs").listFiles() ?: return
-        for (file in files) {
-            if (!file.name.endsWith(".json")) continue
-            val id = file.name.removeSuffix(".json").toIntOrNull() ?: continue
-            if (id !in placedIds) file.delete()
-        }
-    }
+    private fun idsOf(receiver: String): IntArray = manager.getAppWidgetIds(ComponentName(context, receiver))
 
     private fun broadcast(idsByReceiver: Map<String, IntArray>) {
         for ((receiver, ids) in idsByReceiver) {
@@ -146,27 +117,7 @@ class WidgetInstances(val context: Context) {
         }
     }
 
-    private fun activeAccountId(): String? =
-        readText(File(widgetsDir(context), "host.json"))?.let { stringField(it, "activeAccountId") }
-
-    private fun snapshotKeyOf(config: String): String? = stringField(config, "key")
-
-    private fun configFile(appWidgetId: Int) = File(widgetsDir(context), "configs/$appWidgetId.json")
-
     companion object {
         fun widgetsDir(context: Context) = File(context.filesDir, "widgets")
-
-        private fun readText(file: File): String? = try {
-            file.readText()
-        } catch (_: IOException) {
-            null
-        }
-
-        // Not optString: it turns a JSON null into "null".
-        private fun stringField(json: String, name: String): String? = try {
-            JSONObject(json).opt(name) as? String
-        } catch (_: JSONException) {
-            null
-        }
     }
 }

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/server_notifications_dao.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
@@ -88,6 +89,30 @@ void main() {
       expect((await dao.watchAll().first).every((n) => n.isRead), isTrue);
     },
   );
+
+  test('markAllRead records the choice with its marks; markRead, and a '
+      'markAllRead that finds nothing unread, do not', () async {
+    Future<String?> chosen() async =>
+        (await db.syncStateDao.readAll())[SyncStateKeys.activityMarkAllReadAt];
+    await dao.upsertAll([
+      sampleNotification(id: 1),
+      sampleNotification(id: 2),
+    ], handled: true);
+    final later = noon.add(const Duration(minutes: 1));
+
+    await dao.markRead([1], at: noon);
+    expect(await chosen(), isNull);
+
+    expect(await dao.markAllRead(at: later), [2]);
+    expect(await chosen(), later.toIso8601String());
+
+    await db.syncStateDao.write({SyncStateKeys.activityMarkAllReadAt: null});
+    expect(
+      await dao.markAllRead(at: later.add(const Duration(minutes: 1))),
+      isEmpty,
+    );
+    expect(await chosen(), isNull);
+  });
 
   test('markRead leaves a notification that is read already alone', () async {
     await dao.upsertAll([

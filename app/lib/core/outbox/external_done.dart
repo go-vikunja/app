@@ -78,29 +78,42 @@ final class ExternalDone {
   /// a Done of the task that still waits in the outbox (a widget's,
   /// imported just before on iOS) is settled then as a new one would be,
   /// drain included. Without [shown] (a notification scheduled before step
-  /// 40e) the Done always goes.
+  /// 40e) the Done always goes. A Done of a task the user may not change,
+  /// its project read-only or archived ([snoozeOnlyProjectIds]), is ignored
+  /// likewise.
   Future<void> markDone(
     String accountId,
     int taskId, {
     TappedOccurrence? shown,
   }) async {
-    if (shown != null) {
-      final db = _container.read(appDatabaseProvider(accountId));
-      final task = await db.tasksDao.find(await db.tasksDao.resolveId(taskId));
-      if (task != null && shown.passedBy(task)) {
-        if ((await db.outboxDao.pendingChangesFor(task.id))?.done == true) {
-          await settle(accountId, {taskId});
-          return;
-        }
-        _log.info(
-          'Ignored a Done of task $taskId from outside the app: the task is '
-          'done or has moved on since',
-        );
-        await _container
-            .read(notificationSchedulerProvider(accountId))
-            ?.reconcile();
+    final db = _container.read(appDatabaseProvider(accountId));
+    final task = await db.tasksDao.find(await db.tasksDao.resolveId(taskId));
+    if (task != null && shown != null && shown.passedBy(task)) {
+      if ((await db.outboxDao.pendingChangesFor(task.id))?.done == true) {
+        await settle(accountId, {taskId});
         return;
       }
+      _log.info(
+        'Ignored a Done of task $taskId from outside the app: the task is '
+        'done or has moved on since',
+      );
+      await _container
+          .read(notificationSchedulerProvider(accountId))
+          ?.reconcile();
+      return;
+    }
+    // A notification shown before its Done was left out still carries one.
+    if (task != null &&
+        snoozeOnlyProjectIds(await db.projectsDao.loadAll())
+            .contains(task.projectId)) {
+      _log.info(
+        'Ignored a Done of task $taskId from outside the app: the user may '
+        'not change it',
+      );
+      await _container
+          .read(notificationSchedulerProvider(accountId))
+          ?.reconcile();
+      return;
     }
     // Kept alive for the write: the repository is not a keep-alive provider.
     final repository = _container.listen(

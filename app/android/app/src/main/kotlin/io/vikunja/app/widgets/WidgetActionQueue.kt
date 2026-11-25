@@ -1,5 +1,7 @@
 package io.vikunja.app.widgets
 
+import android.util.Log
+import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -17,7 +19,16 @@ internal class WidgetActionQueue(private val files: WidgetFiles) {
         val lines = files.queue.readTextOrNull().orEmpty().lines().filter { it.isNotBlank() }
         files.queue.writeAtomically((lines + action.toJson()).joinToString(separator = "\n", postfix = "\n"))
         val kept = pending().filter { action.createdAt - it.createdAt < PENDING_LIFETIME_MS }
-        files.pending.writeAtomically(pendingJson(kept + action))
+        try {
+            files.pending.writeAtomically(pendingJson(kept + action))
+        } catch (error: IOException) {
+            // The tap is queued, so it counts and its worker starts at once.
+            // Without this entry its row can show again only between the app
+            // taking the tap and the app's next snapshot, and the app ignores
+            // a Done for a task done or moved on (decision log: Notifications
+            // and widgets).
+            Log.w(TAG, "Could not keep a widget Done as pending: ${error.javaClass.simpleName}")
+        }
         true
     }
 
@@ -56,5 +67,6 @@ internal class WidgetActionQueue(private val files: WidgetFiles) {
     private companion object {
         val lock = Any()
         const val PENDING_LIFETIME_MS = 24 * 60 * 60 * 1000L
+        const val TAG = "VikunjaWidgets"
     }
 }

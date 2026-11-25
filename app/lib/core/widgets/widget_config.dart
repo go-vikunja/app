@@ -35,8 +35,8 @@ sealed class WidgetKind {
 
   String get name;
 
-  /// Its part of a snapshot key: letters, digits and `_` only, so the key
-  /// is a safe file name on both platforms.
+  /// Its part of a snapshot key: letters, digits, `_` and the `-` of a
+  /// label's temporary id, so the key is a safe file name on both platforms.
   String get keyPart;
 
   /// The app's list a tap on the widget's header opens; null for
@@ -282,20 +282,25 @@ final class WidgetConfig {
         _ => null,
       },
       (_, null) => null,
+      // Only a label is created on the device: a widget set up before the
+      // server had it keeps the temporary id, which the build follows to the
+      // server id (decision log: Outbox).
+      ('label', final id?) => LabelTasksKind(id),
+      (_, final id?) when id < 0 => null,
       ('upcoming', final days?) when WidgetKind.upcomingDays.contains(days) =>
         UpcomingKind(days),
       ('project', final id?) => ProjectTasksKind(id),
-      ('label', final id?) => LabelTasksKind(id),
       ('filter', final id?) => SavedFilterKind(id),
       _ => null,
     };
-    return kind == null
-        ? null
-        : WidgetConfig(accountId: key.substring(0, dot), kind: kind);
+    if (kind == null) return null;
+    final config = WidgetConfig(accountId: key.substring(0, dot), kind: kind);
+    // Read only as written: `label_-0` would be published as `label_0`.
+    return config.key == key ? config : null;
   }
 
   static final _numberedPart = RegExp(
-    r'^(upcoming|project|label|filter)_([0-9]{1,15})$',
+    r'^(upcoming|project|label|filter)_(-?[0-9]{1,15})$',
   );
 
   static const version = 1;

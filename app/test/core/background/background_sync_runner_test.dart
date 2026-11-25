@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/background/background_entry_point.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
 import 'package:vikunja_mobile/core/background/background_sync_runner.dart';
@@ -93,8 +94,9 @@ void main() {
     );
   });
 
-  ProviderContainer newContainer() => ProviderContainer(
+  ProviderContainer newContainer({bool headless = false}) => ProviderContainer(
     overrides: [
+      if (headless) ...backgroundRunOverrides,
       ...auth.overrides,
       accountDatabaseFilesProvider.overrideWithValue(files),
       openDatabasesProvider.overrideWithValue(
@@ -798,7 +800,8 @@ void main() {
     gate.complete();
   });
 
-  test('a drain run only drains', () async {
+  test('a drain run sends the queue, whatever backoff another isolate armed, '
+      'without a sync or the activity', () async {
     final entry = await signedIn(1, syncedAt: monday);
     final db = databases[entry.id]!;
     await db.tasksDao.upsertAll([
@@ -825,7 +828,87 @@ void main() {
 
     expect(writeOf(entry.id).requests, ['update 1']);
     expect(readOf(entry.id).requests, isEmpty);
-    expect(gateway.calls, isNot(contains('pendingIds')));
+    expect(engineOf(entry.id).refreshCalls, 0);
+  });
+
+  test("a drain run then plans the notifications from the server's answer: "
+      "a repeating task's Done brings its next occurrence", () async {
+    final entry = await signedIn(1, syncedAt: monday);
+    final db = databases[entry.id]!;
+    final reminderAt = monday.add(const Duration(hours: 1));
+    final dueAt = monday.add(const Duration(hours: 2));
+    final daily = sampleTask(
+      id: 1,
+      title: 'Water',
+      projectId: 7,
+      due: dueAt,
+      reminders: [TaskReminder(reminder: reminderAt)],
+      repeatAfter: const Duration(days: 1),
+      createdBy: const User(id: 1, username: 'u1'),
+    );
+    await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);
+    await db.tasksDao.upsertAll([daily], syncRunId: 'run');
+    // The notification action's Done, which met an expired token.
+    await db.outboxDao.queueUpdate(
+      1,
+      const TaskChanges(done: true),
+      now: monday,
+    );
+    readOf(entry.id).allTasks = [daily];
+    writeOf(entry.id).serverTasks[1] = daily;
+
+    expect(
+      await runner().run(kind: BackgroundRunKind.drain),
+      BackgroundRunOutcome.completed,
+    );
+
+    expect(writeOf(entry.id).requests, ['update 1']);
+    expect(engineOf(entry.id).refreshCalls, 0);
+    expect(
+      gateway.pending[notificationOsIdFor(entry.id, '1:reminder:0')]?.fireAt,
+      reminderAt.add(const Duration(days: 1)),
+    );
+    expect(
+      gateway.pending[notificationOsIdFor(entry.id, '1:due')]?.fireAt,
+      dueAt.add(const Duration(days: 1)),
+    );
+  });
+
+  test('each plan counts the stored accounts again: a fifth one the app '
+      'signed in during the run shrinks the window of the others on '
+      'Android, so they never hold more than the system allows', () async {
+    container = newContainer(headless: true);
+    final entry = await signedIn(1, syncedAt: monday);
+    for (var userId = 2; userId <= 4; userId++) {
+      await signedIn(userId, syncedAt: monday);
+    }
+    final db = databases[entry.id]!;
+    await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);
+    await db.tasksDao.upsertAll([
+      for (var id = 1; id <= 100; id++)
+        sampleTask(
+          id: id,
+          title: 'Task $id',
+          projectId: 7,
+          due: monday.add(Duration(hours: 1, minutes: id)),
+          createdBy: const User(id: 1, username: 'u1'),
+        ),
+    ], syncRunId: 'run');
+    final dues = {
+      for (var id = 1; id <= 100; id++)
+        notificationOsIdFor(entry.id, '$id:due'),
+    };
+    int pendingDues() => gateway.pending.keys.where(dues.contains).length;
+    int? beforeSignIn;
+    engineOf(entry.id).onRefresh = () async {
+      beforeSignIn = pendingDues();
+      await signedIn(5, syncedAt: monday);
+    };
+
+    expect(await runner().run(), BackgroundRunOutcome.completed);
+
+    expect(beforeSignIn, 100);
+    expect(pendingDues(), 94);
   });
 
   test('a session that ends during a drain is noticed as well', () async {

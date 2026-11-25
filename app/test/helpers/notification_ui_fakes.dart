@@ -24,8 +24,16 @@ final class FakeNotificationOs implements NotificationGateway {
   final List<String> calls = [];
   Future<void> Function(String call)? beforeCall;
   final Map<int, ScheduledNotification> pending = {};
-  final List<({int osId, String title, String body, String payload})> shown =
-      [];
+  final List<
+    ({
+      int osId,
+      String title,
+      String body,
+      String payload,
+      NotificationPrivacy privacy,
+    })
+  >
+  shown = [];
 
   Future<void> _call(String description) async {
     calls.add(description);
@@ -82,7 +90,13 @@ final class FakeNotificationOs implements NotificationGateway {
     NotificationPrivacy privacy = const NotificationPrivacy(),
   }) async {
     await _call('showNow $osId');
-    shown.add((osId: osId, title: title, body: body, payload: payload));
+    shown.add((
+      osId: osId,
+      title: title,
+      body: body,
+      payload: payload,
+      privacy: privacy,
+    ));
   }
 
   final List<({int osId, String title, String body, String payload})>

@@ -75,7 +75,7 @@ cd app && dart run build_runner build
 
 The l10n code in `app/lib/l10n/generated/` is not committed ([Languages](decisions.md#languages)): `flutter pub get` at the root writes it (`generate: true`), and so do `flutter build` and `flutter run`. Run `flutter pub get` after a pull or an ARB change, since `flutter analyze` and `flutter test` do not write it and an incremental `flutter build` or `flutter run` misses a new ARB file. `python3 -I tool/l10n_progress.py` shows how much of the English each language translates.
 
-The database schema is versioned ([Sync](decisions.md#sync)). `app/drift_schemas/drift_schema_v<N>.json` holds the dump of every schema version (drift_dev's file name); today those are `drift_schema_v1.json` and `drift_schema_v2.json`. `app/test/core/db/generated/` is generated from the dumps, and `test/core/db/schema_test.dart` checks that the generated schema of the latest version still matches the code. After a schema change, bump `schemaVersion`, dump the new version from `app/` (so drift's build options apply), regenerate the test helpers and add a migration test:
+The database schema is versioned ([Sync](decisions.md#sync)). `app/drift_schemas/drift_schema_v<N>.json` holds the dump of every schema version (drift_dev's file name); today those are `drift_schema_v1.json` to `drift_schema_v3.json`. `app/test/core/db/generated/` is generated from the dumps, and `test/core/db/schema_test.dart` checks that the generated schema of the latest version still matches the code. After a schema change, bump `schemaVersion`, dump the new version from `app/` (so drift's build options apply), regenerate the test helpers and add a migration test:
 
 ```sh
 cd app && dart run drift_dev schema dump lib/core/db/app_database.dart drift_schemas/drift_schema_v<N>.json
@@ -114,7 +114,7 @@ The in-app logo (`app/assets/branding/logo.png`) and the status bar icon (`ic_no
 (cd packages/vikunja_api && flutter test --exclude-tags contract)
 (cd plugins/vikunja_widgets && flutter test)
 (cd plugins/vikunja_storage_flush && flutter test)
-(cd app/android && ./gradlew :app:testDebugUnitTest -x compileFlutterBuildDebug)   # the Kotlin code, on the JVM
+(cd app/android && ./gradlew :app:testDebugUnitTest -x compileFlutterBuildDebug)   # the Kotlin code, the plugins' included, on the JVM
 ```
 
 On a Mac, the XCTests of the native iOS code (`app/ios/RunnerTests`: the photo location removal and the widgets' Done queue) run on a simulator, after an iOS build has generated `app/ios/Flutter/ephemeral` (for example `cd app && flutter build ios --no-codesign`), as the project needs the Swift package it holds; `xcrun simctl list devices available` names the simulators:

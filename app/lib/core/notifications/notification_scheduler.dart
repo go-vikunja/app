@@ -101,10 +101,13 @@ final class NotificationScheduler {
   final NotificationGateway _gateway;
   final NotificationPreferencesStore _preferences;
 
-  /// The table records the texts and the privacy of every entry, so a run
-  /// schedules again what a run with older settings scheduled.
+  /// The table records the texts, the privacy and whether each entry offers
+  /// Done, so a run schedules again what a run with older settings or
+  /// permissions scheduled.
   final Future<NotificationPresentation> Function() _presentation;
-  final int _window;
+
+  /// Read for each run, as the accounts sharing it may change.
+  final Future<int> Function() _window;
 
   /// The install's widget-link key, which a tap needs to switch accounts
   /// without asking; null leaves it out.
@@ -231,6 +234,7 @@ final class NotificationScheduler {
           ).toJson(),
           exact: capabilities.exactAlarms,
           privacy: presentation.privacy,
+          snoozeOnly: row.snoozeOnly,
         ),
       );
     }
@@ -339,6 +343,7 @@ final class NotificationScheduler {
       exact: exact,
       hiddenOnLockScreen: privacy.hiddenOnLockScreen,
       doneNeedsUnlock: privacy.doneNeedsUnlock,
+      snoozeOnly: snoozeOnlyProjectIds(projects).contains(task.projectId),
     );
   }
 
@@ -418,6 +423,7 @@ final class NotificationScheduler {
     }
     final (:describe, :privacy) = await _presentation();
     final linkKey = await _linkKey();
+    final windowSize = await _window();
     final now = _now();
     final rows = await _db.scheduledNotificationsDao.all();
     final pending = await _pending();
@@ -443,6 +449,7 @@ final class NotificationScheduler {
               hiddenOnLockScreen: row.hiddenOnLockScreen,
               doneNeedsUnlock: row.doneNeedsUnlock,
             ),
+            snoozeOnly: row.snoozeOnly,
           ),
     ];
     final snoozes = [
@@ -466,6 +473,7 @@ final class NotificationScheduler {
       late: lateLimit,
       snoozes: snoozes,
       describe: (task, kind) => describe(task, kind, projects[task.projectId]),
+      snoozeOnlyProjects: snoozeOnlyProjectIds(projects.values),
       subscribed: _followSubscriptions
           ? SubscribedTasks(
               own: await _db.tasksDao.ownSubscriptions(),
@@ -480,7 +488,7 @@ final class NotificationScheduler {
     final (:cancelOsIds, :schedule, :window) = diffSchedule(
       desired: desired,
       scheduled: scheduled,
-      window: _window,
+      window: windowSize,
       exact: capabilities.exactAlarms,
       privacy: privacy,
       now: now,
@@ -514,6 +522,7 @@ final class NotificationScheduler {
           ).toJson(),
           exact: capabilities.exactAlarms,
           privacy: privacy,
+          snoozeOnly: entry.snoozeOnly,
         ),
       );
     }
@@ -535,6 +544,7 @@ final class NotificationScheduler {
           exact: capabilities.exactAlarms,
           hiddenOnLockScreen: privacy.hiddenOnLockScreen,
           doneNeedsUnlock: privacy.doneNeedsUnlock,
+          snoozeOnly: entry.snoozeOnly,
         ),
     ], sinceRead: rows);
     if (!written) {

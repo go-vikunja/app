@@ -66,10 +66,10 @@ String _$notificationPreferencesStoreHash() =>
 /// content that shows less also withdraws what the account has in the
 /// tray. Built again, and so reconciling at once, when a refreshed `/info`
 /// moves the server to one whose reminders follow the subscriptions, and
-/// on iOS when the number of accounts changes their share of the window.
-/// Null once the account is gone. Disposed with the account's database on
-/// sign-out, after which [NotificationSchedulers] still holds it for the
-/// wipe.
+/// when the number of accounts changes their share of the window (on
+/// Android from five accounts on). Null once the account is gone. Disposed
+/// with the account's database on sign-out, after which
+/// [NotificationSchedulers] still holds it for the wipe.
 
 @ProviderFor(notificationScheduler)
 final notificationSchedulerProvider = NotificationSchedulerFamily._();
@@ -82,10 +82,10 @@ final notificationSchedulerProvider = NotificationSchedulerFamily._();
 /// content that shows less also withdraws what the account has in the
 /// tray. Built again, and so reconciling at once, when a refreshed `/info`
 /// moves the server to one whose reminders follow the subscriptions, and
-/// on iOS when the number of accounts changes their share of the window.
-/// Null once the account is gone. Disposed with the account's database on
-/// sign-out, after which [NotificationSchedulers] still holds it for the
-/// wipe.
+/// when the number of accounts changes their share of the window (on
+/// Android from five accounts on). Null once the account is gone. Disposed
+/// with the account's database on sign-out, after which
+/// [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerProvider
     extends
@@ -103,10 +103,10 @@ final class NotificationSchedulerProvider
   /// content that shows less also withdraws what the account has in the
   /// tray. Built again, and so reconciling at once, when a refreshed `/info`
   /// moves the server to one whose reminders follow the subscriptions, and
-  /// on iOS when the number of accounts changes their share of the window.
-  /// Null once the account is gone. Disposed with the account's database on
-  /// sign-out, after which [NotificationSchedulers] still holds it for the
-  /// wipe.
+  /// when the number of accounts changes their share of the window (on
+  /// Android from five accounts on). Null once the account is gone. Disposed
+  /// with the account's database on sign-out, after which
+  /// [NotificationSchedulers] still holds it for the wipe.
   NotificationSchedulerProvider._({
     required NotificationSchedulerFamily super.from,
     required String super.argument,
@@ -160,7 +160,7 @@ final class NotificationSchedulerProvider
 }
 
 String _$notificationSchedulerHash() =>
-    r'1529ccf6b77d9370fe004c0c3f0fd01a5c6724f5';
+    r'c028ecaa1fd0967811f8e95488d75403237821c8';
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action; the app's first build in a process
@@ -170,10 +170,10 @@ String _$notificationSchedulerHash() =>
 /// content that shows less also withdraws what the account has in the
 /// tray. Built again, and so reconciling at once, when a refreshed `/info`
 /// moves the server to one whose reminders follow the subscriptions, and
-/// on iOS when the number of accounts changes their share of the window.
-/// Null once the account is gone. Disposed with the account's database on
-/// sign-out, after which [NotificationSchedulers] still holds it for the
-/// wipe.
+/// when the number of accounts changes their share of the window (on
+/// Android from five accounts on). Null once the account is gone. Disposed
+/// with the account's database on sign-out, after which
+/// [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerFamily extends $Family
     with $FunctionalFamilyOverride<NotificationScheduler?, String> {
@@ -194,10 +194,10 @@ final class NotificationSchedulerFamily extends $Family
   /// content that shows less also withdraws what the account has in the
   /// tray. Built again, and so reconciling at once, when a refreshed `/info`
   /// moves the server to one whose reminders follow the subscriptions, and
-  /// on iOS when the number of accounts changes their share of the window.
-  /// Null once the account is gone. Disposed with the account's database on
-  /// sign-out, after which [NotificationSchedulers] still holds it for the
-  /// wipe.
+  /// when the number of accounts changes their share of the window (on
+  /// Android from five accounts on). Null once the account is gone. Disposed
+  /// with the account's database on sign-out, after which
+  /// [NotificationSchedulers] still holds it for the wipe.
 
   NotificationSchedulerProvider call(String accountId) =>
       NotificationSchedulerProvider._(argument: accountId, from: this);

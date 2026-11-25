@@ -272,8 +272,8 @@ void main() {
           );
         });
 
-        test('"mark all read" goes out as one request when every unread one '
-            'is marked', () async {
+        test('"mark all read" goes out as one request when the user marked '
+            'all read', () async {
           final taskId = await assignedTask(
             'Repot the fern ${apiVersion.pathSegment} $runId',
           );
@@ -282,15 +282,9 @@ void main() {
           writes.calls.clear();
 
           await db.serverNotificationsDao.markAllRead(at: DateTime.now());
-          final pending = await db.serverNotificationsDao.pendingReads();
           await sync.run();
 
-          expect(
-            writes.calls,
-            pending.length > 1
-                ? ['markAllRead']
-                : ['markRead ${pending.single.id} true'],
-          );
+          expect(writes.calls, ['markAllRead']);
           final onServerNow = (await reads.list()).items;
           expect(onServerNow.where((n) => n.readAt == null), isEmpty);
           expect(await db.serverNotificationsDao.unreadCount(), 0);

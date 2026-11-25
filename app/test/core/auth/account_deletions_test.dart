@@ -76,6 +76,7 @@ void main() {
         exact: true,
         hiddenOnLockScreen: false,
         doneNeedsUnlock: false,
+        snoozeOnly: false,
       );
 
   test('deletes the files and cancels the notifications its table '

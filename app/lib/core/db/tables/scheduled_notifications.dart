@@ -37,6 +37,11 @@ class ScheduledNotifications extends Table {
   BoolColumn get doneNeedsUnlock =>
       boolean().withDefault(const Constant(false))();
 
+  /// Done is left out: the task's project is read-only or archived, also
+  /// through a parent. Part of the diff like [exact], so a permission or
+  /// archive change schedules the entry again.
+  BoolColumn get snoozeOnly => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {key};
 }

@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 
-/// An OS that holds what was scheduled in [pending] until it is cancelled
-/// or [fire]d; every call is logged. [current] is what [capabilities]
+/// An OS that holds what was scheduled in [pending] until it is cancelled,
+/// [fire]d or [drop]ped; every call is logged. [current] is what [capabilities]
 /// reports and what [requestPermission] answers. [pending] is what
 /// [pendingIds] lists, [alarms] what would ring: on Android the two part
 /// at a [forceStop].
@@ -39,8 +39,15 @@ final class FakeNotificationGateway implements NotificationGateway {
   /// awaiting holds it.
   Future<void> Function(String call)? beforeCall;
 
-  /// The OS showed the notification: it is no longer pending.
+  /// The OS showed the notification: it is no longer pending, and the tray
+  /// holds it with its payload until it is cancelled.
   void fire(int osId) {
+    alarms.remove(osId);
+    if (pending.remove(osId) case final shown?) tray[osId] = shown.payload;
+  }
+
+  /// The OS lost the notification without showing it.
+  void drop(int osId) {
     pending.remove(osId);
     alarms.remove(osId);
   }
@@ -134,7 +141,8 @@ final class FakeNotificationGateway implements NotificationGateway {
   >
   activities = [];
 
-  /// What the tray holds: shown activity notifications until cancelled.
+  /// What the tray holds: what fired or was shown as an activity, until it
+  /// is cancelled; a test removes what the user swiped away.
   final Map<int, String?> tray = {};
 
   /// Scheduled on the activity channel: the session reminders.

@@ -21,21 +21,41 @@ class PinnedWidgetReceiver : BroadcastReceiver() {
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID || config == null) return
         val pending = goAsync()
         Thread {
-            // Uncaught here, a full disk would end the app's process; the
-            // widget is placed already and shows its default.
             try {
                 val widgets = WidgetInstances(context.applicationContext)
-                if (widgets.saveConfigIfAbsent(appWidgetId, config)) widgets.updateIds(intArrayOf(appWidgetId))
-            } catch (error: Exception) {
-                Log.w(TAG, "Could not save a pinned widget's config: ${error.javaClass.simpleName}")
+                savePinnedConfig(
+                    save = { widgets.saveConfigIfAbsent(appWidgetId, config) },
+                    redraw = { widgets.updateIds(intArrayOf(appWidgetId)) },
+                )
             } finally {
-                pending.finish()
+                finishOrSkip(pending::finish)
             }
         }.start()
     }
 
     companion object {
         const val EXTRA_CONFIG = "io.vikunja.vikunja_widgets.CONFIG"
-        private const val TAG = "VikunjaWidgets"
     }
 }
+
+// Uncaught here, a full disk would end the app's process; the widget is
+// placed already and shows its default.
+fun savePinnedConfig(save: () -> Boolean, redraw: () -> Unit) {
+    try {
+        if (save()) redraw()
+    } catch (error: Exception) {
+        Log.w(TAG, "Could not save a pinned widget's config: ${error.javaClass.simpleName}")
+    }
+}
+
+// Some OEM builds throw when the system counts the broadcast as finished
+// already; Glance's own goAsync skips the same (b/257513022).
+fun finishOrSkip(finish: () -> Unit) {
+    try {
+        finish()
+    } catch (error: IllegalStateException) {
+        Log.w(TAG, "Could not finish a broadcast: ${error.javaClass.simpleName}")
+    }
+}
+
+private const val TAG = "VikunjaWidgets"

@@ -293,13 +293,9 @@ void main() {
         // Both of the task's fired, and a run dropped their rows since.
         now = dueAt.add(const Duration(minutes: 1));
         gateway
-          ..tray.addAll({
-            reminderId: gateway.pending[reminderId]!.payload,
-            dueId: gateway.pending[dueId]!.payload,
-            secondId: 'an activity of another task',
-          })
           ..fire(reminderId)
-          ..fire(dueId);
+          ..fire(dueId)
+          ..tray[secondId] = 'an activity of another task';
         final db = container.read(appDatabaseProvider(accountId));
         await container
             .read(notificationSchedulerProvider(accountId))!
@@ -322,6 +318,76 @@ void main() {
         expect(gateway.tray.keys, [secondId]);
       },
     );
+
+    test('a Done on a notification shown before its project turned read-only '
+        'is ignored: nothing is queued, the task stays open, and its entries '
+        'are scheduled again without Done', () async {
+      final (accountId, db) = await signedIn();
+      final reminderId = notificationOsIdFor(accountId, '1:reminder:0');
+      final dueId = notificationOsIdFor(accountId, '1:due');
+      final secondId = notificationOsIdFor(accountId, '2:due');
+      now = reminderAt.add(const Duration(minutes: 1));
+      gateway.fire(reminderId);
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 7,
+          title: 'Work',
+        ).copyWith(maxPermission: Permission.read),
+      ]);
+      expect(gateway.pending[dueId]!.snoozeOnly, isFalse);
+
+      await handler.handle(
+        action(
+          NotificationActionIds.markDone,
+          accountId: accountId,
+          taskId: 1,
+          key: '1:reminder:0',
+          payload: gateway.tray[reminderId],
+        ),
+      );
+
+      expect(write.requests, isEmpty);
+      expect(await db.outboxDao.count(), 0);
+      expect((await db.tasksDao.find(1))!.done, isFalse);
+      expect(gateway.pending.keys, unorderedEquals([dueId, secondId]));
+      expect(gateway.pending[dueId]!.snoozeOnly, isTrue);
+      expect(gateway.pending[secondId]!.snoozeOnly, isTrue);
+    });
+
+    test('a Done of a task in a project archived through its parent is '
+        'ignored likewise', () async {
+      final (accountId, db) = await signedIn();
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 9, title: 'Home', archived: true),
+        sampleProject(id: 7, title: 'Work', parent: 9),
+      ]);
+
+      // Without the instant, as scheduled before step 40e: the backstop does
+      // not need it.
+      await handler.handle(
+        action(
+          NotificationActionIds.markDone,
+          accountId: accountId,
+          taskId: 1,
+          key: '1:due',
+        ),
+      );
+
+      expect(write.requests, isEmpty);
+      expect(await db.outboxDao.count(), 0);
+      expect((await db.tasksDao.find(1))!.done, isFalse);
+      expect(
+        {
+          for (final MapEntry(:key, :value) in gateway.pending.entries)
+            key: value.snoozeOnly,
+        },
+        {
+          notificationOsIdFor(accountId, '1:reminder:0'): true,
+          notificationOsIdFor(accountId, '1:due'): true,
+          notificationOsIdFor(accountId, '2:due'): true,
+        },
+      );
+    });
 
     group('for an occurrence the task has passed', () {
       final daily = water.copyWith(repeatAfter: const Duration(days: 1));
@@ -628,6 +694,7 @@ void main() {
           .read(notificationSchedulerProvider(accountId))!
           .reconcile();
       expect(gateway.pending[dueId]!.fireAt, nextDue);
+      expect(gateway.tray, isEmpty);
 
       await handler.handle(snoozeOf(dueAt));
 

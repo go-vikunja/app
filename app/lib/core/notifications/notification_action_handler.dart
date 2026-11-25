@@ -103,7 +103,8 @@ final class NotificationActionHandler {
   /// Done is [ExternalDone.markDone]: through the outbox, the task's other
   /// notifications cancelled, the drain awaited up to [drainTimeout], then
   /// a reconcile; ignored for a task done or moved past the occurrence the
-  /// payload names. A snooze moves the notification to now plus 10 min or
+  /// payload names, or one the user may not change (its project read-only
+  /// or archived). A snooze moves the notification to now plus 10 min or
   /// 1 h ([NotificationScheduler.snooze]) or, with Tomorrow, to the next
   /// day at the user's default due time, else 9:00
   /// ([NotificationScheduler.snoozeUntilTomorrow]), unless the key's

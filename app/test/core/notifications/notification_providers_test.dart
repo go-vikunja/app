@@ -106,9 +106,50 @@ void main() {
     return (alice.id, bob.id);
   }
 
+  /// [count] due tasks of the user's own in the account's database, task
+  /// `id` due `id` minutes after [dueAt].
+  Future<void> ownTasks(
+    String accountId,
+    int userId, {
+    required int count,
+  }) async {
+    final db = container.read(appDatabaseProvider(accountId));
+    await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);
+    await db.tasksDao.upsertAll([
+      for (var id = 1; id <= count; id++)
+        sampleTask(
+          id: id,
+          title: 'Task $id',
+          projectId: 7,
+          due: dueAt.add(Duration(minutes: id)),
+        ).copyWith(
+          createdBy: User(id: userId, username: 'u$userId'),
+        ),
+    ], syncRunId: 'run');
+  }
+
+  Map<String, int> pendingPerAccount() {
+    final counts = <String, int>{};
+    for (final notification in gateway.pending.values) {
+      final account = NotificationPayload.fromJson(notification.payload)
+          .accountId;
+      counts[account] = (counts[account] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// An inactive account of [name] on a server of its own.
+  Future<String> signsIn(String name, int userId) async {
+    final entry = await auth.seedAccount(
+      fullServer270(root: 'https://$name.example.com'),
+      tokens: issueTokens(issuedAt: now, userId: userId, username: name),
+      activate: false,
+    );
+    return entry.id;
+  }
+
   test('the window is 60 on iOS, shared evenly by the accounts with a '
-      'session reminder and a snoozed entry each, and 100 per account '
-      'elsewhere', () {
+      'session reminder and a snoozed entry each', () {
     expect(notificationWindow(platform: TargetPlatform.iOS), 58);
     expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 2), 28);
     expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 3), 18);
@@ -125,11 +166,39 @@ void main() {
         reason: '$accounts',
       );
     }
+  });
+
+  test('the window is 480 on Android, shared evenly by the accounts with a '
+      'session reminder and a snoozed entry each, at most 100 per account, '
+      'leaving 20 of the 500 alarms Android allows an app', () {
     expect(notificationWindow(platform: TargetPlatform.android), 100);
     expect(
-      notificationWindow(platform: TargetPlatform.android, accounts: 3),
+      notificationWindow(platform: TargetPlatform.android, accounts: 4),
       100,
     );
+    expect(
+      notificationWindow(platform: TargetPlatform.android, accounts: 5),
+      94,
+    );
+    expect(
+      notificationWindow(platform: TargetPlatform.android, accounts: 6),
+      78,
+    );
+    expect(
+      notificationWindow(platform: TargetPlatform.android, accounts: 10),
+      46,
+    );
+    for (var accounts = 1; accounts <= 160; accounts++) {
+      final window = notificationWindow(
+        platform: TargetPlatform.android,
+        accounts: accounts,
+      );
+      expect(
+        accounts * (window + 2),
+        lessThanOrEqualTo(480),
+        reason: '$accounts',
+      );
+    }
   });
 
   group('on iOS the accounts share the 64 the system keeps', () {
@@ -138,44 +207,11 @@ void main() {
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
     });
 
-    /// Forty due tasks of the user's own in the account's database.
-    Future<void> fortyOwnTasks(String accountId, int userId) async {
-      final db = container.read(appDatabaseProvider(accountId));
-      await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);
-      await db.tasksDao.upsertAll([
-        for (var id = 1; id <= 40; id++)
-          sampleTask(
-            id: id,
-            title: 'Task $id',
-            projectId: 7,
-            due: dueAt.add(Duration(minutes: id)),
-          ).copyWith(
-            createdBy: User(id: userId, username: 'u$userId'),
-          ),
-      ], syncRunId: 'run');
-    }
-
-    Map<String, int> pendingPerAccount() {
-      final counts = <String, int>{};
-      for (final notification in gateway.pending.values) {
-        final account = NotificationPayload.fromJson(notification.payload)
-            .accountId;
-        counts[account] = (counts[account] ?? 0) + 1;
-      }
-      return counts;
-    }
-
-    Future<RegisteredAccount> carolSignsIn() => auth.seedAccount(
-      fullServer270(root: 'https://carol.example.com'),
-      tokens: issueTokens(issuedAt: now, userId: 9, username: 'carol'),
-      activate: false,
-    );
-
     test("two accounts hold 28 each, so neither drops the other's "
         'soonest', () async {
       final (alice, bob) = await twoAccounts();
-      await fortyOwnTasks(alice, 7);
-      await fortyOwnTasks(bob, 8);
+      await ownTasks(alice, 7, count: 40);
+      await ownTasks(bob, 8, count: 40);
 
       container.listen(accountNotificationSchedulersProvider, (_, _) {});
       await pumpEventQueue();
@@ -192,19 +228,19 @@ void main() {
         'session reminder each, 57 in all, room left for a snoozed entry '
         'each', () async {
       final (alice, bob) = await twoAccounts();
-      await fortyOwnTasks(alice, 7);
-      await fortyOwnTasks(bob, 8);
+      await ownTasks(alice, 7, count: 40);
+      await ownTasks(bob, 8, count: 40);
       container.listen(accountNotificationSchedulersProvider, (_, _) {});
       await pumpEventQueue();
       expect(pendingPerAccount(), {alice: 28, bob: 28});
 
-      final carol = await carolSignsIn();
+      final carol = await signsIn('carol', 9);
       container.invalidate(accountsProvider);
       await container.read(accountsProvider.future);
-      await fortyOwnTasks(carol.id, 9);
-      final carols = container.read(notificationSchedulerProvider(carol.id));
+      await ownTasks(carol, 9, count: 40);
+      final carols = container.read(notificationSchedulerProvider(carol));
       await carols!.reconcile();
-      for (final account in [alice, bob, carol.id]) {
+      for (final account in [alice, bob, carol]) {
         await container.read(appDatabaseProvider(account)).syncStateDao.write({
           SyncStateKeys.lastSyncedAt: now.toIso8601String(),
         });
@@ -212,15 +248,81 @@ void main() {
       }
       await pumpEventQueue();
 
-      expect(pendingPerAccount(), {alice: 19, bob: 19, carol.id: 19});
+      expect(pendingPerAccount(), {alice: 19, bob: 19, carol: 19});
       expect(
         gateway.pending.keys,
         containsAll([
-          for (final account in [alice, bob, carol.id])
+          for (final account in [alice, bob, carol])
             sessionReminderOsId(account),
         ]),
       );
       expect(gateway.pending, hasLength(57));
+    });
+  });
+
+  group('on Android the accounts share 480 of the 500 alarms the system '
+      'allows', () {
+    setUp(() {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    });
+
+    test('four accounts keep 100 each; a fifth takes its share from the '
+        'others: 94 each and a session reminder each, 475 in all, never '
+        'more than 480 on the way', () async {
+      var peak = 0;
+      void measure() {
+        if (gateway.alarms.length > peak) peak = gateway.alarms.length;
+      }
+
+      gateway.beforeCall = (_) async => measure();
+      final (alice, bob) = await twoAccounts();
+      final carol = await signsIn('carol', 9);
+      final dave = await signsIn('dave', 10);
+      container.invalidate(accountsProvider);
+      await container.read(accountsProvider.future);
+      final four = [(alice, 7), (bob, 8), (carol, 9), (dave, 10)];
+      for (final (account, userId) in four) {
+        await ownTasks(account, userId, count: 100);
+      }
+      container.listen(accountNotificationSchedulersProvider, (_, _) {});
+      await pumpEventQueue();
+      expect(pendingPerAccount(), {
+        alice: 100,
+        bob: 100,
+        carol: 100,
+        dave: 100,
+      });
+
+      final erin = await signsIn('erin', 11);
+      container.invalidate(accountsProvider);
+      await container.read(accountsProvider.future);
+      await pumpEventQueue();
+      expect(pendingPerAccount(), {alice: 94, bob: 94, carol: 94, dave: 94});
+
+      await ownTasks(erin, 11, count: 100);
+      await container.read(notificationSchedulerProvider(erin))!.reconcile();
+      for (final account in [alice, bob, carol, dave, erin]) {
+        await container.read(appDatabaseProvider(account)).syncStateDao.write({
+          SyncStateKeys.lastSyncedAt: now.toIso8601String(),
+        });
+        await container.read(sessionRemindersProvider).update(account);
+      }
+      await pumpEventQueue();
+
+      expect(pendingPerAccount(), {
+        for (final account in [alice, bob, carol, dave, erin]) account: 95,
+      });
+      expect(
+        gateway.pending.keys,
+        allOf(
+          contains(notificationOsIdFor(alice, '94:due')),
+          isNot(contains(notificationOsIdFor(alice, '95:due'))),
+        ),
+      );
+      expect(gateway.alarms, hasLength(475));
+      measure();
+      expect(peak, lessThanOrEqualTo(480));
     });
   });
 

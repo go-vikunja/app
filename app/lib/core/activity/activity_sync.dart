@@ -45,6 +45,8 @@ final class ActivitySync {
   Future<List<ServerNotification>>? _running;
   var _runningWholeWindow = false;
   Future<List<ServerNotification>>? _wholeWindowNext;
+  var _marksTaken = false;
+  Future<List<ServerNotification>>? _markedNext;
 
   /// Pulls the newest pages until one holds a stored notification (or
   /// [maxPages]), stores them, sends the pending read marks and returns the
@@ -58,27 +60,44 @@ final class ActivitySync {
   /// their read state follows the server's. What the server has read now
   /// is withdrawn from the tray.
   ///
-  /// The pull comes first, so a "mark all read" is only sent as one
-  /// request when nothing unread arrived since the user saw the list.
-  /// Throws the `VikunjaFailure` of the pull; a failed mark stays pending.
+  /// The pull comes first, so the inbox's Mark all read goes out as one
+  /// request only when nothing unread arrived since; every other mark goes
+  /// out mark by mark. Throws the `VikunjaFailure` of the pull; a failed
+  /// mark stays pending.
   ///
   /// A call during a run joins it, except that [wholeWindow] during a run
-  /// without it starts one more run once that one ends, which such calls
-  /// share.
-  Future<List<ServerNotification>> run({bool wholeWindow = false}) {
+  /// without it, and [marked] (a read mark just stored here) once the run
+  /// has read the marks, start one more run once that one ends, which such
+  /// calls share.
+  Future<List<ServerNotification>> run({
+    bool wholeWindow = false,
+    bool marked = false,
+  }) {
     if (_running case final running?) {
-      if (!wholeWindow || _runningWholeWindow) return running;
-      return _wholeWindowNext ??= running
-          .then<void>((_) {}, onError: (Object _) {})
-          .then((_) {
-            _wholeWindowNext = null;
-            return run(wholeWindow: true);
-          });
+      if (wholeWindow && !_runningWholeWindow) {
+        return _wholeWindowNext ??= _after(running, () {
+          _wholeWindowNext = null;
+          return run(wholeWindow: true);
+        });
+      }
+      if (marked && _marksTaken) {
+        return _markedNext ??= _after(running, () {
+          _markedNext = null;
+          return run(marked: true);
+        });
+      }
+      return running;
     }
     _runningWholeWindow = wholeWindow;
+    _marksTaken = false;
     return _running = _run(wholeWindow: wholeWindow)
         .whenComplete(() => _running = null);
   }
+
+  static Future<List<ServerNotification>> _after(
+    Future<Object?> running,
+    Future<List<ServerNotification>> Function() next,
+  ) => running.then<void>((_) {}, onError: (Object _) {}).then((_) => next());
 
   Future<List<ServerNotification>> _run({required bool wholeWindow}) async {
     final dao = _db.serverNotificationsDao;
@@ -143,25 +162,32 @@ final class ActivitySync {
     }
   }
 
-  /// "Mark all read" goes out as one request when every unread
-  /// notification is marked; anything else mark by mark, stopping at the
+  /// The inbox's Mark all read goes out as one request while nothing unread
+  /// arrived since; every other mark goes out mark by mark, stopping at the
   /// first failure that a later run may get past.
   Future<void> _sendPendingReads() async {
     final dao = _db.serverNotificationsDao;
-    final pending = await dao.pendingReads();
-    if (pending.isEmpty) return;
-    final allRead = pending.every((mark) => mark.read);
-    if (allRead && pending.length > 1 && await dao.unreadCount() == 0) {
-      try {
-        await _write.markAllRead();
-        await dao.clearPending(pending.map((mark) => mark.id));
-      } on VikunjaFailure catch (failure) {
-        _log.info('Mark all read failed: ${failure.runtimeType}');
-        if (!_isTransient(failure)) {
-          await dao.clearPending(pending.map((mark) => mark.id));
+    _marksTaken = true;
+    final (pending, allReadAt, unread) = await _db.transaction(
+      () async => (
+        await dao.pendingReads(),
+        (await _db.syncStateDao.readAll())[SyncStateKeys.activityMarkAllReadAt],
+        await dao.unreadCount(),
+      ),
+    );
+    if (allReadAt != null) {
+      if (pending.isNotEmpty && unread == 0) {
+        try {
+          await _write.markAllRead();
+        } on VikunjaFailure catch (failure) {
+          _log.info('Mark all read failed: ${failure.runtimeType}');
+          if (_isTransient(failure)) return;
         }
+        await _settleAllRead(allReadAt, pending.map((mark) => mark.id));
+        return;
       }
-      return;
+      // Something unread arrived since, which the request would mark read too.
+      await _settleAllRead(allReadAt, const []);
     }
     for (final mark in pending) {
       try {
@@ -175,6 +201,19 @@ final class ActivitySync {
       await dao.clearPending([mark.id]);
     }
   }
+
+  /// Clears [ids] and the Mark all read chosen at [allReadAt], unless a
+  /// later one replaced it meanwhile.
+  Future<void> _settleAllRead(String allReadAt, Iterable<int> ids) =>
+      _db.transaction(() async {
+        if (ids.isNotEmpty) await _db.serverNotificationsDao.clearPending(ids);
+        final state = await _db.syncStateDao.readAll();
+        if (state[SyncStateKeys.activityMarkAllReadAt] == allReadAt) {
+          await _db.syncStateDao.write({
+            SyncStateKeys.activityMarkAllReadAt: null,
+          });
+        }
+      });
 
   static bool _isTransient(VikunjaFailure failure) => switch (failure) {
     NetworkFailure() ||

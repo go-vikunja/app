@@ -33,6 +33,9 @@ void main() {
       sampleNotification(id: id, readAt: read.contains(id) ? noon : null),
   ];
 
+  Future<String?> allReadChosen() async =>
+      (await db.syncStateDao.readAll())[SyncStateKeys.activityMarkAllReadAt];
+
   setUp(() {
     db = testDatabase();
     read = FakeSyncClient();
@@ -250,19 +253,31 @@ void main() {
       expect(await db.serverNotificationsDao.unreadCount(), 1);
     });
 
-    test(
-      'go out as one "mark all read" when every unread one is marked',
-      () async {
-        read.serverNotifications = server([1, 2, 3], read: {2});
-        await sync.run();
-        await db.serverNotificationsDao.markAllRead(at: noon);
+    test('go out as one "mark all read" when the user marked all read and '
+        'nothing unread arrived since', () async {
+      read.serverNotifications = server([1, 2, 3], read: {2});
+      await sync.run();
+      await db.serverNotificationsDao.markAllRead(at: noon);
 
-        await sync.run();
+      await sync.run();
 
-        expect(write.requests, ['notifications read all']);
-        expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
-      },
-    );
+      expect(write.requests, ['notifications read all']);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+      expect(await allReadChosen(), isNull);
+    });
+
+    test('a Mark all read of a single notification still goes out as one '
+        'request', () async {
+      read.serverNotifications = server([1, 2], read: {2});
+      await sync.run();
+      await db.serverNotificationsDao.markAllRead(at: noon);
+
+      await sync.run();
+
+      expect(write.requests, ['notifications read all']);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+      expect(await allReadChosen(), isNull);
+    });
 
     test('are sent one by one when something unread arrived since the '
         'list was marked', () async {
@@ -276,6 +291,90 @@ void main() {
       expect(write.notifications.markedAll, 0);
       expect(write.notifications.marked, [(1, true), (2, true)]);
       expect(fresh.map((n) => n.id), [3]);
+      expect(await allReadChosen(), isNull);
+
+      read.serverNotifications = server([1, 2, 3], read: {1, 2});
+      write.notifications.marked.clear();
+      await db.serverNotificationsDao.markRead([3], at: noon);
+      await sync.run();
+
+      expect(write.notifications.marked, [(3, true)]);
+      expect(write.notifications.markedAll, 0);
+    });
+
+    test('that leave nothing unread here still go out one by one: only Mark '
+        'all read marks every notification read on the server', () async {
+      read.serverNotifications = server([1, 2, 3], read: {3});
+      await sync.run();
+      await db.serverNotificationsDao.markRead([1], at: noon);
+      await db.serverNotificationsDao.markRead([2], at: noon);
+
+      await sync.run();
+
+      expect(write.requests, [
+        'notification read 1 true',
+        'notification read 2 true',
+      ]);
+      expect(write.notifications.markedAll, 0);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+    });
+
+    test('a Mark all read the server did not take stays chosen for the next '
+        'run', () async {
+      read.serverNotifications = server([1, 2]);
+      await sync.run();
+      await db.serverNotificationsDao.markAllRead(at: noon);
+      write.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.timeout);
+
+      await sync.run();
+
+      expect(await db.serverNotificationsDao.pendingReads(), hasLength(2));
+      expect(await allReadChosen(), noon.toIso8601String());
+
+      write.beforeRequest = null;
+      await sync.run();
+
+      expect(write.requests, [
+        'notifications read all',
+        'notifications read all',
+      ]);
+      expect(write.notifications.markedAll, 1);
+      expect(write.notifications.marked, isEmpty);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+      expect(await allReadChosen(), isNull);
+    });
+
+    test('a Mark all read chosen again while the first is being sent goes out '
+        'too', () async {
+      read.serverNotifications = server([1, 2]);
+      await sync.run();
+      await db.serverNotificationsDao.markAllRead(at: noon);
+      final gate = RequestGate()..pattern = 'read all';
+      write.beforeRequest = gate.call;
+
+      final first = sync.run();
+      for (var i = 0; i < 100 && !gate.isHolding; i++) {
+        await pumpEventQueue();
+      }
+      expect(gate.isHolding, isTrue);
+      // The server took the first one; a third arrived and was stored.
+      read.serverNotifications = server([1, 2, 3], read: {1, 2});
+      await db.serverNotificationsDao.upsertAll(server([3]), handled: true);
+      await db.serverNotificationsDao.markAllRead(
+        at: noon.add(const Duration(minutes: 1)),
+      );
+      final again = sync.run(marked: true);
+      gate
+        ..pattern = null
+        ..release();
+      await first;
+      await again;
+
+      expect(write.notifications.markedAll, 2);
+      expect(write.notifications.marked, isEmpty);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+      expect(await allReadChosen(), isNull);
     });
 
     test('stay pending after a failure a later run may get past', () async {
@@ -331,4 +430,59 @@ void main() {
 
     expect(read.requests, ['notifications 1']);
   });
+
+  test('a mark made while a run sends the marks it read goes out with one '
+      'more run after it, which such marks share', () async {
+    read.serverNotifications = server([1, 2, 3]);
+    await sync.run();
+    read.requests.clear();
+    await db.serverNotificationsDao.markRead([1], at: noon);
+    final gate = RequestGate()..pattern = 'notification read 1';
+    write.beforeRequest = gate.call;
+
+    final first = sync.run();
+    for (var i = 0; i < 100 && !gate.isHolding; i++) {
+      await pumpEventQueue();
+    }
+    expect(gate.isHolding, isTrue);
+    await db.serverNotificationsDao.markRead([2], at: noon);
+    final marked = [sync.run(marked: true), sync.run(marked: true)];
+    gate
+      ..pattern = null
+      ..release();
+    await first;
+    await Future.wait(marked);
+
+    expect(write.notifications.marked, [(1, true), (2, true)]);
+    expect(read.requests, ['notifications 1', 'notifications 1']);
+    expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+  });
+
+  test(
+    'a mark made before the run under way reads the marks joins it',
+    () async {
+      read.serverNotifications = server([1, 2]);
+      await sync.run();
+      read.requests.clear();
+      final gate = RequestGate()..pattern = 'notifications';
+      read.beforeRequest = gate.call;
+
+      final first = sync.run();
+      for (var i = 0; i < 100 && !gate.isHolding; i++) {
+        await pumpEventQueue();
+      }
+      expect(gate.isHolding, isTrue);
+      await db.serverNotificationsDao.markRead([1], at: noon);
+      final marked = sync.run(marked: true);
+      gate
+        ..pattern = null
+        ..release();
+      await first;
+      await marked;
+
+      expect(read.requests, ['notifications 1']);
+      expect(write.notifications.marked, [(1, true)]);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+    },
+  );
 }

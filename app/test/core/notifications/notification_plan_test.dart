@@ -25,6 +25,7 @@ void main() {
     List<Task> tasks, {
     NotificationPreferences preferences = const NotificationPreferences(),
     List<Snooze> snoozes = const [],
+    Set<int> snoozeOnlyProjects = const {},
   }) => planNotifications(
     tasks: tasks,
     userId: alice.id,
@@ -32,6 +33,7 @@ void main() {
     now: now,
     snoozes: snoozes,
     describe: describe,
+    snoozeOnlyProjects: snoozeOnlyProjects,
   );
 
   Task own({
@@ -40,9 +42,11 @@ void main() {
     List<TaskReminder> reminders = const [],
     bool done = false,
     String title = 'Task',
+    int projectId = 1,
   }) => sampleTask(
     id: id,
     title: title,
+    projectId: projectId,
     due: due,
     reminders: reminders,
     done: done,
@@ -428,6 +432,65 @@ void main() {
         '3:due',
       ]);
     });
+
+    test('the entries of a task in a project the user may not change offer '
+        'only the snoozes; the others keep Done', () {
+      final desired = plan(
+        [
+          own(
+            id: 1,
+            projectId: 4,
+            due: inTwoHours,
+            reminders: [TaskReminder(reminder: inAnHour)],
+          ),
+          own(id: 2, projectId: 5, due: inTwoHours),
+          own(id: 3, due: inTwoHours),
+        ],
+        snoozeOnlyProjects: const {4, 5},
+      );
+
+      expect(desired.map((d) => (d.key, d.snoozeOnly)), [
+        ('1:reminder:0', true),
+        ('1:due', true),
+        ('2:due', true),
+        ('3:due', false),
+      ]);
+    });
+  });
+
+  group('snoozeOnlyProjectIds', () {
+    test('an archived project and everything below it, and a read-only one; '
+        'not one with write or admin access, nor one whose permission is '
+        'unknown', () {
+      final projects = [
+        sampleProject(
+          id: 1,
+          title: 'Archive',
+          archived: true,
+        ).copyWith(maxPermission: Permission.admin),
+        sampleProject(
+          id: 2,
+          title: 'Below the archive',
+          parent: 1,
+        ).copyWith(maxPermission: Permission.write),
+        sampleProject(id: 3, title: 'Two levels below', parent: 2),
+        sampleProject(
+          id: 4,
+          title: 'Shared to read',
+        ).copyWith(maxPermission: Permission.read),
+        sampleProject(
+          id: 5,
+          title: 'Shared to write',
+        ).copyWith(maxPermission: Permission.write),
+        sampleProject(
+          id: 6,
+          title: 'Own',
+        ).copyWith(maxPermission: Permission.admin),
+        sampleProject(id: 7, title: 'Not yet synced'),
+      ];
+
+      expect(snoozeOnlyProjectIds(projects), {1, 2, 3, 4});
+    });
   });
 
   group('following subscriptions', () {
@@ -608,6 +671,7 @@ void main() {
       String key,
       DateTime at, {
       String title = 'T',
+      bool snoozeOnly = false,
     }) => DesiredNotification(
       key: key,
       taskId: 1,
@@ -615,6 +679,7 @@ void main() {
       fireAt: at,
       title: title,
       body: 'B',
+      snoozeOnly: snoozeOnly,
     );
 
     ({
@@ -625,6 +690,7 @@ void main() {
       String body,
       bool exact,
       NotificationPrivacy privacy,
+      bool snoozeOnly,
     })
     scheduled(
       String key,
@@ -633,6 +699,7 @@ void main() {
       String title = 'T',
       bool exact = true,
       NotificationPrivacy privacy = const NotificationPrivacy(),
+      bool snoozeOnly = false,
     }) => (
       key: key,
       osId: osId,
@@ -641,6 +708,7 @@ void main() {
       body: 'B',
       exact: exact,
       privacy: privacy,
+      snoozeOnly: snoozeOnly,
     );
 
     test('schedules what is missing, keeps the unchanged, cancels the gone '
@@ -819,6 +887,34 @@ void main() {
 
       expect(diff.cancelOsIds, isEmpty);
       expect(diff.schedule.map((d) => d.key), ['a']);
+    });
+
+    test('an entry scheduled with Done that now offers only the snoozes, or '
+        'the other way round, is rescheduled under its id without a '
+        'cancel', () {
+      final diff = diffSchedule(
+        desired: [
+          desired('locked', inAnHour, snoozeOnly: true),
+          desired('unlocked', inAnHour),
+          desired('same', inAnHour, snoozeOnly: true),
+        ],
+        scheduled: [
+          scheduled('locked', 1, inAnHour),
+          scheduled('unlocked', 2, inAnHour, snoozeOnly: true),
+          scheduled('same', 3, inAnHour, snoozeOnly: true),
+        ],
+        window: 60,
+        exact: true,
+        privacy: const NotificationPrivacy(),
+        now: now,
+      );
+
+      expect(diff.cancelOsIds, isEmpty);
+      expect(diff.schedule.map((d) => (d.key, d.snoozeOnly)), [
+        ('locked', true),
+        ('unlocked', false),
+      ]);
+      expect(diff.window.map((d) => d.key), ['locked', 'unlocked', 'same']);
     });
 
     test('everything schedules the whole window again, unchanged entries '

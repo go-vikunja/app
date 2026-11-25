@@ -243,6 +243,66 @@ void main() {
       await repository.refresh();
       expect(write.notifications.marked, [(1, true)]);
     });
+
+    test('opening the last unread notifications one after the other while '
+        'offline marks only those read on the server', () async {
+      read.serverNotifications = [
+        sampleNotification(id: 3, readAt: noon),
+        sampleNotification(id: 2),
+        sampleNotification(id: 1),
+      ];
+      await repository.refresh();
+      read.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      await repository.markRead(1);
+      await repository.markRead(2);
+      await pumpEventQueue();
+      expect(write.requests, isEmpty);
+      expect(await repository.watchUnreadCount().first, 0);
+
+      read.beforeRequest = null;
+      await repository.refresh();
+
+      expect(write.requests, [
+        'notification read 1 true',
+        'notification read 2 true',
+      ]);
+      expect(write.notifications.markedAll, 0);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+    });
+
+    test('a mark made while an earlier one is being sent goes out right '
+        'after it, without another refresh', () async {
+      read.serverNotifications = [
+        sampleNotification(id: 3),
+        sampleNotification(id: 2),
+        sampleNotification(id: 1),
+      ];
+      await repository.refresh();
+      final gate = RequestGate()..pattern = 'notification read 1';
+      write.beforeRequest = gate.call;
+
+      await repository.markRead(1);
+      for (var i = 0; i < 100 && !gate.isHolding; i++) {
+        await pumpEventQueue();
+      }
+      expect(gate.isHolding, isTrue);
+      await repository.markRead(2);
+      gate
+        ..pattern = null
+        ..release();
+      for (
+        var i = 0;
+        i < 100 && (await db.serverNotificationsDao.pendingReads()).isNotEmpty;
+        i++
+      ) {
+        await pumpEventQueue();
+      }
+
+      expect(write.notifications.marked, [(1, true), (2, true)]);
+      expect(await db.serverNotificationsDao.pendingReads(), isEmpty);
+    });
   });
 
   group('providers', () {

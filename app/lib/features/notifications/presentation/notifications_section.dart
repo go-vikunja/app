@@ -52,22 +52,25 @@ class NotificationsSection extends ConsumerWidget {
 
   Future<void> _sendTest(WidgetRef ref, AppLocalizations l10n) async {
     try {
-      final linkKey = await readWidgetLinkKey(
-        ref.read(preferencesStoreProvider),
+      // Read before the first await: the section may scroll away meanwhile.
+      final gateway = ref.read(notificationGatewayProvider);
+      final preferences = ref.read(preferencesStoreProvider);
+      final privacy = reminderPrivacyOf(
+        await ref.read(privacySettingsProvider.future),
       );
-      await ref
-          .read(notificationGatewayProvider)
-          .showNow(
-            osId: NotificationOsIds.testNotification,
-            title: l10n.notificationTestTitle,
-            body: l10n.notificationTestBody,
-            payload: NotificationPayload(
-              accountId: entry.id,
-              taskId: testNotificationTaskId,
-              key: 'test',
-              linkKey: linkKey,
-            ).toJson(),
-          );
+      final linkKey = await readWidgetLinkKey(preferences);
+      await gateway.showNow(
+        osId: NotificationOsIds.testNotification,
+        title: l10n.notificationTestTitle,
+        body: l10n.notificationTestBody,
+        payload: NotificationPayload(
+          accountId: entry.id,
+          taskId: testNotificationTaskId,
+          key: 'test',
+          linkKey: linkKey,
+        ).toJson(),
+        privacy: privacy,
+      );
     } on Object catch (error) {
       _log.warning(
         'Could not show the test notification: ${error.runtimeType}',

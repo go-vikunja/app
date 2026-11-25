@@ -23,12 +23,12 @@ class LegacyListStateTest {
     fun `a widget that does not follow the active account asks to be set up until configured`() {
         val state = ListWidgetState.load(files, 5, followsActiveAccount = false)
 
-        assertEquals(ListContent.SetUp(5, "k"), ListContent.of(state, now = 0))
+        assertEquals(ListContent.SetUp(5, "k"), ListContent.of(state))
     }
 
     @Test
     fun `a widget that follows the active account shows its Today list until configured`() {
-        val content = ListContent.of(ListWidgetState.load(files, 5, followsActiveAccount = true), now = 0)
+        val content = ListContent.of(ListWidgetState.load(files, 5, followsActiveAccount = true))
 
         assertEquals("Today", (content as ListContent.Shown).title)
     }
@@ -42,7 +42,7 @@ class LegacyListStateTest {
         )
 
         for (follows in listOf(true, false)) {
-            val content = ListContent.of(ListWidgetState.load(files, 5, followsActiveAccount = follows), now = 0)
+            val content = ListContent.of(ListWidgetState.load(files, 5, followsActiveAccount = follows))
 
             assertEquals("Errands", (content as ListContent.Shown).title)
         }
@@ -55,7 +55,7 @@ class LegacyListStateTest {
         for (follows in listOf(true, false)) {
             val state = ListWidgetState.load(files, 5, followsActiveAccount = follows)
 
-            assertEquals(ListContent.NotLoaded("acc", "k"), ListContent.of(state, now = 0))
+            assertEquals(ListContent.NotLoaded("acc", "k"), ListContent.of(state))
         }
     }
 

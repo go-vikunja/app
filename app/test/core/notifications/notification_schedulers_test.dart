@@ -38,7 +38,7 @@ void main() {
         describe: describeNotificationsWith(AppLocalizationsEn()),
         privacy: const NotificationPrivacy(),
       ),
-      window: 100,
+      window: () async => 100,
       now: () => DateTime.utc(2026, 10, 12, 9),
       createTimer: FakeTimers().create,
     );

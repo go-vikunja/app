@@ -7,10 +7,12 @@ import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
 
+import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/guest_app.dart';
 import '../../helpers/notification_ui_fakes.dart';
@@ -425,6 +427,25 @@ void main() {
     final payload = NotificationPayload.fromJson(shown.payload);
     expect(payload.accountId, accountId(tester));
     expect(payload.taskId, testNotificationTaskId);
+    expect(shown.privacy, const NotificationPrivacy());
+  });
+
+  testWidgets('with "hide on the lock screen" the test notification stays '
+      'off the lock screen like a reminder', (tester) async {
+    await storePrivacySettings(
+      auth.preferences,
+      const PrivacySettings(
+        notificationContent: NotificationContent.hiddenOnLockScreen,
+      ),
+    );
+    await pumpSection(tester);
+
+    await tester.tap(find.text(en.notificationsSendTest));
+    await tester.pumpAndSettle();
+
+    final shown = notifications.gateway.shown.single;
+    expect(shown.privacy.hiddenOnLockScreen, isTrue);
+    expect(shown.osId, NotificationOsIds.testNotification);
   });
 
   testWidgets('in German', (tester) async {
