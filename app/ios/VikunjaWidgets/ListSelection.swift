@@ -20,7 +20,9 @@ enum ListResolution {
 
 extension TasksWidgetIntent {
   var resolution: ListResolution {
-    guard let accountId = account?.id ?? Catalogs.all().first?.account.id else { return .noAccount }
+    guard let accountId = account.chosenId ?? Catalogs.all().first?.account.id else {
+      return .noAccount
+    }
     guard let catalog = Catalogs.catalog(for: accountId) else { return .accountRemoved }
 
     func link(id: Int? = nil, days: Int? = nil) -> URL? {

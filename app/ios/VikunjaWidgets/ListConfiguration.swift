@@ -47,6 +47,17 @@ struct AccountEntity: AppEntity {
     host = account.host
   }
 
+  /// Follows the app's active account, also after a switch; an id no
+  /// account can have.
+  static let active = AccountEntity(id: "active", name: String(localized: "Active account"))
+
+  private init(id: String, name: String) {
+    self.id = id
+    self.name = name
+  }
+
+  var chosenId: String? { id == Self.active.id ? nil : id }
+
   /// Keeps a widget bound to a signed-out account, so it says so instead of
   /// silently showing another account.
   init(removed id: String) {
@@ -59,17 +70,16 @@ struct AccountQuery: EntityQuery {
   func entities(for identifiers: [String]) async throws -> [AccountEntity] {
     let accounts = Catalogs.all().map(\.account)
     return identifiers.map { id in
-      accounts.first { $0.id == id }.map(AccountEntity.init) ?? AccountEntity(removed: id)
+      if id == AccountEntity.active.id { return .active }
+      return accounts.first { $0.id == id }.map(AccountEntity.init) ?? AccountEntity(removed: id)
     }
   }
 
   func suggestedEntities() async throws -> [AccountEntity] {
-    Catalogs.all().map { AccountEntity($0.account) }
+    [.active] + Catalogs.all().map { AccountEntity($0.account) }
   }
 
-  func defaultResult() async -> AccountEntity? {
-    Catalogs.all().first.map { AccountEntity($0.account) }
-  }
+  func defaultResult() async -> AccountEntity? { .active }
 }
 
 /// A project, label or saved filter from the account's catalog. Its id is
@@ -111,8 +121,8 @@ struct ListItem: Identifiable {
   }
 }
 
-private func accountId(or chosen: String?) -> String? {
-  chosen ?? Catalogs.all().first?.account.id
+private func accountId(or chosen: AccountEntity?) -> String? {
+  chosen?.chosenId ?? Catalogs.all().first?.account.id
 }
 
 struct ProjectEntity: AppEntity {
@@ -128,7 +138,7 @@ struct ProjectQuery: EntityStringQuery {
   @IntentParameterDependency<TasksWidgetIntent>(\.$account) var tasksWidget
 
   private var choices: [ListItem] {
-    accountId(or: tasksWidget?.account.id).map { ListItem.all(kind: .project, of: $0) } ?? []
+    accountId(or: tasksWidget?.account).map { ListItem.all(kind: .project, of: $0) } ?? []
   }
 
   func entities(for identifiers: [String]) async throws -> [ProjectEntity] {
@@ -147,7 +157,7 @@ struct WritableProjectOptions: DynamicOptionsProvider {
   @IntentParameterDependency<QuickAddWidgetIntent>(\.$account) var quickAdd
 
   func results() async throws -> [ProjectEntity] {
-    (accountId(or: quickAdd?.account.id).map { ListItem.all(kind: .project, of: $0) } ?? [])
+    (accountId(or: quickAdd?.account).map { ListItem.all(kind: .project, of: $0) } ?? [])
       .filter(\.writable).map(ProjectEntity.init)
   }
 }
@@ -165,7 +175,7 @@ struct LabelQuery: EntityStringQuery {
   @IntentParameterDependency<TasksWidgetIntent>(\.$account) var tasksWidget
 
   private var choices: [ListItem] {
-    accountId(or: tasksWidget?.account.id).map { ListItem.all(kind: .label, of: $0) } ?? []
+    accountId(or: tasksWidget?.account).map { ListItem.all(kind: .label, of: $0) } ?? []
   }
 
   func entities(for identifiers: [String]) async throws -> [LabelEntity] {
@@ -192,7 +202,7 @@ struct SavedFilterQuery: EntityStringQuery {
   @IntentParameterDependency<TasksWidgetIntent>(\.$account) var tasksWidget
 
   private var choices: [ListItem] {
-    accountId(or: tasksWidget?.account.id).map { ListItem.all(kind: .savedFilter, of: $0) } ?? []
+    accountId(or: tasksWidget?.account).map { ListItem.all(kind: .savedFilter, of: $0) } ?? []
   }
 
   func entities(for identifiers: [String]) async throws -> [SavedFilterEntity] {
@@ -212,7 +222,7 @@ struct TasksWidgetIntent: WidgetConfigurationIntent {
   static let title: LocalizedStringResource = "Choose a list"
   static let description = IntentDescription("Shows the open tasks of a list.")
 
-  @Parameter(title: "Account") var account: AccountEntity?
+  @Parameter(title: "Account") var account: AccountEntity
   @Parameter(title: "List", default: .today) var kind: ListKind
   @Parameter(title: "Days", default: .seven) var days: UpcomingDays
   @Parameter(title: "Project") var project: ProjectEntity?
@@ -263,7 +273,7 @@ struct QuickAddWidgetIntent: WidgetConfigurationIntent {
   static let title: LocalizedStringResource = "New task"
   static let description = IntentDescription("Opens a new task in Vikunja.")
 
-  @Parameter(title: "Account") var account: AccountEntity?
+  @Parameter(title: "Account") var account: AccountEntity
   @Parameter(title: "Project", optionsProvider: WritableProjectOptions()) var project:
     ProjectEntity?
 }

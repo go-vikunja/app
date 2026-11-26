@@ -197,18 +197,50 @@ final class WidgetTimelineTests: XCTestCase {
   // MARK: The configuration
 
   func testAWidgetWithoutAnAccountShowsTheActiveOneAndAsksForOneWithoutCatalogs() throws {
-    XCTAssertTrue(isNoAccount(TasksWidgetIntent().resolution))
+    let intent = TasksWidgetIntent()
+    intent.account = .active
+    XCTAssertTrue(isNoAccount(intent.resolution))
     try writeCatalog("b", name: "Bob")
     try writeCatalog("a", name: "Zoe")
     try writeHost(activeAccountId: "a", linkKey: nil)
 
-    guard case .selection(let chosen) = TasksWidgetIntent().resolution else {
+    guard case .selection(let chosen) = intent.resolution else {
       return XCTFail("Expected a selection")
     }
 
     XCTAssertEqual(chosen.accountId, "a")
     XCTAssertEqual(chosen.key, "a.today")
     XCTAssertEqual(chosen.kind, .today)
+  }
+
+  func testActiveAccountIsTheDefaultChoiceAndFollowsASwitch() async throws {
+    try writeCatalog("b", name: "Bob")
+    try writeCatalog("a", name: "Zoe")
+    try writeHost(activeAccountId: "a", linkKey: nil)
+    let query = AccountQuery()
+    let defaultChoice = await query.defaultResult()
+    XCTAssertEqual(defaultChoice?.id, AccountEntity.active.id)
+    let suggested = try await query.suggestedEntities()
+    XCTAssertEqual(suggested.map(\.id), ["active", "a", "b"])
+    let stored = try await query.entities(for: ["active"])
+    XCTAssertEqual(stored.map(\.name), [AccountEntity.active.name])
+
+    let intent = TasksWidgetIntent()
+    intent.account = .active
+    let quickAdd = QuickAddWidgetIntent()
+    quickAdd.account = .active
+    guard case .selection(let before) = intent.resolution else {
+      return XCTFail("Expected a selection")
+    }
+    XCTAssertEqual(before.accountId, "a")
+    XCTAssertEqual(quickAdd.catalog?.account.id, "a")
+
+    try writeHost(activeAccountId: "b", linkKey: nil)
+    guard case .selection(let after) = intent.resolution else {
+      return XCTFail("Expected a selection")
+    }
+    XCTAssertEqual(after.accountId, "b")
+    XCTAssertEqual(quickAdd.catalog?.account.id, "b")
   }
 
   func testUpcomingResolvesToTheSnapshotOfItsDaysWithALinkInItsAccount() throws {

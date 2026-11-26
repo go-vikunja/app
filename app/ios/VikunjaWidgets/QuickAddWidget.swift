@@ -17,8 +17,8 @@ struct QuickAddWidget: Widget {
 
 extension QuickAddWidgetIntent {
   var catalog: AccountCatalog? {
-    guard let account else { return Catalogs.all().first }
-    return Catalogs.catalog(for: account.id)
+    guard let accountId = account.chosenId else { return Catalogs.all().first }
+    return Catalogs.catalog(for: accountId)
   }
 }
 
