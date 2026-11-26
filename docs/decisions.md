@@ -572,7 +572,7 @@ The server stores the HTML of descriptions, comments and titles unsanitized, so 
 ### Attachments
 
 - **Uploads go through the outbox in a lane of their own** (why: a large file would hold every edit back for minutes), one file per request, at most 50 MiB or the server's `max_file_size`. They give up sooner than other changes (why: each try sends the whole file again, often over mobile data). The details are in [Outbox](#outbox).
-- **Photo and video locations are removed before queueing**, on iOS and Android, also from files shared to the app on Android. Pictures picked as files lose their location too.
+- **Photo and video locations are removed before queueing**, on iOS and Android, also from files shared to the app on Android. Pictures picked as files lose their location too. Both platforms find a position in metadata by its name, in any XMP namespace (a drone's `drone-dji:GpsLatitude`, IPTC's `Iptc4xmpExt:GPSLatitude`); iOS takes IPTC's location structures out whole, their place names with them.
 - **"Upload with location?"**: a file whose location could not be removed goes up only when the user chooses Upload. Skip is the default and deletes the copy.
 - **Downloads** send the token only to the account's own server, and a downloaded file is handed on only at the attachment's listed size, when the list gives one; a broken-off download resumes only when the bytes just before its end, read again, match (why: a captive portal's or a proxy's page answered in the file's place would otherwise be opened, shared or saved under the attachment's name).
 - **Share to Vikunja on Android** uses a pass-through activity of the app's own (why: the share plugins use names the sending app chooses and read `file://` paths). It reads only another app's `content://` files, and refuses a file whose provider cannot be looked up (why: that provider could be the app's own). iOS: [Identity and scope](#identity-and-scope). A sending app gets time limits: 10 s per file to describe them, 5 min to open one and 30 s without a byte, at most 8 calls at once, each on a thread of its own, and an answer for a share that a newer one replaced is dropped; then the file's row says it couldn't be read, while Cancel or removing the row calls the copy off at once (why: any app can share to the app, and a provider that never answers would hold every later share).
@@ -589,12 +589,9 @@ Limits:
 - On v2 a web change that lands between the check and the write is still overwritten; the server offers no preconditions.
 - A misleading link whose text does not read like an address opens on a tap ([threat model](threat-model.md) R31).
 - Attachment lists are not synced (why: an upload does not bump `updated`).
-- Location removal misses some places, such as place names, maker notes and the parts after a JPEG's first image; videos picked as files keep their location.
+- Location removal misses some places, such as place names (on iOS those outside IPTC's location structures), maker notes, a video's GPS track, on iOS a PNG text chunk named for GPS, and the parts after a JPEG's first image; videos picked as files keep their location.
 - A provider that never answers keeps its thread until its process ends.
 - Not built: image paste, Markdown paste, collaborative editing, images and attachments in comments.
-
-Open:
-- The iOS location removal's XCTests have not run on a simulator yet ([threat model 8.3](threat-model.md#83-final-ios-phase)).
 
 ## Notifications and widgets
 
@@ -620,6 +617,7 @@ Open:
 - Done runs in a background isolate through the outbox without a token refresh (why: a lost refresh race ends the session); a token that needs one leaves the op for a background drain. It withdraws the task's notifications at once (why: iOS may suspend the isolate), then drains for at most about 20 s (5 s on iOS).
 - A Done or Snooze for an occurrence the task has passed is ignored (why: a repeating task moves on with each Done, so a second Done would skip the next occurrence).
 - A tap opens the task after the lock, in the payload's account; a silent account switch needs the install's link key ([Security and privacy](#security-and-privacy)).
+- **iOS: a Done or Snooze reaches the app when no scene connected**, as when iOS launches the app in the background for it. The app delegate hands each response to exactly one flutter_local_notifications instance: the UI engine's while that engine lives, else one made at launch without an engine, which only starts the plugin's background engine; a tap that opens the app waits for the scene's engine. The instances in the background engines (sync and actions) are never application delegates (why: every instance a registrar adds as one answers every response, so a Done would run twice), and the plugins' registrant for those engines is set at launch. Each action gets 20 s of background time (why: the plugin completes the response at once, and iOS may suspend a process it launched for one right after).
 
 ### Activity
 - Server notifications are pulled per account (newest first until a known one, at most 3 pages): the active account on start, resume and every 5 min in front, every account in each background run. An account's first pull stores everything as handled (why: a sign-in never floods the shade).
@@ -627,13 +625,13 @@ Open:
 - Only the inbox's Mark all read goes out as one "mark all read" request, and only while nothing unread arrived since the user chose it (why: the server marks every notification read, older ones the phone does not keep included); every other mark goes out on its own, even one that leaves nothing unread on the phone.
 
 ### Home-screen widgets
-- The app writes, the widgets only draw: one versioned snapshot per shown list, at most 30 rows plus a count, valid until midnight at the latest. On Android an Overdue or Upcoming list ends when its next task joins it, and the widget worker writes it again then; on iOS it stays until midnight (why: iOS draws a snapshot past its end as stale until a background run or the app writes it). Nothing native talks to the server or holds a token (why: access tokens live 600 s, and an extension must never refresh). Dart formats every text; due labels are never relative (why: they would go stale between updates).
+- The app writes, the widgets only draw: one versioned snapshot per shown list, at most 30 rows plus a count, valid until midnight at the latest. On Android an Overdue or Upcoming list ends when its next task joins it, and the widget worker writes it again then; on iOS it stays until midnight and carries the tasks that join before then, as rows shown from their instant and in the count of each timeline entry, with the texts of every count an entry may show, also after Done taps (why: iOS draws a snapshot past its end as stale until a background run or the app writes it, and nothing writes it at a join while the app is closed). Nothing native talks to the server or holds a token (why: access tokens live 600 s, and an extension must never refresh). Dart formats every text; due labels are never relative (why: they would go stale between updates).
 - Widgets are published when what they show changes, never for a sync's lease or checkpoints, and on a return from the background or a change of the device's 24-hour switch or time zone (why: each publish builds every list of the account).
 - Done is exactly once: a tap's Done is queued and its id recorded in one transaction, and only then is the tap acknowledged (why: acknowledging deletes it, and a repeating task must never move twice). A tap whose task is done or has moved on queues nothing.
 - No widget link writes (why: any app, and on iOS any web page, can open the app scheme); links switch accounts without asking only with the install's key.
 - The widget kinds never change after the first release (why: a placed widget refers to its kind, so a rename removes it); `app/test/app/widget_kinds_test.dart` checks both sides.
 - Android (Glance): Done is a button ([Accessibility](#accessibility)); the configure activity opens in the app's own task (why: no second Flutter engine on the same databases); `androidx.work` at 2.11.2 or later (why: below it R8 strips Glance's RemoteViews translator). Old widgets: [The previous app](#the-previous-app).
-- iOS (WidgetKit): an App Intent requiring authentication writes one file per tap into the App Group, with no network, keychain or database. A tap also removes the task's notifications by the account and task key in their payload, which `app/test/app/widget_extension_contract_test.dart` pins. The app imports taps before a reconcile, at its start, on a return from the background and after a permission change too (why: the scheduler would schedule their reminders again).
+- iOS (WidgetKit): an App Intent requiring authentication writes one file per tap into the App Group, with no network, keychain or database. A tap also removes the task's notifications by the account and task key in their payload, which `app/test/app/widget_extension_contract_test.dart` pins. The app imports taps before a reconcile, at its start, on a return from the background and after a permission change too (why: the scheduler would schedule their reminders again). Every timeline renews the request markers of the widgets the system lists and of the widget that asks, which a prune always keeps (why: a widget placed again a moment ago may not be listed yet, and without its marker the app stops writing its project, label or saved filter).
 - A widget worker or notification action still running when its account is removed checks the stored registry before each refresh and after each write, and puts "Account removed" back (why: nothing tells another isolate of a sign-out, and its write can land after the app's wipe). An unreadable registry removes nothing.
 - The widget host can act as the app through Glance's list template and sees the link key ([R17](threat-model.md#7-residual-and-accepted-risks)): accepted for the beta and for 1.0. A fixed list with "+N more" or an own list behind a checking trampoline stay the choices for later.
 
@@ -644,7 +642,7 @@ Limits:
 - iOS widgets refresh with the app closed only through background runs, and their Done reaches the server only at the app's next start, resume, background run or notification action.
 
 Open:
-- On an iOS device: the widget configuration, the extension seeing placed widgets, App Group signing, whether a lock-screen release build needs `DEAD_CODE_STRIPPING=NO`, whether the extension reaches the app's notifications, the snooze-only actions of a task the user may not change (`task_snooze`), and the XCTests on a simulator.
+- On an iOS device: the widget configuration, the extension seeing placed widgets, App Group signing, whether a lock-screen release build needs `DEAD_CODE_STRIPPING=NO`, whether the extension reaches the app's notifications, the snooze-only actions of a task the user may not change (`task_snooze`), a Done or Snooze while the app is not running, a task joining an Overdue widget with the app closed, and a project widget removed and placed again.
 
 ## Security and privacy
 

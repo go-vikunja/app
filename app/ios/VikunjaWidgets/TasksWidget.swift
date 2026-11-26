@@ -137,7 +137,6 @@ private struct ListView: View {
 
   private func rows(_ count: Int) -> some View {
     let shown = Array(content.rows.prefix(count))
-    let notShown = content.total - shown.count
     let reservesCheckbox = shown.contains(where: \.canDone)
     return VStack(alignment: .leading, spacing: spacing) {
       ForEach(shown) { row in
@@ -145,9 +144,10 @@ private struct ListView: View {
           row: row, accountId: content.accountId, compact: compact,
           reservesCheckbox: reservesCheckbox)
       }
-      if notShown > 0, !compact, let openLink = content.openLink {
+      if !compact, let openLink = content.openLink, let more = content.moreLabel(shown: shown.count)
+      {
         Link(destination: openLink) {
-          Text("+\(notShown) more").font(.caption).foregroundStyle(.secondary)
+          Text(more).font(.caption).foregroundStyle(.secondary)
         }
       }
     }
@@ -415,9 +415,16 @@ extension DueTone {
 }
 
 extension ListContent {
-  /// The app's plural; the extension's own where there is none, as after a Done tap.
+  /// "+N more" beside `shown` rows, in the app's words.
+  func moreLabel(shown: Int) -> String? {
+    let notShown = total - shown
+    return notShown > 0 ? moreLabels[notShown] : nil
+  }
+
+  /// The app's plural; the bare number in a list the app wrote before it
+  /// gave one for every count.
   var spokenCount: String {
-    countLabel ?? String(localized: "\(total) tasks")
+    countLabel ?? total.formatted()
   }
 
   /// For the placeholder and the gallery before the app has written data.

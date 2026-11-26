@@ -33,7 +33,10 @@ struct ListContent {
   var notice: String?
   var rows: [TaskRowContent]
   var total: Int
+  /// The count as screen readers hear it, and "+N more" by N, in the
+  /// app's words.
   var countLabel: String?
+  var moreLabels: [Int: String] = [:]
   var empty: WidgetText?
   var openLink: URL?
   var newTaskLink: URL?
@@ -69,19 +72,19 @@ struct TasksProvider: AppIntentTimelineProvider {
     TasksEntry
   > {
     let resolution = configuration.resolution
-    if case .selection(let selection) = resolution {
-      SnapshotRequests.mark(selection.key)
-    }
-    await SnapshotRequests.syncWithPlacedWidgets()
+    var asking: String?
+    if case .selection(let selection) = resolution { asking = selection.key }
+    await SnapshotRequests.syncWithPlacedWidgets(asking: asking)
     let timeline = TasksTimeline(resolution: resolution, now: .now)
     return Timeline(entries: timeline.entries, policy: .after(timeline.reloadDate))
   }
 }
 
-/// Entries at now, at every row's due instant and at midnight: a row turns
-/// overdue on time while the app is not running, and from `validUntil` on
-/// the rows show dates instead of day words, on the medium and larger sizes
-/// under a notice.
+/// Entries at now, at every row's due instant, at every join and at
+/// midnight: while the app is not running a row turns overdue on time, a
+/// task joins an Overdue or Upcoming list with the count the app wrote for
+/// it, and from `validUntil` on the rows show dates instead of day words,
+/// on the medium and larger sizes under a notice.
 struct TasksTimeline {
   private static let maxEntries = 48
 
@@ -145,19 +148,32 @@ struct TasksTimeline {
     let hidden = DoneTaps.hiddenTaskIds(
       accountId: selection.accountId, listGeneratedAt: snapshot.generatedAt)
     let allRows = snapshot.rows ?? []
-    let rows = allRows.filter { !hidden.contains($0.id) }
-    let total = max(rows.count, (snapshot.total ?? allRows.count) - (allRows.count - rows.count))
-    entries = snapshot.entryDates(rows: rows, now: now, limit: Self.maxEntries).map { date in
+    let untapped = allRows.filter { !hidden.contains($0.id) }
+    let listed = snapshot.total ?? allRows.filter { $0.showsFrom == nil }.count
+    var moreLabels: [Int: String] = [:]
+    for text in snapshot.counts ?? [] { moreLabels[text.n] = text.more }
+    // A list written before the app gave every count's texts.
+    if snapshot.counts == nil, let total = snapshot.total {
+      moreLabels[total - allRows.count] = snapshot.moreLabel
+    }
+    let changes = snapshot.changeDates(rows: untapped, after: now)
+    entries = ([now] + changes.prefix(Self.maxEntries - 1)).map { date in
       // The day words would be wrong from here on, and the list may be too.
       let stale = snapshot.validUntil.map { date >= $0 } ?? false
+      let shown = allRows.filter { row in row.showsFrom.map { $0 <= date } ?? true }
+      let rows = shown.filter { !hidden.contains($0.id) }
+      let joined = (snapshot.joinsAt ?? []).filter { $0 <= date }.count
+      let total = max(rows.count, listed + joined - (shown.count - rows.count))
+      let count = snapshot.countText(total)
       let content = ListContent(
         accountId: selection.accountId, title: snapshot.title, subtitle: snapshot.subtitle,
         notice: notice ?? (stale ? snapshot.staleNotice : nil),
         rows: rows.map {
           Self.rowContent($0, at: date, stale: stale, accountId: selection.accountId)
         },
-        total: total, countLabel: rows.count == allRows.count ? snapshot.countLabel : nil,
-        empty: snapshot.empty,
+        total: total,
+        countLabel: count?.label ?? (total == snapshot.total ? snapshot.countLabel : nil),
+        moreLabels: moreLabels, empty: count?.empty ?? snapshot.empty,
         openLink: notice == nil ? openLink : messageLink ?? openLink,
         newTaskLink: WidgetLinks.parse(snapshot.newTaskLink), newTaskLabel: snapshot.newTaskLabel)
       let urgent = content.rows.filter { $0.dueTone == .overdue || $0.dueTone == .today }.count
@@ -165,7 +181,9 @@ struct TasksTimeline {
         date: date, content: .list(content),
         relevance: TimelineEntryRelevance(score: Float(urgent)))
     }
-    if let validUntil = snapshot.validUntil, validUntil > now {
+    if changes.count >= Self.maxEntries {
+      reloadDate = changes[Self.maxEntries - 1]
+    } else if let validUntil = snapshot.validUntil, validUntil > now {
       reloadDate = validUntil
     } else {
       reloadDate = now.addingTimeInterval(3600)

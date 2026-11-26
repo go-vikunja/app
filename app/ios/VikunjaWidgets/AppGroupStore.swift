@@ -103,6 +103,14 @@ enum AppGroupStore {
       attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
   }
 
+  /// False when there is no such file.
+  static func touch(_ path: String) -> Bool {
+    guard let url = root?.appendingPathComponent(path) else { return false }
+    return
+      (try? FileManager.default.setAttributes(
+        [.modificationDate: Date()], ofItemAtPath: url.path)) != nil
+  }
+
   static func remove(_ path: String) {
     guard let url = root?.appendingPathComponent(path) else { return }
     try? FileManager.default.removeItem(at: url)

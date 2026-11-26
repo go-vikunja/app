@@ -6,15 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 // extension does not declare reloads nothing, without an error.
 void main() {
   const extensionFolder = 'ios/VikunjaWidgets';
-  final bundle = File('$extensionFolder/VikunjaWidgetsBundle.swift')
-      .readAsStringSync();
+  final kinds = File('$extensionFolder/WidgetKinds.swift').readAsStringSync();
   final plugin = File(
     '../plugins/vikunja_widgets/ios/vikunja_widgets/Sources/vikunja_widgets/'
     'VikunjaWidgetsPlugin.swift',
   ).readAsStringSync();
 
   final enumBody = RegExp(r'enum WidgetKinds \{([^}]*)\}')
-      .firstMatch(bundle)
+      .firstMatch(kinds)
       ?.group(1);
   final declared = {
     for (final match in RegExp(

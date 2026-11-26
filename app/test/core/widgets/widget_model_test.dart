@@ -120,6 +120,7 @@ void main() {
       generatedAt: generated,
       validUntil: DateTime.utc(2026, 10, 26, 23),
       changesAt: [DateTime.utc(2026, 10, 26, 13)],
+      joinsAt: [DateTime.utc(2026, 10, 26, 13), DateTime.utc(2026, 10, 26, 14)],
       rows: [
         WidgetRow(
           taskId: 12,
@@ -141,6 +142,7 @@ void main() {
           absoluteOverdueSemanticsLabel: 'Water the plants, overdue Oct 26',
           doneLabel: 'Mark “Water the plants” done',
           link: 'vikunja-io.vikunja.app://widget/task/12',
+          showsFrom: DateTime.utc(2026, 10, 26, 13),
         ),
         const WidgetRow(
           taskId: -3,
@@ -165,6 +167,15 @@ void main() {
       newTaskLink: 'vikunja-io.vikunja.app://widget/new-task',
       newTaskLabel: 'New task',
       staleNotice: 'Open Vikunja to update',
+      counts: const [
+        WidgetCountText(count: 0, label: 'No tasks'),
+        WidgetCountText(
+          count: 1,
+          label: '1 task',
+          more: '+1 more',
+          empty: WidgetText('1 task', body: 'Open Vikunja to see it'),
+        ),
+      ],
     );
 
     test('round-trips through its JSON', () {
@@ -180,8 +191,39 @@ void main() {
       ]);
       final rows = json['rows']! as List<Object?>;
       expect((rows.first! as Map)['dueAt'], isA<int>());
-      expect(json['more'], 32);
+      expect(json['more'], 33, reason: 'a row that joins later is no row yet');
       expect(rows.last, isNot(contains('due')), reason: 'unset is left out');
+      expect((rows.first! as Map)['showsFrom'], isA<int>());
+      expect(json['joinsAt'], [
+        DateTime.utc(2026, 10, 26, 13).millisecondsSinceEpoch,
+        DateTime.utc(2026, 10, 26, 14).millisecondsSinceEpoch,
+      ]);
+      expect(json['counts'], [
+        {'n': 0, 'label': 'No tasks'},
+        {
+          'n': 1,
+          'label': '1 task',
+          'more': '+1 more',
+          'empty': {'title': '1 task', 'body': 'Open Vikunja to see it'},
+        },
+      ]);
+    });
+
+    test('a list the Android widgets read carries no joins and no count '
+        'texts', () {
+      final json = jsonDecode(
+        WidgetSnapshot(
+          key: '$account.today',
+          accountId: account,
+          state: WidgetSnapshotState.ok,
+          title: 'Today',
+          generatedAt: generated,
+          validUntil: DateTime.utc(2026, 10, 26, 23),
+        ).encode(),
+      ) as Map<String, Object?>;
+
+      expect(json, isNot(contains('joinsAt')));
+      expect(json, isNot(contains('counts')));
     });
 
     test('a reader refuses another version', () {

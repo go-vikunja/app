@@ -96,6 +96,18 @@ struct ListSnapshot: Decodable {
     var labelAbsoluteOverdue: String?
     var doneLabel: String?
     var link: String?
+    /// When the row joins a list whose tasks join by the clock; it is in
+    /// the list from the start without it.
+    var showsFrom: Date?
+  }
+
+  /// The app's texts for one count an entry may show.
+  struct CountText: Decodable {
+    var n: Int
+    var label: String
+    var more: String?
+    /// What the list shows in place of hidden titles.
+    var empty: WidgetText?
   }
 
   var v: Int
@@ -106,8 +118,11 @@ struct ListSnapshot: Decodable {
   var generatedAt: Date
   var validUntil: Date?
   var changesAt: [Date]?
+  /// When each task that is not in the list yet joins it, rows or not.
+  var joinsAt: [Date]?
   var rows: [Row]?
   var total: Int?
+  var moreLabel: String?
   var countLabel: String?
   var empty: WidgetText?
   var message: WidgetText?
@@ -116,14 +131,25 @@ struct ListSnapshot: Decodable {
   var newTaskLink: String?
   var newTaskLabel: String?
   var staleNotice: String?
+  var counts: [CountText]?
 
   var listState: State { state.flatMap(State.init(rawValue:)) ?? .ok }
 
-  /// Now, then every instant a row may look or read otherwise: its due
-  /// instant, also after `validUntil`, and `validUntil`.
+  /// Every instant after now at which a row may look or read otherwise: its
+  /// due instant, also after `validUntil`, a task joining, and `validUntil`.
+  func changeDates(rows: [Row], after now: Date) -> [Date] {
+    let changes =
+      (changesAt ?? []) + (joinsAt ?? []) + [validUntil].compactMap { $0 }
+      + rows.compactMap(\.dueAt)
+    return Set(changes.filter { $0 > now }).sorted()
+  }
+
   func entryDates(rows: [Row], now: Date, limit: Int) -> [Date] {
-    let changes = (changesAt ?? []) + [validUntil].compactMap { $0 } + rows.compactMap(\.dueAt)
-    return [now] + Set(changes.filter { $0 > now }).sorted().prefix(limit - 1)
+    [now] + changeDates(rows: rows, after: now).prefix(limit - 1)
+  }
+
+  func countText(_ count: Int) -> CountText? {
+    counts?.first { $0.n == count }
   }
 
   static func load(key: String) -> ListSnapshot? {

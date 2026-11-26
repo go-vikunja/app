@@ -17,6 +17,7 @@ final class WidgetSnapshot {
     required this.validUntil,
     this.subtitle,
     this.changesAt = const [],
+    this.joinsAt = const [],
     this.rows = const [],
     this.total = 0,
     this.moreLabel,
@@ -28,6 +29,7 @@ final class WidgetSnapshot {
     this.newTaskLink,
     this.newTaskLabel,
     this.staleNotice,
+    this.counts = const [],
   });
 
   factory fromJson(Map<String, Object?> json) {
@@ -46,6 +48,10 @@ final class WidgetSnapshot {
         for (final at in json['changesAt'] as List<Object?>? ?? const [])
           _date(at)!,
       ],
+      joinsAt: [
+        for (final at in json['joinsAt'] as List<Object?>? ?? const [])
+          _date(at)!,
+      ],
       rows: [
         for (final row in json['rows'] as List<Object?>? ?? const [])
           WidgetRow.fromJson(row! as Map<String, Object?>),
@@ -60,6 +66,10 @@ final class WidgetSnapshot {
       newTaskLink: json['newTaskLink'] as String?,
       newTaskLabel: json['newTaskLabel'] as String?,
       staleNotice: json['staleNotice'] as String?,
+      counts: [
+        for (final count in json['counts'] as List<Object?>? ?? const [])
+          WidgetCountText.fromJson(count! as Map<String, Object?>),
+      ],
     );
   }
 
@@ -88,6 +98,11 @@ final class WidgetSnapshot {
   /// Instants before [validUntil] at which a row's tone changes (a due
   /// instant passing), for the timeline entries of iOS.
   final List<DateTime> changesAt;
+
+  /// Where nothing writes the list again when a task joins it (iOS, whose
+  /// timeline draws it per entry): when each task that is not in the list
+  /// yet joins it before [validUntil], whether it has a row or not.
+  final List<DateTime> joinsAt;
   final List<WidgetRow> rows;
 
   /// Every matching task, [rows] included.
@@ -122,7 +137,12 @@ final class WidgetSnapshot {
   /// written the list again.
   final String? staleNotice;
 
-  int get more => total - rows.length;
+  /// The texts of every count a timeline entry of iOS may show, as joins
+  /// add to [total] and Done taps take rows away; empty for the Android
+  /// widgets, which take [countLabel] and [moreLabel].
+  final List<WidgetCountText> counts;
+
+  int get more => total - rows.where((row) => row.showsFrom == null).length;
 
   Map<String, Object?> toJson() => {
     'v': version,
@@ -134,6 +154,8 @@ final class WidgetSnapshot {
     'generatedAt': generatedAt.millisecondsSinceEpoch,
     'validUntil': validUntil.millisecondsSinceEpoch,
     'changesAt': [for (final at in changesAt) at.millisecondsSinceEpoch],
+    if (joinsAt.isNotEmpty)
+      'joinsAt': [for (final at in joinsAt) at.millisecondsSinceEpoch],
     'rows': [for (final row in rows) row.toJson()],
     'total': total,
     'more': more,
@@ -146,6 +168,8 @@ final class WidgetSnapshot {
     'newTaskLink': ?newTaskLink,
     'newTaskLabel': ?newTaskLabel,
     'staleNotice': ?staleNotice,
+    if (counts.isNotEmpty)
+      'counts': [for (final count in counts) count.toJson()],
   };
 
   String encode() => jsonEncode(toJson());
@@ -202,6 +226,7 @@ final class WidgetRow {
     this.overdueSemanticsLabel,
     this.absoluteSemanticsLabel,
     this.absoluteOverdueSemanticsLabel,
+    this.showsFrom,
   });
 
   factory fromJson(Map<String, Object?> json) => WidgetRow(
@@ -224,6 +249,7 @@ final class WidgetRow {
     absoluteOverdueSemanticsLabel: json['labelAbsoluteOverdue'] as String?,
     doneLabel: _string(json, 'doneLabel'),
     link: _string(json, 'link'),
+    showsFrom: _date(json['showsFrom']),
   );
 
   final int taskId;
@@ -291,6 +317,10 @@ final class WidgetRow {
   /// Opens the task in the app.
   final String link;
 
+  /// When the task joins its list (see [WidgetSnapshot.joinsAt]); null for
+  /// a row in it from the start.
+  final DateTime? showsFrom;
+
   Map<String, Object?> toJson() => {
     'id': taskId,
     'title': title,
@@ -311,6 +341,7 @@ final class WidgetRow {
     'labelAbsoluteOverdue': ?absoluteOverdueSemanticsLabel,
     'doneLabel': doneLabel,
     'link': link,
+    'showsFrom': ?showsFrom?.millisecondsSinceEpoch,
   };
 
   @override
@@ -319,6 +350,44 @@ final class WidgetRow {
 
   @override
   int get hashCode => jsonEncode(toJson()).hashCode;
+}
+
+/// The texts of one count: [label] as screen readers hear it, [more] as
+/// "+N more", and with titles hidden [empty], what the list shows in their
+/// place.
+@immutable
+final class WidgetCountText {
+  const new({required this.count, required this.label, this.more, this.empty});
+
+  factory fromJson(Map<String, Object?> json) => WidgetCountText(
+    count: json['n']! as int,
+    label: _string(json, 'label'),
+    more: json['more'] as String?,
+    empty: _text(json['empty']),
+  );
+
+  final int count;
+  final String label;
+  final String? more;
+  final WidgetText? empty;
+
+  Map<String, Object?> toJson() => {
+    'n': count,
+    'label': label,
+    'more': ?more,
+    'empty': ?empty?.toJson(),
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is WidgetCountText &&
+      other.count == count &&
+      other.label == label &&
+      other.more == more &&
+      other.empty == empty;
+
+  @override
+  int get hashCode => Object.hash(count, label, more, empty);
 }
 
 /// A title, an optional body and the label of what the tap does.

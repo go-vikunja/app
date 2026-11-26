@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:material_ui/material_ui.dart' show Color;
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -277,7 +279,7 @@ final class _AccountBuild {
       title: l10n.widgetUpcomingTitle(days),
       tasks: await _upcoming(days),
       empty: WidgetText(l10n.upcomingEmptyRangeTitle),
-      nextJoinAt: await _nextIntoUpcoming(days),
+      joining: await _intoUpcoming(days),
     ),
     OverdueKind() => _list(
       kind,
@@ -287,8 +289,9 @@ final class _AccountBuild {
           if (task.isOverdue(now)) task,
       ],
       empty: WidgetText(l10n.widgetOverdueEmptyTitle),
-      nextJoinAt: _earliestAfterNow([
-        for (final task in await activeOpenTasks) ?task.dueDate,
+      joining: _byInstant([
+        for (final task in await activeOpenTasks)
+          if (task.dueDate case final due? when due.isAfter(now)) (task, due),
       ]),
     ),
     ProjectTasksKind(:final projectId) => await _project(kind, projectId),
@@ -342,31 +345,29 @@ final class _AccountBuild {
 
   DateTime _upcomingEnd(int days) => evaluateDatemath('now+${days}d', now);
 
-  /// When the next open task beyond the range comes within [days] of the
-  /// clock: its due date that many days earlier, on the wall clock the
-  /// range is measured by.
-  Future<DateTime?> _nextIntoUpcoming(int days) async {
+  /// The open tasks beyond the range, each with when it comes within [days]
+  /// of the clock: its due date that many days earlier, on the wall clock
+  /// the range is measured by.
+  Future<List<_Join>> _intoUpcoming(int days) async {
     final end = _upcomingEnd(days);
-    return _earliestAfterNow([
+    return _byInstant([
       for (final task in await activeOpenTasks)
         if (task.dueDate case final due? when !due.isBefore(end))
-          evaluateDatemath(
-            'now-${days}d',
-            now.isUtc ? due.toUtc() : due.toLocal(),
+          (
+            task,
+            evaluateDatemath(
+              'now-${days}d',
+              now.isUtc ? due.toUtc() : due.toLocal(),
+            ),
           ),
     ]);
   }
 
-  DateTime? _earliestAfterNow(Iterable<DateTime> instants) {
-    DateTime? earliest;
-    for (final instant in instants) {
-      if (instant.isAfter(now) &&
-          (earliest == null || instant.isBefore(earliest))) {
-        earliest = instant;
-      }
-    }
-    return earliest;
-  }
+  /// The joins after now, the earliest first.
+  List<_Join> _byInstant(Iterable<_Join> joins) => [
+    for (final join in joins)
+      if (join.$2.isAfter(now)) join,
+  ]..sort((a, b) => a.$2.compareTo(b.$2));
 
   /// The project's first list view, in its filter and the sort the user
   /// left it in, the open top-level rows; a project without a list view
@@ -496,11 +497,13 @@ final class _AccountBuild {
     newTaskLabel: l10n.newTask,
   );
 
-  /// [nextJoinAt] is when the next task joins a list whose members depend
-  /// on the clock. Where [joinsEndValidity], the snapshot is valid until
-  /// then at the latest, as the widget worker or the running app writes it
-  /// again then; the count changes too, so this holds while task titles
-  /// are hidden as well.
+  /// [joining] are the tasks that join a list whose members depend on the
+  /// clock, the earliest first. Where [joinsEndValidity], the snapshot is
+  /// valid until the first joins at the latest, as the widget worker or the
+  /// running app writes it again then; the count changes too, so this holds
+  /// while task titles are hidden as well. Elsewhere (iOS) it carries those
+  /// that join before midnight, as rows shown from then while there is room
+  /// and in the count of each timeline entry.
   WidgetSnapshot _list(
     WidgetKind kind, {
     required String title,
@@ -508,19 +511,34 @@ final class _AccountBuild {
     required WidgetText empty,
     int? listProjectId,
     int? newTaskProjectId,
-    DateTime? nextJoinAt,
+    List<_Join> joining = const [],
   }) {
-    final rows = [
+    final current = [
       if (showTaskTitles)
         for (final task in tasks.take(WidgetSnapshot.maxRows))
           _row(task, listProjectId: listProjectId),
     ];
     final midnight = nextLocalMidnight(now);
+    final nextJoinAt = joining.firstOrNull?.$2;
     final validUntil =
         joinsEndValidity && nextJoinAt != null && nextJoinAt.isBefore(midnight)
         ? nextJoinAt
         : midnight;
-    final more = tasks.length - rows.length;
+    final joins = joinsEndValidity
+        ? const <_Join>[]
+        : [
+            for (final join in joining)
+              if (join.$2.isBefore(midnight)) join,
+          ];
+    final rows = [
+      ...current,
+      if (showTaskTitles)
+        for (final (task, at) in joins.take(
+          WidgetSnapshot.maxRows - current.length,
+        ))
+          _row(task, listProjectId: listProjectId, showsFrom: at),
+    ];
+    final more = tasks.length - current.length;
     return WidgetSnapshot(
       key: snapshotKey(account.id, kind),
       accountId: account.id,
@@ -558,8 +576,34 @@ final class _AccountBuild {
           : null,
       newTaskLabel: l10n.newTask,
       staleNotice: l10n.widgetStaleNotice,
+      joinsAt: [for (final (_, at) in joins) at],
+      counts: joinsEndValidity
+          ? const []
+          : _countTexts(
+              from: math.max(0, tasks.length - 2 * rows.length),
+              to: tasks.length + joins.length,
+            ),
     );
   }
+
+  /// From the fewest an entry may count, after a Done tap on every row, and
+  /// "+N more" beside every row it may show, to the most, after every join.
+  List<WidgetCountText> _countTexts({required int from, required int to}) => [
+    for (var count = from; count <= to; count++)
+      WidgetCountText(
+        count: count,
+        label: l10n.widgetTaskCount(count),
+        more: count > 0 ? l10n.widgetMoreTasks(count) : null,
+        empty: showTaskTitles || count == 0
+            ? null
+            : WidgetText(
+                l10n.widgetTaskCount(count),
+                body: count == 1
+                    ? l10n.widgetTitleHiddenHint
+                    : l10n.widgetTitlesHiddenHint(count),
+              ),
+      ),
+  ];
 
   WidgetSnapshot _gone(WidgetKind kind, String title) => WidgetSnapshot(
     key: snapshotKey(account.id, kind),
@@ -576,7 +620,7 @@ final class _AccountBuild {
     ).toUri().toString(),
   );
 
-  WidgetRow _row(Task task, {int? listProjectId}) {
+  WidgetRow _row(Task task, {int? listProjectId, DateTime? showsFrom}) {
     final project = projectsById[task.projectId];
     final color = _color(project?.hexColor);
     final due = task.dueDate;
@@ -609,6 +653,7 @@ final class _AccountBuild {
     return WidgetRow(
       taskId: task.id,
       title: task.title,
+      showsFrom: showsFrom,
       dueLabel: dueLabel,
       absoluteDueLabel: absoluteDueLabel,
       dueAt: due,
@@ -761,6 +806,9 @@ final class _AccountBuild {
     );
   }
 }
+
+/// A task and when it joins a list.
+typedef _Join = (Task, DateTime);
 
 /// `rrggbb` from the server's hex colour, which may carry a `#`; null when
 /// unset.

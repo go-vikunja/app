@@ -75,8 +75,15 @@ void main() {
     absoluteOverdueSemanticsLabel: 'Water the plants, overdue Oct 26',
     doneLabel: 'Mark done',
     link: 'vikunja-io.vikunja.app://widget/task/12',
+    showsFrom: DateTime.utc(2026, 10, 26, 13),
   );
   const text = WidgetText('Title', body: 'Body', action: 'Action');
+  const count = WidgetCountText(
+    count: 3,
+    label: '3 tasks',
+    more: '+3 more',
+    empty: text,
+  );
   final snapshot = WidgetSnapshot(
     key: 'account.today',
     accountId: 'account',
@@ -86,6 +93,7 @@ void main() {
     generatedAt: DateTime.utc(2026, 10, 26, 9),
     validUntil: DateTime.utc(2026, 10, 26, 23),
     changesAt: [DateTime.utc(2026, 10, 26, 13)],
+    joinsAt: [DateTime.utc(2026, 10, 26, 13)],
     rows: [row],
     total: 3,
     moreLabel: '+2 more',
@@ -97,6 +105,7 @@ void main() {
     newTaskLink: 'vikunja-io.vikunja.app://widget/new-task',
     newTaskLabel: 'New task',
     staleNotice: 'Open Vikunja to update',
+    counts: const [count],
   );
 
   group('every property the extension decodes is a key the app writes', () {
@@ -118,6 +127,7 @@ void main() {
           'labelOverdue',
           'labelAbsolute',
           'labelAbsoluteOverdue',
+          'showsFrom',
         ]),
       );
       expect(keys(row.toJson()), containsAll(swift));
@@ -126,8 +136,21 @@ void main() {
     test('a list', () {
       final swift = storedProperties(listSnapshot(), indent: '  ');
 
-      expect(swift, containsAll(['validUntil', 'staleNotice']));
+      expect(
+        swift,
+        containsAll(['validUntil', 'staleNotice', 'joinsAt', 'counts']),
+      );
       expect(keys(snapshot.toJson()), containsAll(swift));
+    });
+
+    test('a count text', () {
+      final swift = storedProperties(
+        block(listSnapshot(), 'struct CountText: Decodable {', indent: '  '),
+        indent: '    ',
+      );
+
+      expect(swift, containsAll(['n', 'label', 'more', 'empty']));
+      expect(keys(count.toJson()), containsAll(swift));
     });
 
     test('a text', () {
@@ -205,7 +228,7 @@ void main() {
       ]),
     );
     expect(
-      block(widgetData, 'func entryDates(', indent: '  '),
+      block(widgetData, 'func changeDates(', indent: '  '),
       contains(r'rows.compactMap(\.dueAt)'),
     );
   });
@@ -235,9 +258,7 @@ void main() {
     );
   });
 
-  // An internal of flutter_local_notifications: check it on every upgrade.
-  test('flutter_local_notifications keeps the payload under "payload" in a '
-      "notification's userInfo, where the extension reads it", () {
+  String pluginSource(String name) {
     final config = File('../.dart_tool/package_config.json').absolute;
     final packages =
         (jsonDecode(config.readAsStringSync()) as Map)['packages'] as List;
@@ -245,17 +266,108 @@ void main() {
       (package) => package['name'] == 'flutter_local_notifications',
     );
     final rootUri = plugin['rootUri']! as String;
-    final source = File.fromUri(
+    return File.fromUri(
       config.uri
           .resolve(rootUri.endsWith('/') ? rootUri : '$rootUri/')
           .resolve(
             'ios/flutter_local_notifications/Sources/'
-            'flutter_local_notifications/FlutterLocalNotificationsPlugin.m',
+            'flutter_local_notifications/$name',
           ),
     ).readAsStringSync();
+  }
+
+  // An internal of flutter_local_notifications: check it on every upgrade.
+  test('flutter_local_notifications keeps the payload under "payload" in a '
+      "notification's userInfo, where the extension reads it", () {
+    final source = pluginSource('FlutterLocalNotificationsPlugin.m');
 
     expect(source, contains('NSString *const PAYLOAD = @"payload";'));
     expect(source, contains('userDict[PAYLOAD] = payload;'));
     expect(markDone, contains('userInfo["payload"] as? String'));
+  });
+
+  // Internals of flutter_local_notifications that the app's delegate relies on
+  // to hand a Done or Snooze to the plugin before a scene connects
+  // (ios/Runner/NotificationPlugins.swift): check them on every upgrade.
+  test('flutter_local_notifications keeps the actions that open the app '
+      'under the key the app reads, and any instance of it hands an action '
+      'to the one background engine', () {
+    final plugin = pluginSource('FlutterLocalNotificationsPlugin.m');
+    final plugins = File('ios/Runner/NotificationPlugins.swift')
+        .readAsStringSync();
+    final responses = File('ios/Runner/NotificationResponses.swift')
+        .readAsStringSync();
+    const key =
+        'dexterous.com/flutter/local_notifications/'
+        'foreground_action_identifiers';
+
+    expect(plugin, contains('FOREGROUND_ACTION_IDENTIFIERS =\n    @"$key";'));
+    expect(plugins, contains('"$key"'));
+    // The generated registrant names a plugin by its class; a debug build
+    // asserts that the background engines' registrant saw this key.
+    expect(plugin, contains('@implementation FlutterLocalNotificationsPlugin'));
+    expect(
+      responses,
+      contains(
+        'static let notificationPluginKey = "FlutterLocalNotificationsPlugin"',
+      ),
+    );
+    expect(plugin, contains('[registrar addApplicationDelegate:instance];'));
+    // Statics, so whichever instance answers feeds the same sink and engine.
+    expect(
+      plugin,
+      contains('static FlutterPluginRegistrantCallback registerPlugins;'),
+    );
+    expect(plugin, contains('static ActionEventSink *actionEventSink;'));
+    expect(
+      pluginSource('FlutterEngineManager.m'),
+      contains('static FlutterEngine *backgroundEngine;'),
+    );
+    // An action that does not open the app goes to the background engine
+    // whether or not Dart initialized this instance.
+    final response = plugin.substring(
+      plugin.indexOf(
+        'didReceiveNotificationResponse:(UNNotificationResponse *)',
+      ),
+    );
+    final notOpening = response.substring(
+      response.indexOf('NSNotFound) {'),
+      response.indexOf('completionHandler();\n  }\n}'),
+    );
+    final background = notOpening.substring(notOpening.lastIndexOf('} else {'));
+    expect(
+      background,
+      stringContainsInOrder([
+        '[actionEventSink addItem:notificationResponseDict];',
+        '[_flutterEngineManager startEngineIfNeeded:actionEventSink',
+        'registerPlugins:registerPlugins];',
+      ]),
+    );
+    expect(background, isNot(contains('_initialized')));
+    // A response of any other notification is left without its completion.
+    expect(
+      plugin,
+      contains(
+        'return userInfo != nil && userInfo[NOTIFICATION_ID] &&\n'
+        '         userInfo[PRESENT_ALERT] && userInfo[PRESENT_SOUND] &&\n'
+        '         userInfo[PRESENT_BADGE] && userInfo[PAYLOAD];',
+      ),
+    );
+    for (final constant in [
+      'NOTIFICATION_ID = @"NotificationId"',
+      'PRESENT_ALERT = @"presentAlert"',
+      'PRESENT_SOUND = @"presentSound"',
+      'PRESENT_BADGE = @"presentBadge"',
+      'PAYLOAD = @"payload"',
+    ]) {
+      expect(plugin, contains('NSString *const $constant;'));
+    }
+    expect(
+      responses,
+      contains(
+        '["NotificationId", "presentAlert", "presentSound", "presentBadge", '
+        '"payload"]',
+      ),
+    );
   });
 }

@@ -403,6 +403,158 @@ void main() {
         );
       }
     });
+
+    List<(int, String, String?)> countTexts(WidgetSnapshot snapshot) => [
+      for (final text in snapshot.counts) (text.count, text.label, text.more),
+    ];
+
+    test('Overdue on iOS: the task that falls due before midnight comes as a '
+        'row shown from its due instant, with every count an entry may '
+        'show', () async {
+      final overdue = await at(
+        now,
+        const OverdueKind(),
+        joinsEndValidity: false,
+      );
+
+      expect(titles(overdue), ['Yesterday', 'This afternoon']);
+      expect(overdue.rows.first.showsFrom, isNull);
+      final afternoon = overdue.rows.last;
+      expect(afternoon.showsFrom, DateTime(2026, 10, 26, 15).toUtc());
+      expect(afternoon.tone, WidgetDueTone.today);
+      expect(
+        afternoon.overdueSemanticsLabel,
+        'This afternoon\nInbox\nOverdue, due Today, 15:00\nPriority: High',
+      );
+      expect(overdue.total, 1);
+      expect(overdue.countLabel, '1 task');
+      expect(overdue.joinsAt, [DateTime(2026, 10, 26, 15).toUtc()]);
+      expect(countTexts(overdue), [
+        (0, 'No tasks', null),
+        (1, '1 task', '+1 more'),
+        (2, '2 tasks', '+2 more'),
+      ]);
+    });
+
+    test('Upcoming on iOS: a task that comes within its days before midnight, '
+        'on the wall clock across a change of the clocks', () async {
+      await db.tasksDao.upsertAll([
+        sampleTask(
+          id: 8,
+          title: 'Tuesday afternoon',
+          due: DateTime(2026, 10, 27, 15),
+        ),
+      ], syncRunId: 'run');
+      final saturday = DateTime(2026, 10, 24, 10);
+
+      final upcoming = await at(
+        saturday,
+        const UpcomingKind(3),
+        joinsEndValidity: false,
+      );
+
+      expect(titles(upcoming), [
+        'Yesterday',
+        'This afternoon',
+        'Tomorrow, read only',
+        'Tuesday afternoon',
+      ]);
+      expect(
+        upcoming.rows.last.showsFrom?.toLocal(),
+        DateTime(2026, 10, 24, 15),
+      );
+      expect([
+        for (final row in upcoming.rows.take(3)) row.showsFrom,
+      ], everyElement(isNull));
+      expect(upcoming.total, 3);
+      expect(upcoming.joinsAt, [upcoming.rows.last.showsFrom]);
+      expect(upcoming.validUntil, DateTime(2026, 10, 25));
+    });
+
+    test('with titles hidden, iOS gets what the list says in their place for '
+        'each count', () async {
+      final overdue = await at(
+        now,
+        const OverdueKind(),
+        showTaskTitles: false,
+        joinsEndValidity: false,
+      );
+
+      expect(overdue.rows, isEmpty);
+      expect(overdue.joinsAt, [DateTime(2026, 10, 26, 15).toUtc()]);
+      expect(
+        [for (final text in overdue.counts) (text.count, text.empty)],
+        [
+          (1, const WidgetText('1 task', body: 'Open Vikunja to see it')),
+          (2, const WidgetText('2 tasks', body: 'Open Vikunja to see them')),
+        ],
+      );
+    });
+
+    test('every other list on iOS gets the count texts for the rows a tap '
+        'takes away, and no joins', () async {
+      final today = await at(now, const TodayKind(), joinsEndValidity: false);
+
+      expect(today.joinsAt, isEmpty);
+      expect(today.rows.map((row) => row.showsFrom), everyElement(isNull));
+      expect(countTexts(today), [
+        (0, 'No tasks', null),
+        (1, '1 task', '+1 more'),
+        (2, '2 tasks', '+2 more'),
+      ]);
+    });
+
+    test('on iOS the tasks that join fill only the rows left of 30, and the '
+        'count texts go from every row tapped away to every join', () async {
+      Future<void> overdue(int from, int to) => db.tasksDao.upsertAll([
+        for (var id = from; id < to; id++)
+          sampleTask(id: id, title: 'Late $id', due: DateTime(2026, 10, 20)),
+      ], syncRunId: 'run');
+      await db.tasksDao.upsertAll([
+        for (final hour in [16, 17, 18])
+          sampleTask(
+            id: 200 + hour,
+            title: 'At $hour',
+            due: DateTime(2026, 10, 26, hour),
+          ),
+      ], syncRunId: 'run');
+      await overdue(100, 127);
+
+      final some = await at(now, const OverdueKind(), joinsEndValidity: false);
+
+      expect(some.total, 28);
+      expect(some.rows, hasLength(WidgetSnapshot.maxRows));
+      expect(titles(some).skip(28), ['This afternoon', 'At 16']);
+      expect(some.joinsAt, hasLength(4));
+      expect(some.counts.first.count, 0);
+      expect(some.counts.last.count, 32);
+      expect(some.counts, hasLength(33));
+
+      await overdue(127, 164);
+      final many = await at(now, const OverdueKind(), joinsEndValidity: false);
+
+      expect(many.total, 65);
+      expect(
+        many.rows.where((row) => row.showsFrom != null),
+        isEmpty,
+        reason: 'no room left',
+      );
+      expect(many.joinsAt, hasLength(4));
+      expect([many.counts.first.count, many.counts.last.count], [5, 69]);
+      expect(many.counts.first.label, '5 tasks');
+      expect(many.counts.last.more, '+69 more');
+    });
+
+    test('the Android widgets get neither: the widget worker writes the list '
+        'again when a task joins', () async {
+      for (final kind in [const OverdueKind(), const TodayKind()]) {
+        final snapshot = await at(now, kind);
+
+        expect(snapshot.joinsAt, isEmpty);
+        expect(snapshot.counts, isEmpty);
+      }
+      expect(titles(await at(now, const OverdueKind())), ['Yesterday']);
+    });
   });
 
   group('Project', () {

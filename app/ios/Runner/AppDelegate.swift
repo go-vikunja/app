@@ -10,18 +10,26 @@ import workmanager_apple
   /// `BGTaskSchedulerPermittedIdentifiers` in Info.plist.
   static let backgroundSyncTask = "io.vikunja.app.sync"
 
+  private let notificationResponses = NotificationResponses()
+  private lazy var launchNotificationPlugin = LaunchNotificationPlugin()
+  private weak var uiEngine: AnyObject?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // flutter_local_notifications receives taps and actions through the
-    // delegate, including the one that launched the app.
+    // iOS hands a notification response only to the delegate set before
+    // launching ends, the Done or Snooze that launched the app included.
     UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
-    // BGTaskScheduler delivers a task only to a launch handler registered
-    // before launching ends, and a background launch connects no scene, so
-    // the engine the plugin starts for the sync gets its plugins from here.
+    // A background launch, for a Done or Snooze as for a BGTaskScheduler
+    // task (delivered only to a handler registered before launching ends),
+    // connects no scene, so the engines the plugins start get their plugins
+    // from here.
+    FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { registry in
+      BackgroundPlugins.register(with: registry)
+    }
     WorkmanagerPlugin.setPluginRegistrantCallback { registry in
-      GeneratedPluginRegistrant.register(with: registry)
+      BackgroundPlugins.register(with: registry)
     }
     WorkmanagerPlugin.registerPeriodicTask(
       withIdentifier: AppDelegate.backgroundSyncTask,
@@ -32,13 +40,61 @@ import workmanager_apple
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    // The engine the plugin starts for a notification action that shows no
-    // UI needs the plugins registered too (database, preferences, network).
-    FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { (registry) in
-      GeneratedPluginRegistrant.register(with: registry)
-    }
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     DeviceChannel.register(with: engineBridge.applicationRegistrar.messenger())
+    uiEngine = engineBridge.pluginRegistry
+    notificationResponses.uiEngineRegistered()
+  }
+
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    guard
+      NotificationResponses.isPluginNotification(response.notification.request.content.userInfo)
+    else { return completionHandler() }
+    let completionHandler = NotificationResponses.once(completionHandler)
+    let foregroundActions =
+      UserDefaults.standard.stringArray(forKey: LaunchNotificationPlugin.foregroundActionsKey) ?? []
+    if !NotificationResponses.opensApp(
+      response.actionIdentifier, foregroundActions: foregroundActions)
+    {
+      ActionTime.begin()
+    }
+    notificationResponses.receive(
+      action: response.actionIdentifier, foregroundActions: foregroundActions,
+      uiEngineAlive: uiEngine != nil,
+      toUIEngine: {
+        super.userNotificationCenter(
+          center, didReceive: response, withCompletionHandler: completionHandler)
+      },
+      toLaunchPlugin: {
+        launchNotificationPlugin.receive(center, response, completionHandler)
+      })
+  }
+}
+
+/// Background time for the plugin's engine to record a Done or Snooze: the plugin completes the
+/// response at once, and iOS may suspend a process it launched for one right after. Long enough
+/// for the engine to start, record the action and drain its 5 s.
+@MainActor
+private final class ActionTime {
+  private var task = UIBackgroundTaskIdentifier.invalid
+
+  static func begin() {
+    let time = ActionTime()
+    time.task = UIApplication.shared.beginBackgroundTask(withName: "Notification action") {
+      MainActor.assumeIsolated { time.end() }
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 20) {
+      MainActor.assumeIsolated { time.end() }
+    }
+  }
+
+  private func end() {
+    guard task != .invalid else { return }
+    UIApplication.shared.endBackgroundTask(task)
+    task = .invalid
   }
 }
 

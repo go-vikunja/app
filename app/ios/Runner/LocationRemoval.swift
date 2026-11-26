@@ -45,9 +45,20 @@ enum LocationRemoval {
     }
     if UTType(type as String) == .png {
       // Image I/O's lossless copy keeps a PNG's location, and PNG loses nothing when written again.
+      // The properties carry what the XMP does not: text chunks, DPI, orientation, an APNG's loop
+      // count and frame delays.
+      CGImageDestinationSetProperties(
+        destination, withoutGPS(CGImageSourceCopyProperties(source, nil)) as CFDictionary)
       for index in 0..<count {
-        CGImageDestinationAddImageFromSource(
-          destination, source, index, [kCGImagePropertyGPSDictionary: kCFNull] as CFDictionary)
+        guard let image = CGImageSourceCreateImageAtIndex(source, index, nil) else {
+          throw Failure.notCopied
+        }
+        var properties = withoutGPS(CGImageSourceCopyPropertiesAtIndex(source, index, nil))
+        properties[kCGImageMetadataShouldExcludeGPS] = true
+        CGImageDestinationAddImageAndMetadata(
+          destination, image,
+          CGImageSourceCopyMetadataAtIndex(source, index, nil).map(withoutLocation),
+          properties as CFDictionary)
       }
       guard CGImageDestinationFinalize(destination) else { throw Failure.notCopied }
     } else {
@@ -67,10 +78,34 @@ enum LocationRemoval {
     try data.write(to: url, options: .atomic)
   }
 
+  /// Without {GPS} and without what Image I/O would write back into the XMP from the other
+  /// dictionaries, such as IPTC's `LocationShown`.
+  private static func withoutGPS(_ properties: CFDictionary?) -> [CFString: Any] {
+    var properties = properties as? [CFString: Any] ?? [:]
+    properties[kCGImagePropertyGPSDictionary] = nil
+    for (key, value) in properties {
+      guard var dictionary = value as? [String: Any] else { continue }
+      dictionary = dictionary.filter { !namesLocation($0.key) && !holdsLocation($0.value) }
+      properties[key] = dictionary
+    }
+    return properties
+  }
+
+  private static func holdsLocation(_ value: Any) -> Bool {
+    if let dictionary = value as? [String: Any] {
+      return dictionary.contains { namesLocation($0.key) || holdsLocation($0.value) }
+    }
+    if let array = value as? [Any] {
+      return array.contains(where: holdsLocation)
+    }
+    return false
+  }
+
   private static func hasLocation(_ source: CGImageSource) -> Bool {
     (0..<CGImageSourceGetCount(source)).contains { index in
       let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
-      guard properties?[kCGImagePropertyGPSDictionary] == nil else { return true }
+      let gps = properties?[kCGImagePropertyGPSDictionary] as? [CFString: Any] ?? [:]
+      guard gps.keys.allSatisfy({ $0 == kCGImagePropertyGPSVersion }) else { return true }
       guard let metadata = CGImageSourceCopyMetadataAtIndex(source, index, nil) else {
         return false
       }
@@ -86,16 +121,47 @@ enum LocationRemoval {
     return copy
   }
 
-  /// The EXIF GPS tags, whether the file keeps them in EXIF or in XMP.
+  /// The paths of the top-level tags that hold a position, in any namespace: the EXIF GPS tags
+  /// in EXIF or XMP, a drone's (DJI's `drone-dji:GpsLatitude`) and structures such as IPTC's
+  /// `Iptc4xmpExt:LocationShown`, which go whole, the place names in them included.
   private static func locationTags(_ metadata: CGImageMetadata) -> [String] {
     let tags = CGImageMetadataCopyTags(metadata) as? [CGImageMetadataTag] ?? []
     return tags.compactMap { tag in
-      guard
-        CGImageMetadataTagCopyNamespace(tag) as String? == kCGImageMetadataNamespaceExif as String,
-        let prefix = CGImageMetadataTagCopyPrefix(tag) as String?,
-        let name = CGImageMetadataTagCopyName(tag) as String?, name.hasPrefix("GPS")
+      guard holdsLocation(tag), let prefix = CGImageMetadataTagCopyPrefix(tag) as String?,
+        let name = CGImageMetadataTagCopyName(tag) as String?
       else { return nil }
       return "\(prefix):\(name)"
+    }
+  }
+
+  private static func holdsLocation(_ tag: CGImageMetadataTag) -> Bool {
+    if let name = CGImageMetadataTagCopyName(tag) as String?, namesLocation(name) { return true }
+    return children(tag).contains(where: holdsLocation)
+  }
+
+  /// The names `XmpGps` in LocationRemoval.kt takes for a location's; the version and the GPS
+  /// IFD's pointer hold none.
+  private static func namesLocation(_ name: String) -> Bool {
+    let lowercased = name.lowercased()
+    guard lowercased != "gpsversionid", lowercased != "gpsinfo" else { return false }
+    return lowercased.hasPrefix("gps")
+      || ["latitude", "longitude", "altitude"].contains(where: lowercased.contains)
+      || ["Lat", "Lon", "Lng"].contains(where: name.hasSuffix)
+  }
+
+  /// A structure's fields or an array's items.
+  private static func children(_ tag: CGImageMetadataTag) -> [CGImageMetadataTag] {
+    let value = CGImageMetadataTagCopyValue(tag)
+    let items: [AnyObject]
+    if let structure = value as? NSDictionary {
+      items = structure.allValues as [AnyObject]
+    } else if let array = value as? NSArray {
+      items = array as [AnyObject]
+    } else {
+      return []
+    }
+    return items.compactMap { item in
+      CFGetTypeID(item) == CGImageMetadataTagGetTypeID() ? (item as! CGImageMetadataTag) : nil
     }
   }
 

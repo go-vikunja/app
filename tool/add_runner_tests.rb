@@ -18,9 +18,14 @@ require 'xcodeproj'
 NAME = 'RunnerTests'
 # Xcode 27's XCTest is built for iOS 17, as is the extension; below it the linker warns.
 DEPLOYMENT_TARGET = '17.0'
+# Every widget file but the bundle, whose @main has no place in a test bundle.
 TESTED_SOURCES = {
-  'Runner' => %w[LocationRemoval.swift],
-  'VikunjaWidgets' => %w[AppGroupStore.swift DoneTaps.swift]
+  'Runner' => %w[LocationRemoval.swift NotificationResponses.swift],
+  'VikunjaWidgets' => %w[
+    AppGroupStore.swift DoneTaps.swift ListConfiguration.swift ListSelection.swift
+    MarkDoneIntent.swift QuickAddWidget.swift TasksTimeline.swift TasksWidget.swift
+    WidgetData.swift WidgetKinds.swift
+  ]
 }.freeze
 
 def file_reference(group, path)

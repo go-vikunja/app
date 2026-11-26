@@ -416,8 +416,10 @@ The list gathers the iOS phase's known gaps ([Releases]), section [8.3](threat-m
 - [ ] The connection settings under SecTrust (8.3 #8): handshake pinning, a PKCS#12 client certificate, CA trust under the 825-day rule, access headers through NSURLSession, ASWebAuthenticationSession's warning for a pinned server.
 - [ ] A restore (8.3 #9): an encrypted backup restored to another device brings back no tokens, connection secrets, databases or widget files.
 - [ ] The capture cover (8.3 #11) in a real screen recording, AirPlay or mirrored display.
-- [ ] Photo locations (8.3 #12): a photo from Photos, a photo and a video taken with the camera, each without its location on the server.
-- [ ] The XCTests (8.3 #14, step 40u): `xcodebuild test -scheme RunnerTests` on a simulator passes its 13 tests, the HEIC one run.
+- [ ] Photo locations (8.3 #12): a photo from Photos, a photo and a video taken with the camera, and a drone picture picked in Files (step 47g), each without its location on the server.
+- [ ] The XCTests (8.3 #14, steps 40u and 47g): `xcodebuild test -scheme RunnerTests` on a simulator passes its 45 tests, the HEIC one run (they passed on the iOS 27 simulator in step 47g; once more on the tree being released).
+- [ ] A Done or Snooze while the app is not running (8.3 #16, step 47g): with the app swiped away, Done on a reminder marks the task done on the server and takes its notifications away, Snooze brings the reminder back at its new time, also with the app lock on; a tap on the notification body still opens the task; Done with the app open or in the background runs once.
+- [ ] Widgets with the app closed (8.3 #17, step 47g): an Overdue widget takes in a task due later today at its due time, with the new count read by VoiceOver, without the app or a background run; a project widget removed and placed again keeps getting the project's new tasks.
 - [ ] The held iOS plugins ([releasing.md](releasing.md#held-ios-plugins), step 40h): a build with the newest `file_selector_ios`, `image_picker_ios` and `webview_flutter_wkwebview` runs the file and photo pickers, the photo-location check above and the description editor; if they pass, one commit lifts the three pins.
 - [ ] Background refresh through BGTaskScheduler (`io.vikunja.app.sync`).
 - [ ] An account's online flows (the simulator checks had only an expired session).

@@ -65,13 +65,19 @@ extension TasksWidgetIntent {
 enum SnapshotRequests {
   private static let staleAfter: TimeInterval = 24 * 3600
 
+  /// Dated by the last sync that saw its widget, which `prune` goes by.
   static func mark(_ key: String) {
     let path = "\(AppGroupStore.requestsDirectory)/\(key)"
-    guard AppGroupStore.isFileSafe(key), !AppGroupStore.exists(path) else { return }
-    AppGroupStore.createEmptyFile(path)
+    guard AppGroupStore.isFileSafe(key) else { return }
+    if !AppGroupStore.touch(path) {
+      AppGroupStore.createEmptyFile(path)
+    }
   }
 
-  static func syncWithPlacedWidgets() async {
+  /// `asking` is the list of the widget whose timeline runs, which the
+  /// system may not list yet when it was just placed again.
+  static func syncWithPlacedWidgets(asking: String?) async {
+    if let asking { mark(asking) }
     let result = await withCheckedContinuation { continuation in
       WidgetCenter.shared.getCurrentConfigurations { continuation.resume(returning: $0) }
     }
@@ -92,14 +98,18 @@ enum SnapshotRequests {
           return nil
         }
       })
-    keys.forEach(mark)
-    prune(keeping: keys)
+    sync(placed: keys, asking: asking)
   }
 
-  /// A marker is kept for a day after its widget is gone: a widget placed a
-  /// moment ago may not be in the system's list yet.
-  private static func prune(keeping keys: Set<String>) {
-    let now = Date()
+  static func sync(placed: Set<String>, asking: String?, now: Date = Date()) {
+    let kept = placed.union([asking].compactMap { $0 })
+    kept.forEach(mark)
+    prune(keeping: kept, now: now)
+  }
+
+  /// A marker is kept for a day after a sync last saw its widget: a widget
+  /// placed a moment ago may not be in the system's list yet.
+  static func prune(keeping keys: Set<String>, now: Date) {
     for name in AppGroupStore.names(in: AppGroupStore.requestsDirectory) where !keys.contains(name)
     {
       let path = "\(AppGroupStore.requestsDirectory)/\(name)"

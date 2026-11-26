@@ -123,7 +123,7 @@ tool/ci/budgets.sh   # before a release, on an idle machine: the time budgets, w
 
 `tool/ci/test.sh` runs the Dart lines as CI's job `checks` does, and `tool/ci/android.sh` the Kotlin tests after its APK build. A test that measures time prints it and checks its budget only with `VIKUNJA_BENCHMARK=1`, which `tool/ci/budgets.sh` sets; a test that a slow path would make many times slower checks a limit of seconds on every run instead.
 
-On a Mac, the XCTests of the native iOS code (`app/ios/RunnerTests`: the photo location removal and the widgets' Done queue) run on a simulator, after an iOS build has generated `app/ios/Flutter/ephemeral` (for example `cd app && flutter build ios --no-codesign`), as the project needs the Swift package it holds; `xcrun simctl list devices available` names the simulators:
+On a Mac, the XCTests of the native iOS code (`app/ios/RunnerTests`: the photo location removal, the widgets' Done queue, timeline, request markers and links, and which notification plugin answers a response) run on a simulator, after an iOS build has generated `app/ios/Flutter/ephemeral` (for example `cd app && flutter build ios --no-codesign`), as the project needs the Swift package it holds; `xcrun simctl list devices available` names the simulators:
 
 ```sh
 xcodebuild test -project app/ios/Runner.xcodeproj -scheme RunnerTests -destination 'platform=iOS Simulator,name=<an iPhone>' CODE_SIGNING_ALLOWED=NO
