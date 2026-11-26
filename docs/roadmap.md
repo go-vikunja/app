@@ -1,6 +1,6 @@
 # Roadmap
 
-Steps 1 to 46, 47a to 47i and 48a to 48p are built, except the ones listed below: the release itself (37d); 19 is built but still in review until the iOS device test. The [decision log](decisions.md) holds the decisions that still apply, by topic. This page lists only what is left. The full plan, with every step, how the steps were reviewed, the milestones and the dated notes on each change, stays in git: `git show 3044f4d:docs/roadmap.md`.
+Steps 1 to 46, 47a to 47i and 48a to 48p are built, except the ones listed below: the release itself (37d); 19 is built but still in review until the iOS device test. The [decision log](decisions.md) holds the decisions that still apply, by topic. This page lists only what is left. The full plan, with every step, how the steps were reviewed, the milestones and the dated notes on each change, stays in git: `git show c57bfe1c:docs/roadmap.md`.
 
 ## Before 1.0.0
 

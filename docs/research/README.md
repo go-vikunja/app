@@ -1,6 +1,6 @@
 # Research snapshot
 
-The files in this directory are the research snapshot of **2026-10-08**. They were written against Vikunja `main` @ `e7d7f17` (2026-10-06), whose latest release is **v2.7.0**. They are kept as written and are not updated. Later findings are recorded below. Two files of the snapshot were removed before the move, `auth.md` (sign-in, sessions and tokens) and `flutter-stack.md` (packages, native configuration, build experiments); the corrections below and the other files still cite their sections, and their last versions are in git: `git show 3044f4d:docs/research/auth.md` and `git show 3044f4d:docs/research/flutter-stack.md`.
+The files in this directory are the research snapshot of **2026-10-08**. They were written against Vikunja `main` @ `e7d7f17` (2026-10-06), whose latest release is **v2.7.0**. They are kept as written and are not updated. Later findings are recorded below. Two files of the snapshot were removed before the move, `auth.md` (sign-in, sessions and tokens) and `flutter-stack.md` (packages, native configuration, build experiments); the corrections below and the other files still cite their sections, and their last versions are in git: `git show c57bfe1c:docs/research/auth.md` and `git show c57bfe1c:docs/research/flutter-stack.md`.
 
 **Precedence:**
 1. Where the files disagree, **[critique.md](critique.md) wins** over the other research files.

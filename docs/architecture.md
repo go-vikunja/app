@@ -1,6 +1,6 @@
 # Architecture
 
-How the app is built, for a maintainer who is new to it. This describes the design as it is. Why each part is as it is lives in [decisions.md](decisions.md): the topic links below point there. What each step built, in full detail with the reasons of the day, is in the git history: `git show 3044f4d:docs/archive/architecture-by-step.md`. The research it started from is in [research/synthesis.md](research/synthesis.md).
+How the app is built, for a maintainer who is new to it. This describes the design as it is. Why each part is as it is lives in [decisions.md](decisions.md): the topic links below point there. What each step built, in full detail with the reasons of the day, is in the git history: `git show c57bfe1c:docs/archive/architecture-by-step.md`. The research it started from is in [research/synthesis.md](research/synthesis.md).
 
 ## 1. Principles
 
