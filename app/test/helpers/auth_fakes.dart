@@ -81,6 +81,7 @@ final class MemorySecureStore implements SecureStore {
 
 final class MemoryPreferencesStore implements PrefixedPreferencesStore {
   final Map<String, String> values = {};
+  Future<void> Function(String key)? beforeRead;
 
   /// Keys whose next read throws, once each.
   final Set<String> failNextRead = {};
@@ -93,6 +94,7 @@ final class MemoryPreferencesStore implements PrefixedPreferencesStore {
 
   @override
   Future<String?> getString(String key) async {
+    if (beforeRead case final before?) await before(key);
     if (failNextRead.remove(key) || failReads.contains(key)) {
       throw Exception('Preferences unreadable');
     }

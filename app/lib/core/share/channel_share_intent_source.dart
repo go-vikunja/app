@@ -88,9 +88,9 @@ final class ChannelShareIntentSource implements ShareIntentSource {
   }
 
   @override
-  Future<void> clear() async {
+  Future<void> clear(IncomingShare share) async {
     try {
-      await _channel.invokeMethod<void>('clear');
+      await _channel.invokeMethod<void>('clear', {'id': share.id});
     } on MissingPluginException {
       return;
     } on PlatformException catch (error) {
@@ -108,7 +108,7 @@ final class ChannelShareIntentSource implements ShareIntentSource {
 /// shared article is cut off.
 const int maxSharedTextLength = 100000;
 
-/// A share as the channel reports it: `{subject, text, files: [{uri, name,
+/// A share as the channel reports it: `{id, subject, text, files: [{uri, name,
 /// size, mime}]}`; null when it carries nothing usable. File names are
 /// made safe to show and to send as an attachment name.
 IncomingShare? incomingShareFromChannel(Object? value) {
@@ -134,6 +134,10 @@ IncomingShare? incomingShareFromChannel(Object? value) {
           ),
   ];
   final share = IncomingShare(
+    id: switch (value['id']) {
+      final int id => id,
+      _ => null,
+    },
     subject: _text(value['subject'], 1000),
     text: _text(value['text'], maxSharedTextLength),
     files: files,

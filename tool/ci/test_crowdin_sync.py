@@ -98,8 +98,9 @@ if tool == 'gh':
 '''
 
 
-def git(cwd, *argv):
-    return subprocess.run(['git', *argv], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+def git(cwd, *argv, bare=False):
+    git_dir = ['--git-dir', cwd] if bare else []
+    return subprocess.run(['git', *git_dir, *argv], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
 
 
 def dump(value):
@@ -347,8 +348,11 @@ class PullRequestTest(Fixture):
     def pull_request(self, *arguments, **extra):
         return self.sync(*arguments, 'pull-request', **{'GH_TOKEN': GH_TOKEN, **extra})
 
+    def remote_git(self, *argv):
+        return git(self.origin, *argv, bare=True)
+
     def remote_branch(self):
-        listing = git(self.origin, 'for-each-ref', '--format=%(objectname)', 'refs/heads/crowdin')
+        listing = self.remote_git('for-each-ref', '--format=%(objectname)', 'refs/heads/crowdin')
         return listing or None
 
     def test_commits_pushes_and_opens_the_pull_request(self):
@@ -359,12 +363,12 @@ class PullRequestTest(Fixture):
         result = self.pull_request(CROWDIN_PERSONAL_TOKEN=CROWDIN_TOKEN)
         self.assertEqual(result.returncode, 0, result.stderr)
         head = self.remote_branch()
-        self.assertEqual(git(self.origin, 'rev-parse', f'{head}^'), self.main)
-        self.assertEqual(git(self.origin, 'show', '-s', '--format=%an <%ae>|%cn <%ce>|%s', head),
+        self.assertEqual(self.remote_git('rev-parse', f'{head}^'), self.main)
+        self.assertEqual(self.remote_git('show', '-s', '--format=%an <%ae>|%cn <%ce>|%s', head),
                          'Frederick [Bot] <bot@vikunja.io>|Frederick [Bot] <bot@vikunja.io>|'
                          'chore(i18n): update translations via Crowdin')
-        self.assertEqual(git(self.origin, 'diff', '--name-only', self.main, head), f'{ARB}/app_fr.arb')
-        self.assertEqual(git(self.origin, 'show', 'refs/heads/main:app/lib/l10n/arb/app_fr.arb'),
+        self.assertEqual(self.remote_git('diff', '--name-only', self.main, head), f'{ARB}/app_fr.arb')
+        self.assertEqual(self.remote_git('show', 'refs/heads/main:app/lib/l10n/arb/app_fr.arb'),
                          dump({'appTitle': 'Vikunja'}))
         calls = self.calls('gh')
         self.assertEqual([call['argv'][:2] for call in calls], [['pr', 'list'], ['pr', 'create']])
@@ -423,7 +427,7 @@ class PullRequestTest(Fixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         second = self.remote_branch()
         self.assertNotEqual(second, first)
-        self.assertEqual(git(self.origin, 'rev-parse', f'{second}^'), self.main)
+        self.assertEqual(self.remote_git('rev-parse', f'{second}^'), self.main)
         self.assertEqual([call['argv'][:2] for call in self.calls('gh')], [['pr', 'list'], ['api', '--silent']])
 
     def test_replaces_what_else_was_pushed_to_the_branch(self):
@@ -431,15 +435,15 @@ class PullRequestTest(Fixture):
         self.assertEqual(self.pull_request().returncode, 0)
         git(self.repo, 'switch', '-q', 'main')
         self.commit_on('crowdin', '.github/workflows/other.yaml', 'on: push\n')
-        self.assertEqual(git(self.origin, 'diff', '--name-only', 'main', 'crowdin').splitlines(),
+        self.assertEqual(self.remote_git('diff', '--name-only', 'main', 'crowdin').splitlines(),
                          ['.github/workflows/other.yaml', f'{ARB}/app_fr.arb'])
 
         result = self.pull_request()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('Pushed app_fr.arb to the branch crowdin.', result.stdout)
         head = self.remote_branch()
-        self.assertEqual(git(self.origin, 'rev-parse', f'{head}^'), self.main)
-        self.assertEqual(git(self.origin, 'diff', '--name-only', self.main, head), f'{ARB}/app_fr.arb')
+        self.assertEqual(self.remote_git('rev-parse', f'{head}^'), self.main)
+        self.assertEqual(self.remote_git('diff', '--name-only', self.main, head), f'{ARB}/app_fr.arb')
 
     def test_follows_main(self):
         self.write_arb('app_fr.arb', FRENCH, self.artifact)
@@ -452,8 +456,8 @@ class PullRequestTest(Fixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('Pushed app_fr.arb to the branch crowdin.', result.stdout)
         head = self.remote_branch()
-        self.assertEqual(git(self.origin, 'rev-parse', f'{head}^'), main)
-        self.assertEqual(git(self.origin, 'diff', '--name-only', main, head), f'{ARB}/app_fr.arb')
+        self.assertEqual(self.remote_git('rev-parse', f'{head}^'), main)
+        self.assertEqual(self.remote_git('diff', '--name-only', main, head), f'{ARB}/app_fr.arb')
 
     def test_nothing_new(self):
         self.write_arb('app_de.arb', GERMAN, self.artifact)

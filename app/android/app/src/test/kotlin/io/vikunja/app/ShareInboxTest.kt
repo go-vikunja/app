@@ -2,11 +2,26 @@ package io.vikunja.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShareInboxTest {
     private val looked = mutableListOf<String>()
+
+    @Test
+    fun `clearing an old share leaves its replacement waiting even before announcement`() {
+        val pending = PendingShare<String>()
+        pending.replace("same contents")
+        val older = checkNotNull(pending.current)
+        pending.replace("same contents")
+        val newer = checkNotNull(pending.current)
+
+        assertFalse(pending.clear(older.id))
+        assertEquals(newer, pending.current)
+        assertTrue(pending.clear(newer.id))
+        assertNull(pending.current)
+    }
 
     private fun isForeign(
         scheme: String?,

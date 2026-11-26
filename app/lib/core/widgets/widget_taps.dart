@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/notifications/notification_plan.dart';
 import 'package:vikunja_mobile/core/outbox/external_done.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -60,18 +61,26 @@ final class WidgetTapImport {
               return false;
             }
             await db.importedWidgetActionsDao.add(tap.id, at: now());
-            if (tap.shown case (:final dueAt)) {
-              final task = await db.tasksDao.find(
-                await db.tasksDao.resolveId(tap.taskId),
+            final task = await db.tasksDao.find(
+              await db.tasksDao.resolveId(tap.taskId),
+            );
+            if (task == null) return false;
+            if (tap.shown case (:final dueAt)
+                when TappedOccurrence.widgetRow(dueAt: dueAt).passedBy(task)) {
+              _log.info(
+                'Ignored a widget Done of task ${tap.taskId}: the task is '
+                'done or has moved on since',
               );
-              if (task != null &&
-                  TappedOccurrence.widgetRow(dueAt: dueAt).passedBy(task)) {
-                _log.info(
-                  'Ignored a widget Done of task ${tap.taskId}: the task is '
-                  'done or has moved on since',
-                );
-                return false;
-              }
+              return false;
+            }
+            final projects = await db.projectsDao.loadAll();
+            if (!projects.any((project) => project.id == task.projectId) ||
+                snoozeOnlyProjectIds(projects).contains(task.projectId)) {
+              _log.info(
+                'Ignored a widget Done of task ${tap.taskId}: the user may '
+                'not change it',
+              );
+              return false;
             }
             return await db.outboxDao.queueUpdate(
               tap.taskId,

@@ -729,6 +729,28 @@ void main() {
       },
     );
 
+    test(
+      'retries tasks of an already archived project after a failed sync',
+      () async {
+        final sync = await synced();
+        replaceTask(201, title: 'Archived edited');
+        touchProjects([3]);
+        client.beforeRequest = (request) async {
+          if (request.startsWith('project 3 tasks')) {
+            throw const NetworkFailure(NetworkProblem.timeout);
+          }
+        };
+
+        await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
+        expect((await db.tasksDao.find(201))!.title, isNot('Archived edited'));
+        client.beforeRequest = null;
+        await sync.refresh();
+
+        expect((await db.tasksDao.find(201))!.title, 'Archived edited');
+        expect(await state(), isNot(contains(SyncStateKeys.pendingWholePull)));
+      },
+    );
+
     test('a task edited and its project archived inside the second the last '
         'sync saw are read whole through the project', () async {
       // Project 2 was live and last touched in the watermark's second; the
@@ -1105,6 +1127,8 @@ void main() {
         'projects page 2 archived=true',
         'projects page 1 archived=true',
         'projects page 2 archived=true',
+        'projects page 1 archived=true',
+        'projects page 2 archived=true',
       ]);
       final ids = (await db.projectsDao.loadAll()).map((p) => p.id).toList();
       expect(ids, hasLength(59));
@@ -1151,12 +1175,45 @@ void main() {
         'labels page 2',
         'labels page 1',
         'labels page 2',
+        'labels page 1',
+        'labels page 2',
       ]);
       final ids = (await db.labelsDao.loadAll()).map((l) => l.id).toList();
       expect(ids, hasLength(59));
       expect(ids, isNot(contains(2)));
       expect((await db.tasksDao.find(1))!.labels.map((l) => l.id), [51]);
     });
+
+    test(
+      'a same-total label change during paging preserves queued edits',
+      () async {
+        client.allLabels = [
+          for (var id = 1; id <= 60; id++) Label(id: id, title: 'L$id'),
+        ];
+        final sync = await synced();
+        const edit = TaskChanges(labels: IdSetChange(added: {51}));
+        await db.outboxDao.queueUpdate(1, edit, now: edited);
+        expect((await db.outboxDao.pendingChangesFor(1))?.labels?.added, {51});
+        var replaced = false;
+        client.beforeRequest = (request) async {
+          if (request == 'labels page 2' && !replaced) {
+            replaced = true;
+            client.allLabels = [
+              ...client.allLabels.skip(1),
+              const Label(id: 61, title: 'L61'),
+            ];
+          }
+        };
+
+        await sync.refresh();
+
+        expect(
+          (await db.labelsDao.loadAll()).map((label) => label.id),
+          containsAll([51, 61]),
+        );
+        expect((await db.outboxDao.pendingChangesFor(1))?.labels?.added, {51});
+      },
+    );
 
     test('a list that keeps changing while it is paged fails the run '
         'without purging', () async {

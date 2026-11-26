@@ -121,7 +121,7 @@ void main() {
     messenger.setMockMethodCallHandler(channel, null);
 
     expect(await source().pending(), isNull);
-    await source().clear();
+    await source().clear(const IncomingShare(id: 1));
   });
 
   test('a copy answers the inbox path, or says why not', () async {
@@ -148,10 +148,17 @@ void main() {
     );
   });
 
-  test('clear asks the platform to forget the share', () async {
-    await source().clear();
+  test('clear identifies the handled share even if another was read', () async {
+    final shares = source();
+    answer = (_) => {'id': 1, 'text': 'Same text'};
+    final older = (await shares.pending())!;
+    answer = (_) => {'id': 2, 'text': 'Same text'};
+    final newer = (await shares.pending())!;
 
-    expect(calls.single.method, 'clear');
+    expect(older, isNot(newer));
+    await shares.clear(older);
+    expect(calls.last.method, 'clear');
+    expect(calls.last.arguments, {'id': 1});
   });
 
   test('a copy can be called off', () async {

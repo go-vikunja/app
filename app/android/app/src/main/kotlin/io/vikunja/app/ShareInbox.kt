@@ -21,6 +21,28 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReferenceArray
 
+internal class PendingShare<T> {
+    class Entry<T>(val id: Long, val share: T)
+
+    @Volatile
+    var current: Entry<T>? = null
+        private set
+    private var nextId = 0L
+
+    @Synchronized
+    fun replace(share: T) {
+        current = Entry(++nextId, share)
+    }
+
+    @Synchronized
+    fun clear(id: Long?): Boolean {
+        val entry = current ?: return false
+        if (entry.id != id) return false
+        current = null
+        return true
+    }
+}
+
 // The share MainActivity received, offered to Dart over a channel until
 // Dart clears it. It lives in the process, not the activity, so a
 // recreated activity still has it; a new process never replays it, because
@@ -41,7 +63,7 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
 
     init {
         channel.setMethodCallHandler(this)
-        if (pending == null) {
+        if (pending.current == null) {
             purges.execute { purgeFiles(File(context.cacheDir, INBOX), olderThanMillis = DAY_MILLIS) }
         }
     }
@@ -50,14 +72,14 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
 
     // Tells Dart about a share that arrived while the app runs.
     fun announce() {
-        val share = pending ?: return
+        val share = pending.current ?: return
         describe(share) { described -> described?.let { channel.invokeMethod("shared", it) } }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "pending" -> {
-                val share = pending
+                val share = pending.current
                 if (share == null) {
                     result.success(null)
                 } else {
@@ -92,7 +114,11 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
                 result.success(null)
             }
             "clear" -> {
-                pending = null
+                val id = call.argument<Number>("id")?.toLong()
+                if (!pending.clear(id)) {
+                    result.success(null)
+                    return
+                }
                 stopCopies()
                 stalled.clear()
                 purges.execute {
@@ -108,7 +134,8 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
     // the limit; a file without an answer goes with its URI only, and its
     // provider is taken as stalled. reply gets null once a newer share has
     // taken this one's place.
-    private fun describe(share: Share, reply: (Map<String, Any?>?) -> Unit) {
+    private fun describe(entry: PendingShare.Entry<Share>, reply: (Map<String, Any?>?) -> Unit) {
+        val share = entry.share
         val files = AtomicReferenceArray<Map<String, Any?>>(share.uris.size)
         val signal = CancellationSignal()
         val answered = AtomicBoolean(false)
@@ -120,8 +147,9 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
             main.removeCallbacks(watch)
             signal.cancel()
             reply(
-                answerFor(share, pending) {
+                answerFor(entry, pending.current) {
                     mapOf(
+                        "id" to entry.id,
                         "subject" to share.subject,
                         "text" to share.text,
                         "files" to share.uris.mapIndexed { index, uri ->
@@ -185,7 +213,7 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
 
     private fun copy(copy: Copy, maxBytes: Long) {
         try {
-            val uri = pending?.uris?.firstOrNull { it.toString() == copy.uri }
+            val uri = pending.current?.share?.uris?.firstOrNull { it.toString() == copy.uri }
             if (uri == null || !isForeignContent(context, uri)) {
                 copy.answer { it.error("unreadable", null, null) }
                 return
@@ -292,8 +320,7 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
 
         internal fun describeOverdue(now: Long, lastAnswer: Long, limit: Long) = now - lastAnswer >= limit
 
-        @Volatile
-        private var pending: Share? = null
+        private val pending = PendingShare<Share>()
 
         // Takes the share out of an intent MainActivity received; anything
         // not acceptable is left out here too, as MainActivity is exported
@@ -305,7 +332,7 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
                 uris = streamsOf(intent).filter { isForeignContent(context, it) },
             )
             if (share.subject != null || share.text != null || share.uris.isNotEmpty()) {
-                pending = share
+                pending.replace(share)
                 // The earlier share's copies are of no use any more.
                 stopCopies()
                 stalled.clear()

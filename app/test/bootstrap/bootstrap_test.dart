@@ -65,8 +65,7 @@ void main() {
     auth.preferences.values[installMarkerKey] = '1';
     final stored = auth.preferences.values[AccountRegistry.storageKey];
     // Every read fails: Riverpod retries a failed build, so a registry that
-    // fails only once is read again and signs in. The start waits out the
-    // retries, about 38 s.
+    // fails only once is read again and signs in.
     auth.preferences.failReads.add(AccountRegistry.storageKey);
     final container = createAppContainer(
       overrides: [
@@ -90,9 +89,14 @@ void main() {
         child: const VikunjaApp(),
       ),
     );
+    final connect = find.byType(ConnectServerScreen);
+    // Releasing the first frame does not stop the registry's retries.
+    for (var waited = 0; connect.evaluate().isEmpty && waited < 60; waited++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
     await tester.pumpAndSettle();
 
-    expect(find.byType(ConnectServerScreen), findsOneWidget);
+    expect(connect, findsOneWidget);
     expect(
       container.read(appRouterProvider).state.matchedLocation,
       AppRoutes.connect,
@@ -100,6 +104,45 @@ void main() {
     expect(auth.preferences.values[AccountRegistry.storageKey], stored);
     expect(tester.takeException(), isNull);
 
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+  });
+
+  testWidgets('a stalled account read does not hold the first frame', (
+    tester,
+  ) async {
+    final release = Completer<void>();
+    final auth = AuthFakes();
+    auth.preferences.values[installMarkerKey] = '1';
+    auth.preferences.beforeRead = (key) async {
+      if (key == AccountRegistry.storageKey) await release.future;
+    };
+    final container = createAppContainer(
+      overrides: [
+        ...appOverrides(auth: auth),
+        previousAppPlatformProvider.overrideWithValue(
+          FakePreviousAppPlatform(),
+        ),
+        ...crashReportOverrides(dsn: null),
+      ],
+    );
+    var prepared = false;
+    unawaited(prepareFirstFrame(container).then((_) => prepared = true));
+    await tester.pump();
+    expect(prepared, isFalse);
+    await tester.pump(const Duration(seconds: 5));
+    expect(prepared, isTrue);
+
+    release.complete();
+    await tester.pump();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const VikunjaApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ConnectServerScreen), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     container.dispose();
   });

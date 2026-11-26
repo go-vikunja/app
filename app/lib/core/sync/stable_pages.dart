@@ -13,8 +13,9 @@ final _log = Logger('SyncEngine');
 /// ends only at a page without a new id: the page size the server applied
 /// is unknown then, pseudo projects repeat on every page, and a page past
 /// the end may repeat the last one. Such a walk that misses one of the
-/// [stored] ids is walked once more, and an id either walk returned counts
-/// as listed (decision log: Sync).
+/// [stored] ids is walked once more, as is a counted multi-page walk: an
+/// insert and a delete can shift an item without changing the counts.
+/// An id either walk returned counts as listed (decision log: Sync).
 Future<Map<int, T>> collectPages<T>({
   required Future<Page<T>> Function(int page) fetch,
   required int Function(T item) idOf,
@@ -23,7 +24,7 @@ Future<Map<int, T>> collectPages<T>({
   bool Function(Map<int, T> collected)? enough,
   Iterable<int> stored = const [],
 }) async {
-  Future<({Map<int, T> byId, bool counted})?> walkOnce() async {
+  Future<({Map<int, T> byId, bool needsConfirmation})?> walkOnce() async {
     final byId = <int, T>{};
     (int?, int)? counts;
     var counted = true;
@@ -46,12 +47,12 @@ Future<Map<int, T>> collectPages<T>({
           ? byId.length > before
           : result.hasMore;
       if (!more || (enough?.call(byId) ?? false)) {
-        return (byId: byId, counted: counted);
+        return (byId: byId, needsConfirmation: !counted || page > 1);
       }
     }
   }
 
-  Future<({Map<int, T> byId, bool counted})> stableWalk() async {
+  Future<({Map<int, T> byId, bool needsConfirmation})> stableWalk() async {
     const walks = 3;
     for (var walk = 1; ; walk++) {
       if (await walkOnce() case final done?) return done;
@@ -66,8 +67,10 @@ Future<Map<int, T>> collectPages<T>({
   }
 
   final first = await stableWalk();
-  if (first.counted || stored.every(first.byId.containsKey)) return first.byId;
-  _log.fine('List without a page count misses stored items, walking it again');
+  if (!first.needsConfirmation || stored.every(first.byId.containsKey)) {
+    return first.byId;
+  }
+  _log.fine('List misses stored items, walking it again before purging');
   final second = await stableWalk();
   return {...first.byId, ...second.byId};
 }

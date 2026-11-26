@@ -178,14 +178,13 @@ final class IncrementalRun {
   /// tasks out of `GET /tasks` without bumping their `updated`, so a full
   /// run that read the project as live may have purged them or never stored
   /// them (decision log: Sync). An archived project whose `updated` differs
-  /// gets its delta through the project. Only rows that differ from the
-  /// local ones are written.
+  /// gets its delta through the project and is marked for a whole pull if
+  /// the run stops before completion. Only changed rows are written.
   ///
-  /// A project pulled whole or no longer archived (itself or through a
-  /// parent) clears a stopped full run's checkpoint with the project rows:
-  /// that run may have passed the project's tasks while they were out of
-  /// its reach, or read it as live and passed it in its archived phase, and
-  /// continuing it would purge them.
+  /// A project pulled whole, changed while archived, or no longer archived
+  /// clears a stopped full run's checkpoint with the project rows: that run
+  /// may have missed the project's tasks or passed it before its changes,
+  /// and continuing it could purge them.
   Future<_ProjectDiff> _syncProjects() async {
     final local = {for (final p in await _db.projectsDao.loadAll()) p.id: p};
     final pendingBefore = _parseIds(
@@ -244,6 +243,7 @@ final class IncrementalRun {
     }
     final restartsFullRun =
         pulledWhole.isNotEmpty ||
+        archivedChanged.isNotEmpty ||
         archivedBefore.any(
           (id) => remote.containsKey(id) && !archived.contains(id),
         );
@@ -261,7 +261,13 @@ final class IncrementalRun {
         (await _db.syncStateDao.readAll())[SyncStateKeys.pendingWholePull],
       );
       // Marked by a write while the projects were read: the next run's.
-      final pending = {...pulledWhole, ...stored.difference(pendingBefore)};
+      final pending = {
+        ...pulledWhole,
+        // We already stored the project's new timestamp. If its delta
+        // does not finish, the next run must pull it without that trigger.
+        ...archivedChanged,
+        ...stored.difference(pendingBefore),
+      };
       if (!setEquals(pending, stored)) {
         await _db.syncStateDao.write({
           SyncStateKeys.pendingWholePull: pending.isEmpty

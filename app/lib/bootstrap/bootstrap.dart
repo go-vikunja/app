@@ -84,7 +84,9 @@ Future<void> prepareFirstFrame(ProviderContainer container) async {
     // Behind the native launch screen, so the router starts on its first
     // real screen instead of animating it in over the empty splash route,
     // in the colours it keeps.
-    final accounts = await container.read(accountsProvider.future);
+    final accounts = await container
+        .read(accountsProvider.future)
+        .timeout(const Duration(seconds: 5));
     await Future.wait([
       loadAppearance(container),
       startPreviousApp(container, previousApp),

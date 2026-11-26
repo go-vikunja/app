@@ -107,8 +107,7 @@ void main() {
       expect(requested, [1, 2, 3]);
     });
 
-    test('a walk with a page count is not repeated for a stored id it '
-        'misses', () async {
+    test('a counted walk confirms missing stored ids across pages', () async {
       final requested = <int>[];
 
       final ids = await collectPages<int>(
@@ -126,7 +125,7 @@ void main() {
       );
 
       expect(ids.keys.toSet(), {1, 2, 3});
-      expect(requested, [1, 2]);
+      expect(requested, [1, 2, 1, 2]);
     });
 
     test(

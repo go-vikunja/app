@@ -38,8 +38,9 @@ final class SharedFile {
 /// a browser, an email subject), files, or a mix.
 @immutable
 final class IncomingShare {
-  const new({this.subject, this.text, this.files = const []});
+  const new({this.id, this.subject, this.text, this.files = const []});
 
+  final int? id;
   final String? subject;
   final String? text;
   final List<SharedFile> files;
@@ -52,12 +53,15 @@ final class IncomingShare {
   @override
   bool operator ==(Object other) =>
       other is IncomingShare &&
-      other.subject == subject &&
-      other.text == text &&
-      listEquals(other.files, files);
+      (id != null || other.id != null
+          ? other.id == id
+          : other.subject == subject &&
+                other.text == text &&
+                listEquals(other.files, files));
 
   @override
-  int get hashCode => Object.hash(subject, text, Object.hashAll(files));
+  int get hashCode =>
+      id?.hashCode ?? Object.hash(subject, text, Object.hashAll(files));
 
   @override
   String toString() => 'IncomingShare(${files.length} files)';
@@ -113,7 +117,7 @@ abstract interface class ShareIntentSource {
   /// [SharedFileUnreadable]; nothing when none runs.
   Future<void> cancelCopy(String uri);
 
-  /// Forgets the pending share, calls off the copies still running and
+  /// Forgets [share] only if it is still pending, calls off its copies and
   /// deletes the inbox copies that were not moved away. Answers at once.
-  Future<void> clear();
+  Future<void> clear(IncomingShare share);
 }

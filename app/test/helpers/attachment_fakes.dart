@@ -214,9 +214,9 @@ final class FakeShareIntentSource implements ShareIntentSource {
   Future<void> cancelCopy(String uri) => _call('cancelCopy $uri');
 
   @override
-  Future<void> clear() async {
+  Future<void> clear(IncomingShare share) async {
     await _call('clear');
-    _pending = null;
+    if (_pending == share) _pending = null;
   }
 
   Future<void> _call(String call) async {

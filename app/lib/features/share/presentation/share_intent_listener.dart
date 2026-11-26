@@ -134,14 +134,14 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
   }) async {
     bool current() => mounted && generation == _generation;
     if (share.isEmpty) {
-      await _clear(generation);
+      await _clear(share, generation);
       return;
     }
     if (await _openedAsLink(share, generation, signedIn: signedIn)) return;
     if (!current()) return;
     if (!signedIn) {
       await _opener.showMessage((l10n) => l10n.shareSignedOut);
-      await _clear(generation);
+      await _clear(share, generation);
       return;
     }
     final registry = ref.read(accountsProvider).value;
@@ -170,7 +170,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
         if (pageStays && current()) {
           await _opener.showMessage((l10n) => l10n.shareKeptEditing);
         }
-        await _clear(generation);
+        await _clear(share, generation);
         return;
       }
     }
@@ -179,7 +179,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
       if (current()) {
         await _opener.showMessage((l10n) => l10n.shareKeptEditing);
       }
-      await _clear(generation);
+      await _clear(share, generation);
       return;
     }
     if (!current()) return;
@@ -207,7 +207,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     // inbox; clearing it now would delete the rest.
     if (outcome == null && submitted != null) outcome = await submitted;
     if (!current()) return;
-    await _clear(generation);
+    await _clear(share, generation);
     if (outcome != null) {
       await _announce(outcome);
     } else if (unseen) {
@@ -246,7 +246,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     final chosen = await choice.future;
     if (!mounted || generation != _generation) return true;
     if (chosen == SharedLinkChoice.newTask) return false;
-    await _clear(generation);
+    await _clear(share, generation);
     if (chosen == null) return true;
     await _connect(address, generation, signedIn: signedIn);
     return true;
@@ -309,12 +309,10 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
           );
       });
 
-  /// Only for the share still current: a newer one owns the platform's
-  /// pending share by now.
-  Future<void> _clear(int generation) async {
+  Future<void> _clear(IncomingShare share, int generation) async {
     if (generation != _generation) return;
     try {
-      await _source.clear().timeout(_clearLimit);
+      await _source.clear(share).timeout(_clearLimit);
     } on Object catch (error) {
       _log.warning('Clearing a share failed: ${error.runtimeType}');
     }

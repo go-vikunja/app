@@ -268,6 +268,30 @@ void main() {
       expect(host.actions, hasLength(1));
     });
 
+    for (final (reason, permission, archivedParent) in [
+      ('read-only', Permission.read, false),
+      ('archived through its parent', Permission.write, true),
+    ]) {
+      test('a stale tap is dropped when its project is $reason', () async {
+        final (accountId, db) = await signedIn();
+        host.actions.add(tap('stale', accountId, 1));
+        await db.projectsDao.upsertAll([
+          if (archivedParent)
+            sampleProject(id: 8, title: 'Parent').copyWith(isArchived: true),
+          sampleProject(id: 7, title: 'Home').copyWith(
+            maxPermission: permission,
+            parentProjectId: archivedParent ? 8 : 0,
+          ),
+        ]);
+
+        await importWidgetTaps(container, drains: false);
+
+        expect((await db.tasksDao.find(1))!.done, isFalse);
+        expect(await db.outboxDao.count(), 0);
+        expect(host.actions, isEmpty);
+      });
+    }
+
     group('of a repeating task', () {
       final shownDue = repeating.dueDate!;
       final nextDue = shownDue.add(const Duration(days: 7));

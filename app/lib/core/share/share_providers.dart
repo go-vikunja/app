@@ -43,5 +43,5 @@ final class NoShareIntentSource implements ShareIntentSource {
   Future<void> cancelCopy(String uri) async {}
 
   @override
-  Future<void> clear() async {}
+  Future<void> clear(IncomingShare share) async {}
 }
