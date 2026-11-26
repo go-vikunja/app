@@ -96,7 +96,9 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     // The platform reports a share it is still holding again at start.
     if (share == _waiting || share == _handling) return;
     _generation++;
+    final abandoned = _waiting;
     _waiting = share;
+    if (abandoned != null) unawaited(_clear(abandoned));
     if (_handling != null) {
       // Its sheet or account question closes; that run then ends. A sheet that
       // asks before it goes stays for the newer share's own leave.
@@ -115,10 +117,20 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     _waiting = null;
     _handling = share;
     final generation = _generation;
+    Future<void>? clearing;
+    Future<void> clear() => clearing ??= _clear(share);
     unawaited(
-      _handle(share, generation, signedIn: signedIn)
+      _handle(share, generation, signedIn: signedIn, clear: clear)
           .catchError((Object error) {
             _log.warning('Handling a share failed: ${error.runtimeType}');
+          })
+          .whenComplete(() async {
+            // A newer share does not own this one's paths or cleanup.
+            if (generation == _generation) {
+              await clear();
+            } else {
+              unawaited(clear());
+            }
           })
           .whenComplete(() {
             _handling = null;
@@ -131,17 +143,21 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     IncomingShare share,
     int generation, {
     required bool signedIn,
+    required Future<void> Function() clear,
   }) async {
     bool current() => mounted && generation == _generation;
-    if (share.isEmpty) {
-      await _clear(share, generation);
+    if (share.isEmpty) return;
+    if (await _openedAsLink(
+      share,
+      generation,
+      signedIn: signedIn,
+      clear: clear,
+    )) {
       return;
     }
-    if (await _openedAsLink(share, generation, signedIn: signedIn)) return;
     if (!current()) return;
     if (!signedIn) {
       await _opener.showMessage((l10n) => l10n.shareSignedOut);
-      await _clear(share, generation);
       return;
     }
     final registry = ref.read(accountsProvider).value;
@@ -170,7 +186,6 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
         if (pageStays && current()) {
           await _opener.showMessage((l10n) => l10n.shareKeptEditing);
         }
-        await _clear(share, generation);
         return;
       }
     }
@@ -179,35 +194,47 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
       if (current()) {
         await _opener.showMessage((l10n) => l10n.shareKeptEditing);
       }
-      await _clear(share, generation);
       return;
     }
     if (!current()) return;
     final shown = Completer<ShareOutcome?>();
+    Future<void> Function()? stopPreparing;
     Future<ShareOutcome?>? submitted;
     var submittedSettled = false;
-    await _opener.showAfterFrame(
-      (context) => shown.complete(
-        showShareSheet(
-          context,
-          share: share,
-          onSubmit: (work) {
-            submittedSettled = false;
-            submitted = work;
-            unawaited(work.whenComplete(() => submittedSettled = true));
-          },
-        ),
-      ),
-    );
-    if (!shown.isCompleted) shown.complete(null);
-    var outcome = await shown.future;
-    // Its sheet went before the work ended, so a failure shows nowhere else.
-    final unseen = outcome == null && submitted != null && !submittedSettled;
-    // The sheet went while its files were still being moved out of the
-    // inbox; clearing it now would delete the rest.
-    if (outcome == null && submitted != null) outcome = await submitted;
+    ShareOutcome? outcome;
+    bool unseen;
+    try {
+      await _opener.showAfterFrame((context) {
+        if (!current()) return;
+        shown.complete(
+          showShareSheet(
+            context,
+            share: share,
+            onPrepare: (stop) => stopPreparing = stop,
+            onSubmit: (work) {
+              submittedSettled = false;
+              submitted = work;
+              unawaited(work.whenComplete(() => submittedSettled = true));
+            },
+          ),
+        );
+      });
+      if (!shown.isCompleted) shown.complete(null);
+      outcome = await shown.future;
+      // Its sheet went before the work ended, so a failure shows nowhere else.
+      unseen = outcome == null && submitted != null && !submittedSettled;
+    } finally {
+      try {
+        await stopPreparing?.call();
+      } finally {
+        // The sheet can leave while its files are moving into uploads.
+        final finished = await submitted;
+        outcome ??= finished;
+      }
+    }
     if (!current()) return;
-    await _clear(share, generation);
+    await clear();
+    if (!current()) return;
     if (outcome != null) {
       await _announce(outcome);
     } else if (unseen) {
@@ -221,6 +248,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     IncomingShare share,
     int generation, {
     required bool signedIn,
+    required Future<void> Function() clear,
   }) async {
     if (share.files.isNotEmpty) return false;
     final text = [?share.text, ?share.subject].join('\n');
@@ -246,7 +274,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     final chosen = await choice.future;
     if (!mounted || generation != _generation) return true;
     if (chosen == SharedLinkChoice.newTask) return false;
-    await _clear(share, generation);
+    await clear();
     if (chosen == null) return true;
     await _connect(address, generation, signedIn: signedIn);
     return true;
@@ -309,8 +337,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
           );
       });
 
-  Future<void> _clear(IncomingShare share, int generation) async {
-    if (generation != _generation) return;
+  Future<void> _clear(IncomingShare share) async {
     try {
       await _source.clear(share).timeout(_clearLimit);
     } on Object catch (error) {

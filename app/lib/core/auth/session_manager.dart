@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager_states.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
+import 'package:vikunja_mobile/core/storage/process_lock.dart';
 
 typedef Clock = DateTime Function();
 typedef Sleep = Future<void> Function(Duration duration);
@@ -109,9 +110,13 @@ final class SessionManager implements AccessTokenSource {
     this._clock = DateTime.now,
     this._sleep = _delay,
     this._refreshes = true,
+    this.retireWaitLimit = const Duration(seconds: 10),
   });
 
   static const refreshMargin = Duration(seconds: 60);
+
+  /// A credential read that never answers must not hold a sign-out.
+  final Duration retireWaitLimit;
   static const maxRetryAfter = Duration(minutes: 10);
   static const serverErrorRetryDelay = Duration(seconds: 2);
 
@@ -230,7 +235,9 @@ final class SessionManager implements AccessTokenSource {
       return (await _refreshFrom(session)).accessToken;
     } on VikunjaFailure catch (failure) {
       // The token still works for a moment; the next call tries again.
-      if (isTransientFailure(failure) && !_isExpired(session)) {
+      if (isTransientFailure(failure) &&
+          !(failure is NetworkFailure && failure.cause is ProcessLockTimeout) &&
+          !_isExpired(session)) {
         return session.accessToken;
       }
       rethrow;
@@ -306,9 +313,12 @@ final class SessionManager implements AccessTokenSource {
   }
 
   /// After sign-out, or replacement by a new sign-in ([forSignIn]). Waits
-  /// only for a storage write that has already started, so the caller can
-  /// wipe storage afterwards; a refresh still on the network is abandoned
-  /// and its result discarded, however long the server takes.
+  /// for a storage commit that has already started, but not past
+  /// [retireWaitLimit], so the caller can wipe storage afterwards; a refresh
+  /// still on the network is abandoned and its result discarded, however
+  /// long the server takes. A commit that outlives the wait still cannot
+  /// write after this: it checks for retirement after its read, and the
+  /// caller's wipe waits for the same account token lock.
   Future<void> retire({bool forSignIn = false}) async {
     _stop = stopAfter(_stop, RetireEvent(forSignIn: forSignIn));
     _session = null;
@@ -316,9 +326,9 @@ final class SessionManager implements AccessTokenSource {
     final writing = _pendingWrite;
     if (writing == null) return;
     try {
-      await writing;
+      await writing.timeout(retireWaitLimit);
     } on Object {
-      // Only completion matters here.
+      // Only completion matters here; a stalled read must not hold it.
     }
   }
 
@@ -362,8 +372,9 @@ final class SessionManager implements AccessTokenSource {
   // locks belong to the whole process, so a second isolate acquires a lock
   // the first one still holds (verified on the macOS host VM by
   // test/core/auth/file_lock_isolates_test.dart; Android and iOS use the
-  // same fcntl locks). Instead, storage is read again before every refresh
-  // and after a lost rotation race, and newer tokens found there are adopted.
+  // same fcntl locks). No lock spans the network: storage is read before
+  // every refresh and after a lost rotation race, and a response is
+  // committed only if it still matches storage, under the deletion lock.
   Future<_Session> _refreshExclusively(String snapshot) async {
     try {
       await _keptWrite;
@@ -505,47 +516,44 @@ final class SessionManager implements AccessTokenSource {
     required String usedRefreshToken,
     required DateTime receivedAt,
   }) async {
-    final StoredTokens? read;
-    try {
-      read = await _tokenStore.read(accountId);
-    } on Object catch (error) {
-      _ensureUsable();
-      // Storage may hold a newer sign-in, so the tokens are not written now;
-      // the write at the next call compares with storage first.
-      _log.severe(
-        'Could not read the tokens of account $accountId before storing the '
-        'rotated ones: ${error.runtimeType}',
-      );
-      _serverClock.learn(fresh.issuedAt.difference(receivedAt));
-      return _keepUnstored(
-        fresh,
-        replacing: _unpersisted?.replacedRefreshToken ?? usedRefreshToken,
-      );
-    }
-    final stored = await _resolveStored(read);
-    if (stored.refreshToken != usedRefreshToken) {
-      // A new sign-in replaced the session while this refresh was in flight;
-      // the tokens just received belong to the superseded session.
-      await _noteRefreshSettled(usedRefreshToken);
-      return _session = _Session.fromStored(stored);
-    }
     final replacedRefreshToken =
         _unpersisted?.replacedRefreshToken ?? usedRefreshToken;
-    _serverClock.learn(fresh.issuedAt.difference(receivedAt));
+    final (StoredTokens? read, bool committed) result;
     try {
-      await _writeTokens(fresh);
-      _unpersisted = null;
-      await _noteRefreshSettled(usedRefreshToken);
-    } on _Retired {
-      rethrow;
+      result = await _commitRotation(
+        fresh,
+        replacing: replacedRefreshToken,
+        usedRefreshToken: usedRefreshToken,
+        receivedAt: receivedAt,
+      );
+    } on ProcessLockTimeout catch (error) {
+      _ensureUsable();
+      _log.warning(
+        'Could not commit the rotation of $accountId: ${error.runtimeType}',
+      );
+      _serverClock.learn(fresh.issuedAt.difference(receivedAt));
+      _keepUnstored(fresh, replacing: replacedRefreshToken);
+      throw NetworkFailure(NetworkProblem.timeout, cause: error);
     } on Object catch (error) {
-      // Only the type is logged: platform errors can echo values.
+      _ensureUsable();
+      // The next write compares with storage again before touching it.
       _log.severe(
         'Could not store the rotated tokens of account $accountId: '
         '${error.runtimeType}',
       );
+      _serverClock.learn(fresh.issuedAt.difference(receivedAt));
       return _keepUnstored(fresh, replacing: replacedRefreshToken);
     }
+    final (read, committed) = result;
+    final stored = await _resolveStored(read);
+    await _noteRefreshSettled(usedRefreshToken);
+    _ensureUsable();
+    if (!committed) {
+      // A new sign-in replaced the session while this refresh was in flight;
+      // the tokens just received belong to the superseded session.
+      return _session = _Session.fromStored(stored);
+    }
+    _unpersisted = null;
     return _session = _Session.fromTokenSet(fresh);
   }
 
@@ -560,24 +568,39 @@ final class SessionManager implements AccessTokenSource {
   Future<void> _retryUnpersistedWrite() async {
     final unpersisted = _unpersisted;
     if (unpersisted == null) return;
-    // Drops the unpersisted tokens when storage holds newer ones.
-    await _readStored();
-    if (!identical(_unpersisted, unpersisted)) return;
+    final (StoredTokens? read, bool committed) result;
     try {
-      await _writeTokens(unpersisted.tokens);
-      if (identical(_unpersisted, unpersisted)) _unpersisted = null;
-      await _diagnostics?.refreshSettled(
-        accountId,
-        token: tokenFingerprint(unpersisted.replacedRefreshToken),
+      result = await _commitRotation(
+        unpersisted.tokens,
+        replacing: unpersisted.replacedRefreshToken,
+        usedRefreshToken: unpersisted.tokens.refreshToken,
       );
-    } on _Retired {
-      rethrow;
+    } on ProcessLockTimeout catch (error) {
+      _ensureUsable();
+      throw NetworkFailure(NetworkProblem.timeout, cause: error);
+    } on SecureStorageUnreadable catch (error) {
+      _ensureUsable();
+      throw NetworkFailure(NetworkProblem.unreachable, cause: error);
     } on Object catch (error) {
+      _ensureUsable();
       _log.warning(
         'Still cannot store the tokens of account $accountId: '
         '${error.runtimeType}',
       );
+      return;
     }
+    await _diagnostics?.noteReadable(accountId);
+    final (read, committed) = result;
+    final stored = await _resolveStored(read);
+    if (!committed) {
+      _session = _Session.fromStored(stored);
+    }
+    if (!identical(_unpersisted, unpersisted)) return;
+    _unpersisted = null;
+    await _diagnostics?.refreshSettled(
+      accountId,
+      token: tokenFingerprint(unpersisted.replacedRefreshToken),
+    );
   }
 
   /// Tokens a refresh could not store are written at the next call, not
@@ -596,30 +619,49 @@ final class SessionManager implements AccessTokenSource {
       rethrow;
     } on SessionEnded {
       rethrow;
-    } on Object catch (error) {
+    } on NetworkFailure catch (failure) {
+      if (failure.cause is ProcessLockTimeout) rethrow;
       _log.warning(
         'Could not read the tokens of account $accountId to store the kept '
-        'ones: ${error.runtimeType}',
+        'ones: ${failure.cause.runtimeType}',
       );
     }
   }
 
-  /// [retire] waits for this write, so nothing may be awaited between the
-  /// retirement check and recording the write.
-  Future<void> _writeTokens(TokenSet tokens) {
-    if (_stop is RetiredStop) throw const _Retired();
-    return _track(_storeTokensThenClockOffset(tokens));
+  /// Returns what storage held before the commit and whether it was written.
+  /// [retire] waits for a commit already underway.
+  Future<(StoredTokens?, bool)> _commitRotation(
+    TokenSet tokens, {
+    required String replacing,
+    required String usedRefreshToken,
+    DateTime? receivedAt,
+  }) {
+    _ensureUsable();
+    return _track(
+      _tokenStore.mutate(accountId, (store) async {
+        _ensureUsable();
+        final stored = await store.read();
+        _ensureUsable();
+        // A partial write may have persisted the token that rotated, but
+        // not its access token. It is still the same session.
+        if (stored?.refreshToken == replacing ||
+            stored?.refreshToken == usedRefreshToken) {
+          if (receivedAt != null) {
+            _serverClock.learn(tokens.issuedAt.difference(receivedAt));
+          }
+          await store.write(tokens);
+          await _serverClock.saveLearned();
+          return (stored, true);
+        }
+        return (stored, false);
+      }),
+    );
   }
 
-  Future<void> _storeTokensThenClockOffset(TokenSet tokens) async {
-    await _tokenStore.write(accountId, tokens);
-    await _serverClock.saveLearned();
-  }
-
-  Future<void> _track(Future<void> write) async {
+  Future<T> _track<T>(Future<T> write) async {
     _pendingWrite = write;
     try {
-      await write;
+      return await write;
     } finally {
       if (identical(_pendingWrite, write)) _pendingWrite = null;
     }

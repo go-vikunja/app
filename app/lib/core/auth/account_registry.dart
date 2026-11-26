@@ -108,6 +108,7 @@ final class AccountRegistry {
 
   static const storageKey = 'auth.account_registry';
   static const lockName = 'vikunja.account-registry';
+  static const readTimeout = Duration(seconds: 20);
 
   /// Where a registry that could not be read at all is copied before the
   /// first write replaces it.
@@ -461,7 +462,9 @@ final class AccountRegistry {
   }
 
   Future<_StoredRegistry> _read() async {
-    final raw = await _store.getString(storageKey);
+    // A platform read that never answers must not hold the whole registry
+    // queue. The read has no side effects if it eventually finishes.
+    final raw = await _store.getString(storageKey).timeout(readTimeout);
     if (raw == null || raw.isEmpty) return const _StoredRegistry();
     try {
       return _decodeRegistry(jsonDecode(raw));

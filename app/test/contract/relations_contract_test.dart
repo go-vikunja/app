@@ -2,6 +2,8 @@
 @Timeout(Duration(minutes: 8))
 library;
 
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
@@ -63,7 +65,12 @@ final class _SwitchableWriteClient implements VikunjaWriteClient {
   ReactionsWritePort get reactions => _real.reactions;
 
   void _check() {
-    if (offline) throw const NetworkFailure(NetworkProblem.unreachable);
+    if (offline) {
+      throw const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SocketException('Connection refused'),
+      );
+    }
   }
 }
 

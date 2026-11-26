@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show SocketException;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -523,8 +524,10 @@ void main() {
     });
 
     test('a create never throws for the network; the row waits', () async {
-      write.beforeRequest = (_) =>
-          throw const NetworkFailure(NetworkProblem.unreachable);
+      write.beforeRequest = (_) => throw const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SocketException('Connection refused'),
+      );
 
       final id = await repository.createTask(draft);
       await pumpEventQueue();

@@ -28,7 +28,7 @@ void main() {
   }) {
     final controller = ShareFilesController(
       source: source,
-      files: files,
+      share: IncomingShare(files: files),
       uploadsEnabled: enabled,
       maxBytes: maxBytes,
       locations: locations,
@@ -143,6 +143,31 @@ void main() {
       size: 10,
       mimeType: mimeType,
     );
+
+    test('stopping preparation waits for the current location rewrite '
+        'and does not copy the next file', () async {
+      final files = [media(1, 'photo.jpg', 'image/jpeg'), file(2)];
+      final source = FakeShareIntentSource(
+        initial: IncomingShare(files: files),
+      );
+      final removal = RecordingLocationRemoval();
+      final removing = removal.block();
+      final controller = controllerFor(source, files, locations: removal);
+
+      unawaited(controller.prepare());
+      await pumpEventQueue();
+      expect(removal.paths, ['/cache/share-inbox/1']);
+
+      var canClear = false;
+      final stopped = controller.stopPreparing().then((_) => canClear = true);
+      await pumpEventQueue();
+      expect(canClear, isFalse);
+
+      removing.complete();
+      await stopped;
+      expect(source.calls, ['copy content://f/1 max 100']);
+      expect(controller.ready, isEmpty);
+    });
 
     test('goes through the removal for every copy before it is ready, '
         'whatever type the other app gives, so that a photo sent as '

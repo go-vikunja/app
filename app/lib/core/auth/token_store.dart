@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/storage/process_lock.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 @immutable
@@ -37,6 +38,16 @@ final class TokenStore {
   static String accessTokenKey(String accountId) =>
       'account.$accountId.access_token';
 
+  /// Serializes credential changes for [accountId] across isolates. The
+  /// callback must only touch local storage, never wait on the server.
+  Future<T> mutate<T>(
+    String accountId,
+    Future<T> Function(AccountTokenMutation) action,
+  ) => ProcessLock(
+    'vikunja.account-tokens.$accountId',
+    requireLock: true,
+  ).run(() => action(AccountTokenMutation._(this, accountId)));
+
   /// Throws [SecureStorageUnreadable] when storage refuses to read.
   Future<StoredTokens?> read(String accountId) async {
     try {
@@ -52,29 +63,48 @@ final class TokenStore {
     }
   }
 
-  // The refresh token goes first: Vikunja has already invalidated the old one,
-  // so it must survive a crash between the two writes. A stale access token
-  // only costs one more refresh.
-  //
-  // With [recoverLostKey] secure storage may wipe everything first when its
-  // key cannot be unwrapped any more: only a sign-in asks for that
-  // (decision log: Sessions).
   Future<void> write(
     String accountId,
     TokenSet tokens, {
     bool recoverLostKey = false,
-  }) async {
-    await _store.write(
-      refreshTokenKey(accountId),
+  }) => mutate(
+    accountId,
+    (store) => store.write(tokens, recoverLostKey: recoverLostKey),
+  );
+
+  Future<void> delete(String accountId) =>
+      mutate(accountId, (store) => store.delete());
+}
+
+/// Credential access inside [TokenStore.mutate]'s lock.
+final class AccountTokenMutation {
+  const new _(this._tokens, this._accountId);
+
+  final TokenStore _tokens;
+  final String _accountId;
+
+  Future<StoredTokens?> read() => _tokens.read(_accountId);
+
+  /// The refresh token goes first: Vikunja has already invalidated the old
+  /// one, so its replacement must survive a crash between writes.
+  /// Only sign-in may ask to [recoverLostKey] by resetting secure storage.
+  Future<void> write(TokenSet tokens, {bool recoverLostKey = false}) async {
+    final store = _tokens._store;
+    await store.write(
+      TokenStore.refreshTokenKey(_accountId),
       tokens.refreshToken,
       recoverLostKey: recoverLostKey,
     );
-    await _store.write(accessTokenKey(accountId), tokens.accessToken);
-    await _store.flush();
+    await store.write(
+      TokenStore.accessTokenKey(_accountId),
+      tokens.accessToken,
+    );
+    await store.flush();
   }
 
-  Future<void> delete(String accountId) async {
-    await _store.delete(accessTokenKey(accountId));
-    await _store.delete(refreshTokenKey(accountId));
+  Future<void> delete() async {
+    final store = _tokens._store;
+    await store.delete(TokenStore.accessTokenKey(_accountId));
+    await store.delete(TokenStore.refreshTokenKey(_accountId));
   }
 }

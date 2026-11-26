@@ -69,7 +69,7 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
 
   /// Another account, if any, becomes active again and opens its shell.
   Future<void> _cancel(RegisteredAccount entry) =>
-      removeAccount(context, ref, entry, pendingChanges: 0);
+      removeAccount(context, ref, entry);
 
   @override
   Widget build(BuildContext context) {

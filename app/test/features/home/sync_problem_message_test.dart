@@ -40,6 +40,27 @@ void main() {
     );
   });
 
+  test('unconfirmed writes explain that the local copy is still available', () {
+    expect(
+      describeSyncProblem(
+        en,
+        problem(unconfirmedWrite, kind: OutboxOperationKind.createTask),
+      ),
+      en.syncProblemCreateUnconfirmed,
+    );
+    expect(
+      describeSyncProblem(
+        en,
+        problem(
+          unconfirmedWrite,
+          kind: OutboxOperationKind.uploadAttachment,
+          fileName: 'note.txt',
+        ),
+      ),
+      en.syncProblemUploadUnconfirmed('note.txt'),
+    );
+  });
+
   test('names a failed change of a label and says why', () {
     String describe(OutboxOperationKind kind, VikunjaFailure failure) =>
         describeSyncProblem(en, problem(failure, kind: kind));
@@ -86,6 +107,54 @@ void main() {
     expect(
       describe(create, const NetworkFailure(NetworkProblem.timeout)),
       '${en.syncProblemLabelCreateFailed} ${en.syncProblemUnexpected}',
+    );
+  });
+
+  test('an outdated recurring schedule names what it held back', () {
+    expect(
+      describeSyncProblem(
+        en,
+        problem(
+          recurringScheduleConflict,
+          changes: TaskChanges(
+            title: 'Mine',
+            projectId: 4,
+            dueDate: DateChange.set(DateTime.utc(2026, 10, 12)),
+          ),
+        ),
+      ),
+      [
+        en.syncProblemRecurringScheduleConflict,
+        en.syncProblemHeldChanges(
+          '${en.syncProblemHeldValue(en.taskEditTitleLabel, 'Mine')}, '
+          '${en.taskEditProject}',
+        ),
+        en.syncProblemHeldSchedule(en.taskDetailDueDate),
+      ].join('\n'),
+    );
+    expect(
+      describeSyncProblem(
+        en,
+        problem(
+          recurringScheduleConflict,
+          changes: const TaskChanges(
+            description: '<p>Buy  oat milk</p>',
+            projectId: 4,
+            priority: 3,
+          ),
+        ),
+        projectName: (id) => id == 4 ? 'Home' : null,
+      ),
+      [
+        en.syncProblemRecurringScheduleConflict,
+        en.syncProblemHeldChanges(
+          [
+            en.syncProblemHeldValue(en.taskDetailDescription, 'Buy oat milk'),
+            en.syncProblemHeldValue(en.taskEditProject, 'Home'),
+            en.syncProblemHeldValue(en.taskDetailPriority, en.priorityHigh),
+          ].join(', '),
+        ),
+      ].join('\n'),
     );
   });
 

@@ -394,6 +394,7 @@ void main() {
       final failed = await queueUpload(1, file: 'c' * 32);
       final attempt = now.subtract(const Duration(seconds: 3));
       await db.outboxDao.claim(sending, at: attempt);
+      await db.outboxDao.markPosted(sending, at: attempt, attachmentsBefore: 0);
       await db.outboxDao.markFailed(failed, const Forbidden());
       await db.outboxDao.queueDelete(1, now: now);
       final before = {for (final op in await ops()) op.id: op};
@@ -401,6 +402,7 @@ void main() {
       expect(await applyDelete(1), 3);
 
       expect(await db.outboxDao.count(), 0);
+      expect(await db.outboxDao.countWithSetAside(), 3);
       expect(await db.outboxDao.loadPendingTaskIds(), isEmpty);
       expect(await db.outboxDao.loadProblems(), isEmpty);
       expect(await db.outboxDao.queuedUploads(), isEmpty);
@@ -653,6 +655,7 @@ void main() {
     final stuck = await queueUpload(1, file: 'a' * 32);
     final streaming = await queueUpload(1, file: 'b' * 32);
     await db.outboxDao.claim(stuck, at: now);
+    await db.outboxDao.markPosted(stuck, at: now, attachmentsBefore: 0);
     await db.outboxDao.claim(streaming, at: now);
 
     await db.outboxDao.resetSending(
@@ -667,5 +670,49 @@ void main() {
     final kept = (await db.outboxDao.find(streaming))!;
     expect(kept.state, OutboxState.sending.name);
     expect(kept.sentAt, isNull);
+  });
+
+  test(
+    'an upload claimed but stopped before its request goes back pending, '
+    'not marked uncertain, even with a request from an earlier attempt',
+    () async {
+      final unposted = await queueUpload(1, file: 'a' * 32);
+      final retried = await queueUpload(1, file: 'b' * 32);
+      await db.outboxDao.claim(unposted, at: now);
+      await db.outboxDao.markPosted(retried, at: now, attachmentsBefore: 0);
+      await db.outboxDao.claim(
+        retried,
+        at: now.add(const Duration(seconds: 1)),
+      );
+
+      await db.outboxDao.resetSending(now: now.add(const Duration(minutes: 6)));
+
+      for (final id in [unposted, retried]) {
+        final reset = (await db.outboxDao.find(id))!;
+        expect(reset.state, OutboxState.pending.name);
+        expect(reset.sentAt, isNull);
+      }
+    },
+  );
+
+  test('an upload set aside for an Undo before its request goes back '
+      'pending, not marked uncertain', () async {
+    final id = await queueUpload(1, file: 'a' * 32);
+    await db.outboxDao.claim(id, at: now);
+
+    await db.transaction(() async {
+      await db.outboxDao.setAsideUploadsOf(
+        1,
+        until: now.add(const Duration(seconds: 15)),
+        now: now,
+      );
+      await db.outboxDao.removeAllOf(1);
+    });
+
+    final op = decodeSetAsideUploads(
+      (await db.syncStateDao.readAll())[OutboxDao.setAsideUploadsKey],
+    ).single.op;
+    expect(op.state, OutboxState.pending.name);
+    expect(op.sentAt, isNull);
   });
 }

@@ -6,6 +6,7 @@ import 'package:vikunja_logic/vikunja_logic.dart'
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/chunks.dart';
 import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
+import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 import 'package:vikunja_mobile/core/db/mappers/label_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/project_mappers.dart';
@@ -19,6 +20,8 @@ import 'package:vikunja_mobile/core/db/tables/tasks.dart';
 import 'package:vikunja_mobile/core/db/tables/users.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
+import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_relation_inverse.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
@@ -50,6 +53,15 @@ typedef FilterRow = ({
   Set<int> labelIds,
   Set<String> assignees,
   List<DateTime> reminders,
+});
+
+/// The cached membership and server version before a project-delete probe.
+/// The version timestamp is stored in epoch milliseconds.
+typedef TaskMembership = ({
+  int id,
+  int projectId,
+  int? updated,
+  String? syncRunId,
 });
 
 @DriftAccessor(
@@ -97,12 +109,22 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
       ? const Constant(true)
       : tasks.projectId.isNotIn(archived) | tasks.isFavorite.equals(true);
 
-  /// A row with a queued op is never purged: it exists on the server or is
-  /// being deleted anyway, and the pull after the op is sent sorts it out.
-  Expression<bool> get _purgeable =>
-      tasks.pendingChanges.isNull() &
-      tasks.pendingDelete.equals(false) &
-      _onServer;
+  Expression<bool> get _hasPendingChanges =>
+      tasks.pendingChanges.isNotNull() | tasks.pendingDelete.equals(true);
+
+  /// Any op of the task: uploads, failed ones included, and a repeating
+  /// task's schedule notices set neither pending flag. Label ops have no
+  /// task, and a NULL in the list would make `NOT IN` unknown.
+  Expression<bool> get _hasQueuedWork {
+    final outbox = attachedDatabase.outbox;
+    final taskOps = selectOnly(outbox)
+      ..addColumns([outbox.taskId])
+      ..where(outbox.taskId.isNotNull());
+    return _hasPendingChanges | tasks.id.isInQuery(taskOps);
+  }
+
+  /// Sync leaves tasks with queued work until sends or discards settle them.
+  Expression<bool> get _purgeable => _onServer & _hasQueuedWork.not();
 
   /// Newest first: a task created here comes before every server task,
   /// and temporary ids are handed out downwards.
@@ -927,40 +949,100 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         await _purge(await _ids(tasks.projectId.isIn(projectIds) & _purgeable)),
   );
 
-  /// The tasks of projects deleted on the server, unlike [purgeInProjects]
-  /// also those with queued ops, which go with them, a create cancelled
-  /// here (`OutboxDao.cancelCreate`): they would fail while the project is
-  /// gone or in the server's trash, and a restore from the trash does not
-  /// bring them back. Kept is a server task
-  /// whose queued changes move it into one of the projects: the server
-  /// still has it where it was, and its op fails as a sync problem whose
-  /// discard brings it back.
-  Future<int> purgeInDeletedProjects(Set<int> projectIds) =>
-      transaction(() async {
-        final query = selectOnly(tasks)
-          ..addColumns([tasks.id, tasks.pendingChanges])
-          ..where(tasks.projectId.isIn(projectIds));
-        final created = <int>[];
-        final gone = <int>[];
-        for (final row in await query.get()) {
-          final id = row.read(tasks.id)!;
-          final pending = row.read(tasks.pendingChanges);
-          if (id < 0) {
-            created.add(id);
-          } else if (pending == null ||
-              decodeTaskChanges(pending).projectId == null) {
-            gone.add(id);
-          }
+  /// Only server tasks with queued work need a membership check: a stale
+  /// cache entry for any other task can be evicted and refilled by sync.
+  Future<List<TaskMembership>> queuedMembershipsInProjects(Set<int> ids) {
+    final query = selectOnly(tasks)
+      ..addColumns(_membershipColumns)
+      ..where(tasks.projectId.isIn(ids) & _onServer & _hasQueuedWork)
+      ..orderBy([OrderingTerm.asc(tasks.id)]);
+    return query.map(_membershipOf).get();
+  }
+
+  List<Expression<Object>> get _membershipColumns => [
+    tasks.id,
+    tasks.projectId,
+    tasks.updated,
+    tasks.syncRunId,
+  ];
+
+  TaskMembership _membershipOf(TypedResult row) => (
+    id: row.read(tasks.id)!,
+    projectId: row.read(tasks.projectId)!,
+    updated: row.read<int>(tasks.updated),
+    syncRunId: row.read(tasks.syncRunId),
+  );
+
+  /// Cancels creates in deleted projects, except one whose request may have
+  /// reached the server in another project, and evicts clean cached rows.
+  /// [checkedTasks] holds live reads for matching cached memberships, or
+  /// null when the task was confirmed gone. Re-read the rows and their queue
+  /// inside the transaction: an edit or upload may have been queued or sync
+  /// may have stored a newer membership while the checks were in flight.
+  Future<int> purgeInDeletedProjects(
+    Set<int> projectIds, {
+    required Map<TaskMembership, Task?> checkedTasks,
+  }) => transaction(() async {
+    final hasQueuedWork = _hasQueuedWork;
+    final query = selectOnly(tasks)
+      ..addColumns([..._membershipColumns, hasQueuedWork])
+      ..where(tasks.projectId.isIn(projectIds));
+    final created = <int>[];
+    final gone = <int>[];
+    final evicted = <int>[];
+    final surviving = <Task>[];
+    for (final row in await query.get()) {
+      final membership = _membershipOf(row);
+      if (membership.id < 0) {
+        if (await _createWentElsewhere(membership.id, projectIds)) continue;
+        created.add(membership.id);
+      } else if (checkedTasks.containsKey(membership)) {
+        switch (checkedTasks[membership]) {
+          case final task?:
+            surviving.add(task);
+          case null:
+            gone.add(membership.id);
         }
-        final outbox = attachedDatabase.outboxDao;
-        for (final id in created) {
-          await outbox.cancelCreate(id);
-        }
-        for (final id in gone) {
-          await outbox.removeAllOf(id);
-        }
-        return created.length + await _purge(gone);
-      });
+      } else if (!row.read(hasQueuedWork)!) {
+        evicted.add(membership.id);
+      }
+    }
+    for (final chunk in chunksOf(surviving)) {
+      await upsertAll(chunk);
+    }
+    final outbox = attachedDatabase.outboxDao;
+    for (final id in created) {
+      await outbox.cancelCreate(id);
+    }
+    for (final id in gone) {
+      await outbox.removeAllOf(id);
+    }
+    // An evicted row has no op: only a read that finds the task gone drops
+    // queued work. Eviction is no proof the task is gone, so other tasks'
+    // edges to it stay; its own go with its row.
+    return created.length + await _purge(gone) + await _deleteRows(evicted);
+  });
+
+  /// Whether the create of the local task [localId] may have reached the
+  /// server in a project that is not among [deletedProjectIds]: a move
+  /// queued after the request left changes the row, not the request. That
+  /// task may exist, so its draft and queued work stay for the user.
+  Future<bool> _createWentElsewhere(
+    int localId,
+    Set<int> deletedProjectIds,
+  ) async {
+    final outbox = attachedDatabase.outbox;
+    final create =
+        await (select(outbox)..where(
+              (o) =>
+                  o.taskId.equals(localId) &
+                  o.kind.equals(OutboxOperationKind.createTask.name),
+            ))
+            .getSingleOrNull();
+    return create != null &&
+        !OutboxDao.neverReachedServer(create) &&
+        !deletedProjectIds.contains(decodeNewTask(create.payload).projectId);
+  }
 
   /// The identifiers the server shows for the project's tasks once the
   /// project's identifier is [identifier]: `IDENT-<index>`, or `#<index>`
@@ -1010,11 +1092,16 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// to them (`OutboxDao.forgetRelatedTasks`): the server no longer has
   /// them for this user.
   Future<int> _purge(List<int> gone) async {
+    final purged = await _deleteRows(gone);
+    await attachedDatabase.outboxDao.forgetRelatedTasks(gone.toSet());
+    return purged;
+  }
+
+  Future<int> _deleteRows(List<int> gone) async {
     var purged = 0;
     for (final chunk in chunksOf(gone)) {
       purged += await (delete(tasks)..where((t) => t.id.isIn(chunk))).go();
     }
-    await attachedDatabase.outboxDao.forgetRelatedTasks(gone.toSet());
     return purged;
   }
 
@@ -1578,9 +1665,11 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
 
   /// The rows among [ids] that carry a queued op.
   Future<Map<int, TaskRow>> _queuedRows(List<int> ids) async {
-    final rows = await (select(
-      tasks,
-    )..where((t) => t.id.isIn(ids) & _purgeable.not())).get();
+    final rows =
+        await (select(tasks)..where(
+              (t) => t.id.isIn(ids) & (_hasPendingChanges | _onServer.not()),
+            ))
+            .get();
     return {for (final row in rows) row.id: row};
   }
 

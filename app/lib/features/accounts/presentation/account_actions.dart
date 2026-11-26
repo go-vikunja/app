@@ -55,10 +55,18 @@ Future<bool?> removeAccount(
   BuildContext context,
   WidgetRef ref,
   RegisteredAccount entry, {
-  required int pendingChanges,
+  bool fromAccountsList = false,
+}) => _removeAccount(context, ref, entry, fromAccountsList: fromAccountsList);
+
+Future<bool?> _removeAccount(
+  BuildContext context,
+  WidgetRef ref,
+  RegisteredAccount entry, {
   bool fromAccountsList = false,
   String? title,
   String? reason,
+  bool Function(int? pendingChanges)? shouldAsk,
+  void Function(int? pendingChanges)? onAsking,
 }) async {
   final accounts = ref.read(accountsProvider).value;
   final others = [
@@ -74,19 +82,34 @@ Future<bool?> removeAccount(
     l10n: l10n,
   );
   if (!context.mounted) return null;
-  final (:confirmed, :forgetConnectionSettings) = await confirmRemoveAccount(
-    context,
-    entry: entry,
-    pendingChanges: pendingChanges,
-    nextAccount: accounts?.activeAccountId == entry.id
-        ? others.firstOrNull
-        : null,
-    fromAccountsList: fromAccountsList,
-    connectionSettings: storedSettings,
-    title: title,
-    reason: reason,
-  );
-  if (!confirmed || !context.mounted) return confirmed;
+  var pendingChanges = await _countUnsent(ref, entry.id);
+  if (!context.mounted || shouldAsk?.call(pendingChanges) == false) {
+    return null;
+  }
+  bool forgetConnectionSettings;
+  while (true) {
+    onAsking?.call(pendingChanges);
+    final choice = await confirmRemoveAccount(
+      context,
+      entry: entry,
+      pendingChanges: pendingChanges,
+      nextAccount: accounts?.activeAccountId == entry.id
+          ? others.firstOrNull
+          : null,
+      fromAccountsList: fromAccountsList,
+      connectionSettings: storedSettings,
+      title: title,
+      reason: reason,
+    );
+    if (!choice.confirmed || !context.mounted) return choice.confirmed;
+    forgetConnectionSettings = choice.forgetConnectionSettings;
+    // A notification or widget action may have queued work while the
+    // dialog was open; the user confirms what is lost now.
+    final now = await _countUnsent(ref, entry.id);
+    if (!context.mounted) return null;
+    if (!_losesMore(now, than: pendingChanges)) break;
+    pendingChanges = now;
+  }
   final messenger = ScaffoldMessenger.of(context);
   final name = accountTitle(entry.account);
   final message = entry.account.isLinkShare
@@ -123,6 +146,24 @@ Future<bool?> removeAccount(
   return true;
 }
 
+/// Null when the count could not be read.
+Future<int?> _countUnsent(WidgetRef ref, String accountId) async {
+  try {
+    return await ref.read(accountOutboxesProvider).queuedOps(accountId);
+  } on Object catch (error) {
+    _log.warning('Could not count unsent changes: ${error.runtimeType}');
+    return null;
+  }
+}
+
+/// Whether [now] is more than the confirmed [than], or no longer known. A
+/// confirmed unknown count already accepted losing whatever is queued.
+bool _losesMore(int? now, {required int? than}) => switch ((now, than)) {
+  (0, _) || (_, null) => false,
+  (null, _) => true,
+  (final now?, final than?) => now > than,
+};
+
 /// When the active account has an http twin (see [httpTwinOf]), offers to
 /// remove that one, whose reminders would otherwise come twice. Its unsent
 /// changes are counted first, so the question says they would be lost.
@@ -135,31 +176,30 @@ Future<void> offerToRemoveHttpTwin(BuildContext context, WidgetRef ref) async {
   final twin = httpTwinOf(accounts.accounts, entry);
   if (twin == null) return;
   final kept = KeptHttpTwins(ref.read(preferencesStoreProvider));
-  final int unsent;
   final int? unsentWhenKept;
   try {
-    unsent = await ref.read(accountOutboxesProvider).queuedOps(twin.id);
     unsentWhenKept = await kept.unsentWhenKept(twin.id);
   } on Object catch (error) {
-    _log.warning(
-      'Could not count the changes of the http account: '
-      '${error.runtimeType}',
-    );
+    _log.warning('Could not read the kept account: ${error.runtimeType}');
     return;
   }
-  if (unsentWhenKept != null && (unsentWhenKept == 0 || unsent > 0)) return;
-  if (!context.mounted) return;
+  if (unsentWhenKept == 0 || !context.mounted) return;
   final l10n = context.l10n;
-  final removed = await removeAccount(
+  int? offeredCount;
+  final removed = await _removeAccount(
     context,
     ref,
     twin,
-    pendingChanges: unsent,
     fromAccountsList: true,
     title: l10n.httpAccountRemoveTitle,
     reason: l10n.httpAccountRemoveReason(displayHost(entry.connection.rootUri)),
+    shouldAsk: (count) =>
+        count != null && (unsentWhenKept == null || count == 0),
+    // The count of the last question is what the user kept it with.
+    onAsking: (count) => offeredCount = count,
   );
-  if (removed != false) return;
+  final unsent = offeredCount;
+  if (removed != false || unsent == null) return;
   try {
     await kept.keep(
       twin.id,

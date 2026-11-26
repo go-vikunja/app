@@ -15,13 +15,39 @@ const installMarkerKey = 'auth.install_marker';
 ///
 /// Only for the UI start: a background isolate must never wipe tokens.
 /// The start waits for the wipe, but not past [wipeTimeout].
+///
+/// A retried start joins a check still running for the same [preferences]:
+/// two concurrent checks could both miss the marker, and the slower one
+/// would wipe tokens the faster one's start has stored since.
 Future<void> purgeSecretsLeftByPreviousInstall({
   required PreferencesStore preferences,
   required SecureStore secureStore,
   Duration wipeTimeout = const Duration(seconds: 10),
-}) async {
-  if (await preferences.getString(installMarkerKey) != null) return;
-  final registry = await preferences.getString(AccountRegistry.storageKey);
+}) {
+  if (_purging[preferences] case final running?) return running;
+  final running = _purge(preferences, secureStore, wipeTimeout);
+  _purging[preferences] = running;
+  return running.whenComplete(() {
+    if (identical(_purging[preferences], running)) {
+      _purging[preferences] = null;
+    }
+  });
+}
+
+final _purging = Expando<Future<void>>('purgeSecretsLeftByPreviousInstall');
+
+Future<void> _purge(
+  PreferencesStore preferences,
+  SecureStore secureStore,
+  Duration wipeTimeout,
+) async {
+  final marker = await preferences
+      .getString(installMarkerKey)
+      .timeout(AccountRegistry.readTimeout);
+  if (marker != null) return;
+  final registry = await preferences
+      .getString(AccountRegistry.storageKey)
+      .timeout(AccountRegistry.readTimeout);
   if (registry == null || registry.isEmpty) {
     try {
       // A wipe that answers late still deletes no token written after it:

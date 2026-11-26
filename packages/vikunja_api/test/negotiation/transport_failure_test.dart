@@ -441,6 +441,18 @@ void main() {
       });
     }
 
+    test('a connect timeout', () {
+      expect(
+        neverReachedServer(
+          const NetworkFailure(
+            NetworkProblem.timeout,
+            cause: ConnectTimedOut(),
+          ),
+        ),
+        isTrue,
+      );
+    });
+
     for (final problem in [
       NetworkProblem.tls,
       NetworkProblem.clientCertificate,

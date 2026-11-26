@@ -36,9 +36,13 @@ VikunjaFailure _fromDioException(DioException exception) {
       return failureFromResponse(response!);
     case DioExceptionType.badResponse:
       return const UnexpectedResponse(null);
-    case DioExceptionType.connectionTimeout ||
-        DioExceptionType.sendTimeout ||
-        DioExceptionType.receiveTimeout:
+    case DioExceptionType.connectionTimeout:
+      // Nothing of the request left the device.
+      return NetworkFailure(
+        NetworkProblem.timeout,
+        cause: ConnectTimedOut(exception.error),
+      );
+    case DioExceptionType.sendTimeout || DioExceptionType.receiveTimeout:
       return NetworkFailure(NetworkProblem.timeout, cause: exception.error);
     case DioExceptionType.transformTimeout:
       return UnexpectedResponse(response?.statusCode);
@@ -50,6 +54,11 @@ VikunjaFailure _fromDioException(DioException exception) {
         response?.statusCode,
         message: '${exception.error.runtimeType}',
       );
+    case DioExceptionType.connectionError when _refusedAsClosed(exception):
+      return const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: ClientClosed(),
+      );
     case DioExceptionType.connectionError || DioExceptionType.unknown:
       return NetworkFailure(
         networkProblemOf(exception),
@@ -57,6 +66,12 @@ VikunjaFailure _fromDioException(DioException exception) {
       );
   }
 }
+
+/// Dio's own refusal of a request started after its `close`, before any
+/// interceptor or adapter: it carries no error of its own, only its text.
+bool _refusedAsClosed(DioException exception) =>
+    exception.error == null &&
+    (exception.message?.contains('after it was closed') ?? false);
 
 /// Throws [NotJsonResponse] for a success answer to a JSON request whose
 /// body is no JSON at all: a captive portal's page, never Vikunja's

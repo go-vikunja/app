@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -24,6 +26,10 @@ void main() {
   const wichtig = Label(id: 10, title: 'wichtig');
   const alice = User(id: 20, username: 'alice');
   const bob = User(id: 21, username: 'bob');
+  const disconnected = NetworkFailure(
+    NetworkProblem.unreachable,
+    cause: SocketException('Connection refused'),
+  );
   late AppDatabase db;
   late FakeWriteClient write;
   late FakeSyncClient read;
@@ -129,8 +135,7 @@ void main() {
       'the label, the create and the update go out on reconnect', () async {
     read.beforeRequest = (_) =>
         throw const NetworkFailure(NetworkProblem.unreachable);
-    write.beforeRequest = (request) =>
-        throw const NetworkFailure(NetworkProblem.unreachable);
+    write.beforeRequest = (_) => throw disconnected;
 
     final result = await (await service()).submit(
       'Offline erledigen *wichtig *neu @alice @bob +Garage',
@@ -191,8 +196,7 @@ void main() {
     'offline: a tree is on screen at once with its subtasks and goes '
     'out as creates, each child naming its parent with the server id',
     () async {
-      write.beforeRequest = (request) =>
-          throw const NetworkFailure(NetworkProblem.unreachable);
+      write.beforeRequest = (_) => throw disconnected;
 
       final result = await (await service()).submit(
         'Parent +Garage\n  Child one\n    Grandchild\n  Child two',

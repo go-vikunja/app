@@ -22,7 +22,13 @@ void main() {
     db = testDatabase();
     sync = RecordingSyncEngine();
     server = FakeWriteClient(clock: () => DateTime.utc(2026, 10, 19, 12));
-    repository = LocalProjectRepository(db, sync, server);
+    repository = LocalProjectRepository(
+      db,
+      sync,
+      server,
+      readProject: (id) async => server.serverProjects[id]!,
+      readTask: (id) async => server.serverTasks[id]!,
+    );
     addTearDown(repository.dispose);
   });
 

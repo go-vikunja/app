@@ -124,20 +124,25 @@ final class LocationRemovalTests: XCTestCase {
     XCTAssertEqual(try modificationDate(url), modified)
   }
 
-  /// ImageMagick writes Exif tags as PNG text chunks; Image I/O does not read a chunk of its own
-  /// name, so this stays (threat model R36).
-  func testAGpsNamedPngTextChunkIsNotSeenAndStays() throws {
+  func testPngGpsTextChunksAreRemovedWithoutChangingOtherChunks() throws {
     let url = try photo(.png, withLocation: false)
-    var bytes = [UInt8](try Data(contentsOf: url))
-    let chunk = Self.pngChunk(
-      "tEXt", Array("exif:GPSLatitude".utf8) + [0] + Array("52/1, 31/1, 12/1".utf8))
-    bytes.insert(contentsOf: chunk, at: 33)
+    let original = Array(try Data(contentsOf: url))
+    let safe = Self.pngChunk("tEXt", Array("Description\0A park".utf8))
+    let text = Self.pngChunk("tEXt", Array("exif:GPSLatitude\0".utf8) + Array("52.5".utf8))
+    let deflatedLongitude: [UInt8] = [120, 156, 51, 52, 214, 51, 1, 0, 1, 241, 0, 199]
+    let compressed = Self.pngChunk(
+      "zTXt", Array("exif:GPSLongitude\0".utf8) + [0] + deflatedLongitude)
+    let international = Self.pngChunk(
+      "iTXt", Array("GPSAltitude\0".utf8) + [0, 0, 0, 0] + Array("34.5".utf8))
+    var bytes = original
+    bytes.insert(contentsOf: text + safe + compressed + international, at: 33)
     try Data(bytes).write(to: url)
-    XCTAssertFalse(try hasLocation(url))
 
     XCTAssertNil(removeLocation(from: url))
 
-    XCTAssertEqual(try Data(contentsOf: url), Data(bytes))
+    var expected = original
+    expected.insert(contentsOf: safe, at: 33)
+    XCTAssertEqual(try Data(contentsOf: url), Data(expected))
   }
 
   func testADronesPositionAndIptcLocationsInXmpLeaveAJpegAndTheRestStays() throws {

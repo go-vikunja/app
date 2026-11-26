@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_project_repository.dart';
@@ -46,12 +47,44 @@ void main() {
   final drafts = sampleProject(id: 3, title: 'Drafts', parent: 2);
   final home = sampleProject(id: 4, title: 'Home', position: 131072);
 
+  final checkedProjects = <int>[];
+  final checkedTasks = <int>[];
+  final readFailures = <int, VikunjaFailure>{};
+  final taskReadFailures = <int, VikunjaFailure>{};
+  Future<void> Function(int)? afterTaskRead;
+  Future<Project> readProject(int id) async {
+    checkedProjects.add(id);
+    if (readFailures[id] case final failure?) throw failure;
+    return server.serverProjects[id] ?? (throw const NotFound(code: 3001));
+  }
+
+  Future<Task> readTask(int id) async {
+    checkedTasks.add(id);
+    final task = server.serverTasks[id];
+    final failure = taskReadFailures[id];
+    await afterTaskRead?.call(id);
+    if (failure != null) throw failure;
+    return task ?? (throw const NotFound(code: 4002));
+  }
+
   setUp(() async {
+    checkedProjects.clear();
+    checkedTasks.clear();
+    readFailures.clear();
+    taskReadFailures.clear();
+    afterTaskRead = null;
     db = testDatabase();
     sync = RecordingSyncEngine();
     server = FakeWriteClient(clock: () => DateTime.utc(2026, 10, 20, 12));
     trash = FakeTrashPort();
-    repository = LocalProjectRepository(db, sync, server, trash: trash);
+    repository = LocalProjectRepository(
+      db,
+      sync,
+      server,
+      readProject: readProject,
+      readTask: readTask,
+      trash: trash,
+    );
     addTearDown(repository.dispose);
     final all = [work, reports, drafts, home];
     await db.projectsDao.upsertAll(all);
@@ -411,9 +444,14 @@ void main() {
   });
 
   group('deleting a project', () {
-    test('purges the stored subtree with its tasks and list preferences, '
+    test('purges the confirmed subtree with its tasks and list preferences, '
         'then a sync follows quietly', () async {
       final preferences = LocalListPreferences(db);
+      readFailures[3] = const NotFound(code: 3018);
+      taskReadFailures[32] = const NotFound(
+        code: 3018,
+        trash: TrashDetails(id: 3, trashedRootId: 1),
+      );
       await db.tasksDao.upsertAll([
         sampleTask(id: 31, title: 'In work'),
         sampleTask(id: 32, title: 'In drafts', projectId: 3),
@@ -442,6 +480,8 @@ void main() {
       await repository.deleteProject(1);
 
       expect(server.requests, ['delete project 1']);
+      expect(checkedProjects, unorderedEquals([2, 3]));
+      expect(checkedTasks, [32]);
       expect((await db.projectsDao.loadAll()).map((p) => p.id), [4]);
       expect(await db.tasksDao.findRow(31), isNull);
       expect(await db.tasksDao.findRow(32), isNull);
@@ -465,6 +505,197 @@ void main() {
       );
       expect(sync.refreshAfterWriteCalls, 1);
     });
+
+    test('re-homes moved tasks with queued edits or uploads without probing '
+        'clean rows', () async {
+      final edited = sampleTask(id: 31, title: 'Old title');
+      final uploading = sampleTask(id: 32, title: 'Upload only', projectId: 2);
+      final doomed = sampleTask(id: 33, title: 'Doomed upload', projectId: 2);
+      final clean = sampleTask(id: 34, title: 'Clean cache');
+      await db.tasksDao.upsertAll([edited, uploading, doomed, clean]);
+      final at = DateTime.utc(2026, 10, 20);
+      await db.outboxDao.queueUpdate(
+        31,
+        const TaskChanges(title: 'My unsent edit'),
+        now: at,
+      );
+      const upload = QueuedUpload(file: 'a', fileName: 'a.txt', size: 5);
+      final kept = await db.outboxDao.queueUpload(32, upload, now: at);
+      await db.outboxDao.queueUpload(
+        33,
+        const QueuedUpload(file: 'b', fileName: 'b.txt', size: 5),
+        now: at,
+      );
+      server.serverTasks.addAll({
+        31: edited.copyWith(projectId: 4, identifier: 'HOME-1'),
+        32: uploading.copyWith(projectId: 4),
+        33: doomed,
+        34: clean,
+      });
+
+      await repository.deleteProject(1);
+
+      expect(checkedTasks, unorderedEquals([31, 32, 33]));
+      final moved = (await db.tasksDao.find(31))!;
+      expect(moved.projectId, 4);
+      expect(moved.identifier, 'HOME-1');
+      expect(moved.title, 'My unsent edit');
+      expect((await db.tasksDao.find(32))?.projectId, 4);
+      expect(await db.tasksDao.findRow(33), isNull);
+      expect(await db.tasksDao.findRow(34), isNull);
+      expect(kept, isNotNull);
+      expect(await db.outboxDao.find(kept!), isNotNull);
+      expect(await db.outboxDao.uploadFiles(), {'a'});
+      expect((await db.outboxDao.all()).map((op) => op.taskId), [31, 32]);
+    });
+
+    test('preserves unchecked work when membership reads fail or stop, '
+        'also through the following sync purge', () async {
+      await db.tasksDao.upsertAll([
+        for (final id in [31, 32, 33, 34, 35]) sampleTask(id: id, title: '$id'),
+      ]);
+      final at = DateTime.utc(2026, 10, 20);
+      taskReadFailures[31] = const NotFound();
+      taskReadFailures[32] = const Forbidden();
+      taskReadFailures[33] = const NetworkFailure(NetworkProblem.unreachable);
+      for (final id in [31, 32, 34]) {
+        await db.outboxDao.queueUpdate(
+          id,
+          const TaskChanges(title: 'Unsent'),
+          now: at,
+        );
+      }
+      await db.outboxDao.queueUpload(
+        33,
+        const QueuedUpload(file: 'a', fileName: 'a.txt', size: 5),
+        now: at,
+      );
+      sync.onRefreshAfterWrite = () async {
+        await db.tasksDao.purgeNotInRun('settle');
+      };
+
+      await repository.deleteProject(1);
+      await pumpEventQueue();
+
+      expect(checkedTasks, [31, 32, 33]);
+      expect(await stored(1), isNull);
+      expect(await db.tasksDao.findRow(35), isNull);
+      expect((await db.tasksDao.find(31))?.title, 'Unsent');
+      expect((await db.tasksDao.find(32))?.title, 'Unsent');
+      expect(await db.tasksDao.findRow(33), isNotNull);
+      expect((await db.tasksDao.find(34))?.title, 'Unsent');
+      expect((await db.outboxDao.all()).map((op) => op.taskId), [
+        31,
+        32,
+        34,
+        33,
+      ]);
+      expect(await db.outboxDao.uploadFiles(), {'a'});
+    });
+
+    test('rechecks local membership and protects work queued during '
+        'the server reads', () async {
+      final stale = sampleTask(id: 31, title: 'Previously cached');
+      final clean = sampleTask(id: 32, title: 'Clean at first');
+      await db.tasksDao.upsertAll([stale, clean]);
+      final now = DateTime.utc(2026, 10, 20);
+      await db.outboxDao.queueUpdate(
+        31,
+        const TaskChanges(title: 'Unsent'),
+        now: now,
+      );
+      afterTaskRead = (_) async {
+        await db.tasksDao.upsertAll([stale.copyWith(updated: now)]);
+        await db.outboxDao.queueUpload(
+          32,
+          const QueuedUpload(file: 'a', fileName: 'a.txt', size: 5),
+          now: now,
+        );
+      };
+
+      await repository.deleteProject(1);
+
+      expect(checkedTasks, [31]);
+      expect((await db.tasksDao.find(31))?.title, 'Unsent');
+      expect(await db.tasksDao.findRow(32), isNotNull);
+      expect((await db.outboxDao.all()).map((op) => op.taskId), [31, 32]);
+      expect(await db.outboxDao.uploadFiles(), {'a'});
+    });
+
+    test(
+      'keeps queued work in a cached subtree that moved on the server',
+      () async {
+        server.serverProjects[2] = copyProject(reports, parentProjectId: 4);
+        final doomed = sampleProject(id: 5, title: 'Doomed', parent: 1);
+        server.serverProjects[5] = doomed;
+        await db.projectsDao.upsertAll([doomed]);
+        final moving = sampleTask(id: 32, title: 'In drafts', projectId: 3);
+        server.serverTasks[32] = moving;
+        await db.tasksDao.upsertAll([
+          moving,
+          sampleTask(id: 51, title: 'In doomed', projectId: 5),
+        ]);
+        final at = DateTime.utc(2026, 10, 20);
+        for (final id in [32, 51]) {
+          await db.outboxDao.queueUpdate(
+            id,
+            const TaskChanges(title: 'Unsent'),
+            now: at,
+          );
+        }
+        final created = await db.outboxDao.queueCreate(
+          const NewTask(projectId: 2, title: 'New report'),
+          now: at,
+        );
+        final preferences = LocalListPreferences(db);
+        const sorted = ViewPreferences(showDone: true);
+        await preferences.saveView('view:21', sorted);
+
+        await repository.deleteProject(1);
+
+        expect(await stored(1), isNull);
+        expect((await stored(2))?.parentProjectId, 4);
+        expect((await stored(3))?.parentProjectId, 2);
+        expect(await stored(5), isNull);
+        expect(server.serverTasks[32], moving);
+        expect((await db.tasksDao.find(32))?.title, 'Unsent');
+        expect((await db.tasksDao.find(created))?.title, 'New report');
+        expect(await db.tasksDao.findRow(51), isNull);
+        expect(
+          (await db.outboxDao.all()).map((op) => op.taskId),
+          unorderedEquals([32, created]),
+        );
+        expect(await preferences.watchView('view:21').first, sorted);
+      },
+    );
+
+    for (final failure in [
+      const NetworkFailure(NetworkProblem.unreachable),
+      const Forbidden(code: 7003),
+      const NotFound(),
+    ]) {
+      test('keeps the descendant when its check reports $failure', () async {
+        readFailures[2] = failure;
+        await db.tasksDao.upsertAll([
+          sampleTask(id: 31, title: 'In work'),
+          sampleTask(id: 32, title: 'In reports', projectId: 2),
+        ]);
+        await db.outboxDao.queueUpdate(
+          32,
+          const TaskChanges(title: 'Unsent'),
+          now: DateTime.utc(2026, 10, 20),
+        );
+
+        await repository.deleteProject(1);
+
+        expect(await stored(1), isNull);
+        expect(await db.tasksDao.findRow(31), isNull);
+        expect(await stored(2), reports);
+        expect((await db.tasksDao.find(32))?.title, 'Unsent');
+        expect((await db.outboxDao.all()).single.taskId, 32);
+        expect(sync.refreshAfterWriteCalls, 1);
+      });
+    }
 
     test('a refusal or no connection changes nothing', () async {
       server.refusedProjects[1] = const DomainError(412, code: 3012);
@@ -565,7 +796,13 @@ void main() {
     test(
       'without the trash it is refused as on a server without one',
       () async {
-        final withoutTrash = LocalProjectRepository(db, sync, server);
+        final withoutTrash = LocalProjectRepository(
+          db,
+          sync,
+          server,
+          readProject: readProject,
+          readTask: readTask,
+        );
 
         await expectLater(
           withoutTrash.restoreProject(5),

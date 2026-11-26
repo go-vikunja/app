@@ -63,12 +63,15 @@ abstract interface class ProjectRepository {
   });
 
   /// The server deletes the project's whole subtree with its tasks, or
-  /// moves it to its trash (Vikunja 2.8.0 and later); here the subtree goes
-  /// with its tasks, views, boards, list snapshots and list preferences.
-  /// The tasks' queued ops go too: creates, unsent edits and uploads, task
-  /// deletes still queued, and sync problems. A restore ([restoreProject])
-  /// does not bring them back: the tasks come back as the server has them,
-  /// and a task whose delete was still queued comes back alive.
+  /// moves it to its trash (Vikunja 2.8.0 and later). The requested project
+  /// and descendants confirmed gone are removed here with their views,
+  /// boards, list snapshots and list preferences. Local creates in those
+  /// projects are cancelled, unless the request may already have created
+  /// the task in another project; other unsent task work is dropped only when
+  /// the task is confirmed gone too. A task moved elsewhere keeps its
+  /// queued work, as does one whose membership could not be verified.
+  /// A [restoreProject] does not bring dropped work back: the tasks come
+  /// back as the server has them, including tasks whose delete was queued.
   Future<void> deleteProject(int projectId);
 
   /// Restores the project from the server's trash (Vikunja 2.8.0 and

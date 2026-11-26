@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/bootstrap/appearance_start.dart';
 import 'package:vikunja_mobile/bootstrap/previous_app_start.dart';
 import 'package:vikunja_mobile/bootstrap/start_values.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/background/background_entry_point.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
@@ -26,6 +27,7 @@ import 'package:vikunja_mobile/core/notifications/local_notification_gateway_pro
 import 'package:vikunja_mobile/core/notifications/notification_entry_points.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/platform/backup_exclusion.dart';
+import 'package:vikunja_mobile/core/previous_app/previous_app_import.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/screen_protection.dart';
@@ -80,23 +82,21 @@ Future<void> prepareFirstFrame(ProviderContainer container) async {
   // the import: the reporter reads the registry, whose first read wipes what it
   // reads.
   container.listen(crashReporterProvider, (_, _) {});
+  // Behind the native launch screen, so the router starts on its first
+  // real screen in the colours it keeps. A timed-out wait must not cancel
+  // migration: keep listening for the registry, including after a retry.
   try {
-    // Behind the native launch screen, so the router starts on its first
-    // real screen instead of animating it in over the empty splash route,
-    // in the colours it keeps.
-    final accounts = await container
-        .read(accountsProvider.future)
-        .timeout(const Duration(seconds: 5));
+    final accountsRead = container.read(accountsProvider.future);
+    final migration = _migrateAfterAccountRead(container, previousApp);
+    final accounts = await accountsRead.timeout(startupReadLimit);
     await Future.wait([
       loadAppearance(container),
-      startPreviousApp(container, previousApp),
+      migration,
       if (accounts.activeAccount case final entry?) ...[
-        // The shell, the first-sync screen or the notification setup:
-        // decided by the stored sync state and the onboarding flag.
         firstSyncStatus(container, entry.id),
         container.read(notificationsOnboardingProvider.future),
       ],
-    ]).timeout(const Duration(seconds: 5));
+    ]).timeout(startupReadLimit);
   } on Object catch (error) {
     _log.severe('Could not load the local state: ${error.runtimeType}');
   }
@@ -109,6 +109,30 @@ Future<void> prepareFirstFrame(ProviderContainer container) async {
     ..listen(deviceLanguageFollowerProvider, (_, _) {})
     ..listen(foregroundHeartbeatProvider, (_, _) {})
     ..listen(appLockControllerProvider, (_, _) {});
+}
+
+Future<void> _migrateAfterAccountRead(
+  ProviderContainer container,
+  PreviousAppFindings? previousApp,
+) async {
+  // Without findings, only the stored record is loaded, which Connect
+  // fills its address from.
+  if (previousApp == null) {
+    await startPreviousApp(container, null);
+    return;
+  }
+  final ready = Completer<void>();
+  final subscription = container.listen(accountsProvider, (_, next) {
+    if (next is AsyncData<AccountRegistryState> && !ready.isCompleted) {
+      ready.complete();
+    }
+  }, fireImmediately: true);
+  try {
+    await ready.future;
+  } finally {
+    subscription.close();
+  }
+  await startPreviousApp(container, previousApp);
 }
 
 ProviderContainer createAppContainer({

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/time/moments.dart';
 
 /// [row] with [changes] applied, as the server would store them: marking
 /// done sets `done_at` to [now] unless the row already has one, undoing
@@ -81,27 +82,205 @@ TaskChanges withDoneBase(TaskChanges changes, DoneBase base) => _rebuilt(
   doneBase: base,
 );
 
-/// What of [changes] has requests of its own: label, assignee and relation
-/// changes, kanban placements and list positions. The rest is the task's
-/// body, which reaches the server in one request.
-TaskChanges withoutBody(TaskChanges changes) => TaskChanges(
-  labels: changes.labels,
-  assignees: changes.assignees,
-  relations: changes.relations,
-  kanban: changes.kanban,
-  positions: changes.positions,
-);
-
-/// [changes] without their Done and its base: the server had a Done for
-/// that occurrence from elsewhere.
-TaskChanges withoutDone(TaskChanges changes) => _rebuilt(
+/// [changes] that can still be sent after the occurrence is complete.
+TaskChanges withoutDoneAndSchedule(TaskChanges changes) => _rebuilt(
   changes,
   labels: changes.labels,
   relations: changes.relations,
   kanban: changes.kanban,
   positions: changes.positions,
   dropDone: true,
+  dropSchedule: true,
 );
+
+/// The occurrence-specific edits not reflected in [current]. A completed
+/// occurrence does not prove these landed: the server may have advanced
+/// its old dates and reminders even if it took our combined request.
+TaskChanges unmatchedSchedule(TaskChanges changes, Task current) {
+  DateChange? unmatchedDate(DateChange? change, DateTime? actual) =>
+      sameSecond(_newDate(change, actual), actual) ? null : change;
+
+  final reminders = changes.reminders;
+  return TaskChanges(
+    dueDate: unmatchedDate(changes.dueDate, current.dueDate),
+    startDate: unmatchedDate(changes.startDate, current.startDate),
+    endDate: unmatchedDate(changes.endDate, current.endDate),
+    reminders:
+        reminders != null &&
+            !sameReminders(
+              withLocalInstants(
+                reminders,
+                dueDate: current.dueDate,
+                startDate: current.startDate,
+                endDate: current.endDate,
+              ),
+              current.reminders,
+            )
+        ? reminders
+        : null,
+  );
+}
+
+/// The fields of [changes] without a conflict check of their own that
+/// differ from [current], whose cover is [coverImageAttachmentId]. After a
+/// lost answer a differing one is ambiguous: it may never have landed, or
+/// landed and was changed on the web since. A description with a base is
+/// checked when it is sent, so it is not among them.
+TaskChanges unmatchedBody(
+  TaskChanges changes,
+  Task current, {
+  required int? coverImageAttachmentId,
+}) {
+  T? unmatched<T>(T? change, bool Function(T) same) =>
+      change == null || same(change) ? null : change;
+
+  return TaskChanges(
+    title: unmatched(changes.title, (title) => title == current.title),
+    description: changes.descriptionBase != null
+        ? null
+        : unmatched(
+            changes.description,
+            (description) => description == current.description,
+          ),
+    isFavorite: unmatched(
+      changes.isFavorite,
+      (favorite) => favorite == current.isFavorite,
+    ),
+    priority: unmatched(
+      changes.priority,
+      (priority) => priority == current.priority.value,
+    ),
+    percentDone: unmatched(
+      changes.percentDone,
+      (percent) => percent.clamp(0, 1) == current.percentDone,
+    ),
+    hexColor: unmatched(
+      changes.hexColor,
+      (color) => _hexColor(color) == _hexColor(current.hexColor),
+    ),
+    repeatAfter: unmatched(
+      changes.repeatAfter,
+      (after) => after.inSeconds == current.repeatAfter.inSeconds,
+    ),
+    repeatMode: unmatched(
+      changes.repeatMode,
+      (mode) => mode == current.repeatMode,
+    ),
+    projectId: unmatched(
+      changes.projectId,
+      (projectId) => projectId == current.projectId,
+    ),
+    coverImageAttachmentId: unmatched(
+      changes.coverImageAttachmentId,
+      (cover) => cover == coverImageAttachmentId,
+    ),
+  );
+}
+
+/// The server's values in [current], when a notice is made, of the fields
+/// [held] holds back, so "Keep my version" can tell what changed since.
+TaskChanges heldBaseOf(
+  TaskChanges held,
+  Task current, {
+  required int? coverImageAttachmentId,
+}) {
+  T? base<T>(Object? field, T value) => field == null ? null : value;
+  return TaskChanges(
+    title: base(held.title, current.title),
+    description: base(held.description, current.description),
+    isFavorite: base(held.isFavorite, current.isFavorite),
+    priority: base(held.priority, current.priority.value),
+    percentDone: base(held.percentDone, current.percentDone),
+    hexColor: base(held.hexColor, current.hexColor),
+    repeatAfter: base(held.repeatAfter, current.repeatAfter),
+    repeatMode: base(held.repeatMode, current.repeatMode),
+    projectId: base(held.projectId, current.projectId),
+    coverImageAttachmentId: held.coverImageAttachmentId == null
+        ? null
+        : coverImageAttachmentId,
+  );
+}
+
+/// What a notice held back that "Keep my version" may apply: none of its
+/// dates and reminders, which were set for the previous occurrence.
+TaskChanges heldBody(TaskChanges held) => TaskChanges(
+  title: held.title,
+  description: held.description,
+  isFavorite: held.isFavorite,
+  priority: held.priority,
+  percentDone: held.percentDone,
+  hexColor: held.hexColor,
+  repeatAfter: held.repeatAfter,
+  repeatMode: held.repeatMode,
+  projectId: held.projectId,
+  coverImageAttachmentId: held.coverImageAttachmentId,
+);
+
+/// The fields of [heldBody] whose value in [current] is still the server's
+/// [base] from when the notice was made: one changed since, here or on the
+/// web, or without a recorded base, is left as it is. A description goes
+/// with that base, so a web change by the time it is sent is a conflict.
+TaskChanges stillApplicable(
+  TaskChanges held,
+  TaskChanges base,
+  Task current, {
+  required int? coverImageAttachmentId,
+}) {
+  final body = heldBody(held);
+  final changed = unmatchedBody(
+    base,
+    current,
+    coverImageAttachmentId: coverImageAttachmentId,
+  );
+  T? keep<T>(T? value, Object? baseValue, Object? changedValue) =>
+      baseValue != null && changedValue == null ? value : null;
+  final description = keep(
+    body.description,
+    base.description,
+    changed.description,
+  );
+  return TaskChanges(
+    title: keep(body.title, base.title, changed.title),
+    description: description,
+    descriptionBase: description == null ? null : base.description,
+    isFavorite: keep(body.isFavorite, base.isFavorite, changed.isFavorite),
+    priority: keep(body.priority, base.priority, changed.priority),
+    percentDone: keep(body.percentDone, base.percentDone, changed.percentDone),
+    hexColor: keep(body.hexColor, base.hexColor, changed.hexColor),
+    repeatAfter: keep(body.repeatAfter, base.repeatAfter, changed.repeatAfter),
+    repeatMode: keep(body.repeatMode, base.repeatMode, changed.repeatMode),
+    projectId: keep(body.projectId, base.projectId, changed.projectId),
+    coverImageAttachmentId: keep(
+      body.coverImageAttachmentId,
+      base.coverImageAttachmentId,
+      changed.coverImageAttachmentId,
+    ),
+  );
+}
+
+/// [changes] without the fields [unmatchedBody] compares: after a lost
+/// answer, those already on the server need not go again and the others
+/// must not.
+TaskChanges withoutBody(TaskChanges changes) => _rebuilt(
+  changes,
+  description: changes.descriptionBase == null
+      ? (html: null, base: null, toggles: null)
+      : null,
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
+  dropBody: true,
+);
+
+/// As the server keeps it: six lowercase hex digits without `#`.
+String _hexColor(String color) {
+  var hex = color.trim().toLowerCase();
+  if (hex.startsWith('#')) hex = hex.substring(1);
+  return hex.length == 3
+      ? hex.split('').map((digit) => '$digit$digit').join()
+      : hex;
+}
 
 /// [changes] without their done base: the Done it was taken for was taken
 /// back.
@@ -261,9 +440,11 @@ TaskChanges _rebuilt(
   DoneBase? doneBase,
   bool dropDone = false,
   bool dropDoneBase = false,
+  bool dropSchedule = false,
   bool dropCover = false,
+  bool dropBody = false,
 }) => TaskChanges(
-  title: changes.title,
+  title: dropBody ? null : changes.title,
   description: description == null ? changes.description : description.html,
   descriptionBase: description == null
       ? changes.descriptionBase
@@ -272,23 +453,25 @@ TaskChanges _rebuilt(
       ? changes.checklistToggles
       : description.toggles,
   done: dropDone ? null : changes.done,
-  isFavorite: changes.isFavorite,
-  priority: changes.priority,
-  percentDone: changes.percentDone,
-  hexColor: changes.hexColor,
-  dueDate: changes.dueDate,
-  startDate: changes.startDate,
-  endDate: changes.endDate,
-  repeatAfter: changes.repeatAfter,
-  repeatMode: changes.repeatMode,
-  projectId: changes.projectId,
+  isFavorite: dropBody ? null : changes.isFavorite,
+  priority: dropBody ? null : changes.priority,
+  percentDone: dropBody ? null : changes.percentDone,
+  hexColor: dropBody ? null : changes.hexColor,
+  dueDate: dropSchedule ? null : changes.dueDate,
+  startDate: dropSchedule ? null : changes.startDate,
+  endDate: dropSchedule ? null : changes.endDate,
+  repeatAfter: dropBody ? null : changes.repeatAfter,
+  repeatMode: dropBody ? null : changes.repeatMode,
+  projectId: dropBody ? null : changes.projectId,
   labels: labels,
   assignees: changes.assignees,
-  reminders: changes.reminders,
+  reminders: dropSchedule ? null : changes.reminders,
   relations: relations,
   kanban: kanban,
   positions: positions,
-  coverImageAttachmentId: dropCover ? null : changes.coverImageAttachmentId,
+  coverImageAttachmentId: dropCover || dropBody
+      ? null
+      : changes.coverImageAttachmentId,
   doneBase: dropDone || dropDoneBase ? null : doneBase ?? changes.doneBase,
 );
 

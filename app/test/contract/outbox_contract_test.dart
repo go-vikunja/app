@@ -9,6 +9,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 
@@ -135,7 +136,10 @@ final class _FlakyTasks implements TasksWritePort {
     _client.attempts++;
     if (_client.failNext > 0) {
       _client.failNext--;
-      throw const NetworkFailure(NetworkProblem.unreachable);
+      throw const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: 'connection refused',
+      );
     }
   }
 
@@ -551,45 +555,43 @@ void main() {
           expect(sender.state, OutboxSenderState.idle);
         });
 
-        test('a create whose answer was lost is adopted from the server by '
-            'its title instead of being sent again', () async {
+        test('an unconfirmed create cannot retarget a queued edit or delete '
+            'to a matching server task', () async {
           final draft = NewTask(
             projectId: seed.projectId,
             title: 'Lost answer',
           );
-          // The request reached the server; the answer did not come back.
           final onServer = await writes.tasks.create(draft);
           sender.pause();
           final attemptsBefore = writes.attempts;
           final localId = await repository.createTask(draft);
           final op = (await db.outboxDao.all()).single;
-          await db.outboxDao.markPosted(op.id, at: DateTime.now());
           await db.outboxDao.markUncertain(op.id, sentAt: DateTime.now());
+          await db.outboxDao.queueUpdate(
+            localId,
+            const TaskChanges(title: 'Local edit'),
+            now: DateTime.now(),
+          );
+          await db.outboxDao.queueDelete(localId, now: DateTime.now());
 
           await sender.resume();
-          await _until(() async => await db.outboxDao.count() == 0);
 
           expect(writes.attempts, attemptsBefore);
-          expect(await db.tasksDao.resolveId(localId), onServer.id);
-          expect(await db.tasksDao.findRow(localId), isNull);
-          final adopted = (await db.tasksDao.find(onServer.id))!;
-          expect(adopted.title, 'Lost answer');
-          expect(adopted.identifier, onServer.identifier);
+          expect(await db.tasksDao.resolveId(localId), localId);
+          expect((await db.tasksDao.findRow(localId))!.pendingDelete, isTrue);
+          final problem = (await db.outboxDao.loadProblems()).single;
+          expect(problem.operationId, op.id);
+          expect(isUnconfirmedWrite(problem.failure), isTrue);
           await engine.refresh();
-          final inProject = await reads.tasks.listInProject(
-            seed.projectId,
-            const TaskQuery(),
-          );
-          expect(
-            inProject.items.where((task) => task.title == 'Lost answer'),
-            hasLength(1),
-          );
-          expect(
-            await db.tasksDao.countInProject(seed.projectId),
-            inProject.items.length,
-          );
-          expect(await db.outboxDao.count(), 0);
+          expect((await reads.tasks.read(onServer.id)).title, draft.title);
+          expect((await db.outboxDao.all()).map((row) => row.taskId), [
+            localId,
+            localId,
+            localId,
+          ]);
           expect(sender.state, OutboxSenderState.idle);
+          await sender.discard(op.id);
+          expect(await db.outboxDao.count(), 0);
         });
 
         test('a delete that meets a task another device deleted, or whose '

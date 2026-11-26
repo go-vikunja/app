@@ -98,42 +98,37 @@ fun copyCapped(resolver: ContentResolver, uri: Uri, target: File, maxBytes: Long
 // For a file another app sends, which may never deliver it: [signal]
 // calls off the opening, and the copy gives up when nothing arrives for
 // idleMillis or once [stopped]; [progressed] is told when the provider has
-// opened the file and after each arrival. A failed copy leaves nothing
-// behind.
+// opened the file and after each arrival. The caller owns the target
+// and deletes it if the copy fails.
 fun copyArriving(
     resolver: ContentResolver,
     uri: Uri,
-    target: File,
     maxBytes: Long,
     signal: CancellationSignal,
     idleMillis: Long,
+    openTarget: () -> OutputStream,
     progressed: () -> Unit,
     stopped: () -> Boolean,
 ): Long {
-    try {
-        val descriptor = resolver.openAssetFileDescriptor(uri, "r", signal)
-            ?: throw IOException("no descriptor")
-        descriptor.use { file ->
-            progressed()
-            if (stopped()) throw CopyStoppedException()
-            val fd = file.fileDescriptor
-            return file.createInputStream().use { source ->
-                FileOutputStream(target).use { sink ->
-                    copyWhileArriving(
-                        waitReadable = { millis -> isReadable(fd, millis) },
-                        read = { buffer -> source.read(buffer) },
-                        sink = sink,
-                        maxBytes = maxBytes,
-                        idleMillis = idleMillis,
-                        stopped = stopped,
-                        progressed = progressed,
-                    )
-                }
+    val descriptor = resolver.openAssetFileDescriptor(uri, "r", signal)
+        ?: throw IOException("no descriptor")
+    descriptor.use { file ->
+        progressed()
+        if (stopped()) throw CopyStoppedException()
+        val fd = file.fileDescriptor
+        return file.createInputStream().use { source ->
+            openTarget().use { sink ->
+                copyWhileArriving(
+                    waitReadable = { millis -> isReadable(fd, millis) },
+                    read = { buffer -> source.read(buffer) },
+                    sink = sink,
+                    maxBytes = maxBytes,
+                    idleMillis = idleMillis,
+                    stopped = stopped,
+                    progressed = progressed,
+                )
             }
         }
-    } catch (error: Exception) {
-        target.delete()
-        throw error
     }
 }
 

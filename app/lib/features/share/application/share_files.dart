@@ -62,13 +62,16 @@ final class ShareFileItem {
 final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
   new({
     required this._source,
-    required List<SharedFile> files,
+    required IncomingShare share,
     required this._uploadsEnabled,
     required this._maxBytes,
     this._locations,
-  }) : leftOut = files.length > maxFiles ? files.length - maxFiles : 0,
+  }) : _share = share,
+       leftOut = share.files.length > maxFiles
+           ? share.files.length - maxFiles
+           : 0,
        super([
-         for (final file in files.take(maxFiles))
+         for (final file in share.files.take(maxFiles))
            ShareFileItem(
              file,
              !_uploadsEnabled
@@ -82,11 +85,13 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
   static const maxFiles = 20;
 
   final ShareIntentSource _source;
+  final IncomingShare _share;
   final LocationRemoval? _locations;
   final bool _uploadsEnabled;
   final int _maxBytes;
   final int leftOut;
-  var _disposed = false;
+  var _stopped = false;
+  Future<void>? _preparing;
   ({String uri, Completer<Never> removed})? _copying;
 
   bool get preparing => value.any((item) => item.status is ShareFilePreparing);
@@ -96,10 +101,12 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
       if (item.status case ShareFileReady(:final copy)) (item, copy),
   ];
 
-  Future<void> prepare() async {
+  Future<void> prepare() => _preparing ??= _prepare();
+
+  Future<void> _prepare() async {
     if (!_uploadsEnabled) return;
     for (final item in [...value]) {
-      if (_disposed) return;
+      if (_stopped) return;
       if (item.status is! ShareFilePreparing) continue;
       if (!value.any((current) => current.file.uri == item.file.uri)) continue;
       final CopiedSharedFile copy;
@@ -107,7 +114,7 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
       _copying = (uri: item.file.uri, removed: removed);
       try {
         copy = await Future.any([
-          _source.copy(item.file.uri, maxBytes: _maxBytes),
+          _source.copy(_share, item.file.uri, maxBytes: _maxBytes),
           removed.future,
         ]);
       } on SharedFileTooLarge catch (error) {
@@ -120,6 +127,7 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
       } finally {
         _copying = null;
       }
+      if (_stopped) return;
       // Not by the other app's type, which can be generic: the platform
       // tells photos and videos apart by their content.
       final kept = await _locations?.removeFromAll([copy.path]);
@@ -131,20 +139,25 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
   }
 
   void remove(SharedFile file) {
-    if (_disposed) return;
-    if (_copying case (:final uri, :final removed)? when uri == file.uri) {
-      _copying = null;
-      removed.completeError(const SharedFileUnreadable());
-      unawaited(_source.cancelCopy(uri));
-    }
+    if (_stopped) return;
+    _cancelCopy(file.uri);
     value = [
       for (final item in value)
         if (item.file.uri != file.uri) item,
     ];
   }
 
+  void _cancelCopy(String? onlyUri) {
+    if (_copying case (:final uri, :final removed)?
+        when onlyUri == null || uri == onlyUri) {
+      _copying = null;
+      removed.completeError(const SharedFileUnreadable());
+      unawaited(_source.cancelCopy(_share, uri));
+    }
+  }
+
   void _set(SharedFile file, ShareFileStatus status) {
-    if (_disposed) return;
+    if (_stopped) return;
     value = [
       for (final item in value)
         if (item.file.uri == file.uri)
@@ -154,9 +167,21 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
     ];
   }
 
+  /// Calls off any pending copy, but waits for a location rewrite already
+  /// using a returned path before the share can be cleared.
+  Future<void> stopPreparing() {
+    _stop();
+    return _preparing ?? Future.value();
+  }
+
+  void _stop() {
+    _stopped = true;
+    _cancelCopy(null);
+  }
+
   @override
   void dispose() {
-    _disposed = true;
+    _stop();
     super.dispose();
   }
 }

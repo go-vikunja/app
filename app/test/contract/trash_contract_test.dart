@@ -96,7 +96,14 @@ void main() {
       addTearDown(sender.dispose);
       tasks = LocalTaskRepository(db, engine, sender, writes, trash: trash);
       addTearDown(tasks.dispose);
-      projects = LocalProjectRepository(db, engine, writes, trash: trash);
+      projects = LocalProjectRepository(
+        db,
+        engine,
+        writes,
+        readProject: reads.projects.read,
+        readTask: reads.tasks.read,
+        trash: trash,
+      );
       addTearDown(projects.dispose);
       await engine.ensureInitialSync();
     });

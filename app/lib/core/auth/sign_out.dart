@@ -201,15 +201,19 @@ final class SignOut {
       await _sessions.retire(accountId);
       try {
         await _linkShares.retire(accountId);
-        await _tokenStore.delete(accountId);
+        // Sibling isolates compare and commit a refresh under this same
+        // lock. They either commit before the wipe or see no old token.
+        await _tokenStore.mutate(accountId, (store) async {
+          await store.delete();
+          try {
+            await _clockOffsets.delete(accountId);
+          } on Object catch (error) {
+            _log.info(
+              'Could not remove the server clock offset: ${error.runtimeType}',
+            );
+          }
+        });
         await _linkShareStore.delete(accountId);
-        try {
-          await _clockOffsets.delete(accountId);
-        } on Object catch (error) {
-          _log.info(
-            'Could not remove the server clock offset: ${error.runtimeType}',
-          );
-        }
         await _registry.remove(accountId);
       } on Object {
         // The account stays, but its retired session hands out nothing for

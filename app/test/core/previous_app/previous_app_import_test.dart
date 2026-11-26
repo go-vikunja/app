@@ -169,29 +169,31 @@ void main() {
     ]);
   });
 
-  test('without a server address, as after a sign-out, the newest valid '
-      'recent server is filled in', () async {
-    secureStore.values.addAll(
-      previousAppValues(
-        server: null,
-        refreshToken: null,
-        userToken: null,
-        recentServers: jsonEncode([
-          'old.example.com',
-          'last.example.com',
-          'not a server',
-        ]),
-      ),
-    );
+  test(
+    'without a server address, as after a sign-out, the newest valid '
+    'recent server is filled in but not paired with a leftover token',
+    () async {
+      secureStore.values.addAll(
+        previousAppValues(
+          server: null,
+          userToken: null,
+          recentServers: jsonEncode([
+            'old.example.com',
+            'last.example.com',
+            'not a server',
+          ]),
+        ),
+      );
 
-    final findings = await run();
+      final findings = await run();
 
-    expect(findings?.record.server, Uri.parse('https://last.example.com'));
-    expect(findings?.record.recentServers, [
-      Uri.parse('https://old.example.com'),
-    ]);
-    expect(findings?.refreshToken, isNull);
-  });
+      expect(findings?.record.server, Uri.parse('https://last.example.com'));
+      expect(findings?.record.recentServers, [
+        Uri.parse('https://old.example.com'),
+      ]);
+      expect(findings?.refreshToken, isNull);
+    },
+  );
 
   test('an unreadable server address and recent list count as none', () async {
     secureStore.values.addAll(
@@ -202,8 +204,22 @@ void main() {
 
     expect(findings?.record.server, isNull);
     expect(findings?.record.recentServers, isEmpty);
-    expect(findings?.refreshToken, 'previous-refresh-token');
+    expect(findings?.refreshToken, isNull);
   });
+
+  for (final (address, hint) in [
+    ('http://vikunja.example.com/api/v1', 'http://vikunja.example.com'),
+    ('vikunja.example.com/api/v1', 'https://vikunja.example.com'),
+  ]) {
+    test('keeps $address as a hint without importing its token', () async {
+      secureStore.values.addAll(previousAppValues(server: address));
+
+      final findings = await run();
+
+      expect(findings?.record.server, Uri.parse(hint));
+      expect(findings?.refreshToken, isNull);
+    });
+  }
 
   group('each trace alone is the previous app', () {
     for (final (name, traces, widgets) in [
@@ -366,16 +382,21 @@ void main() {
       expect(log, ['traces', ..._readKeys, 'cancelNotifications', 'clear']);
     });
 
-    test('a key that cannot be read leaves the others', () async {
-      secureStore
-        ..values.addAll(previousAppValues())
-        ..failingReads.add('server-address');
+    test(
+      'an unreadable explicit server leaves history usable without a token',
+      () async {
+        secureStore
+          ..values.addAll(
+            previousAppValues(recentServers: '["https://last.example.com"]'),
+          )
+          ..failingReads.add('server-address');
 
-      final findings = await run();
+        final findings = await run();
 
-      expect(findings?.record.server, isNull);
-      expect(findings?.refreshToken, 'previous-refresh-token');
-    });
+        expect(findings?.record.server, Uri.parse('https://last.example.com'));
+        expect(findings?.refreshToken, isNull);
+      },
+    );
 
     test('a failed cancel still clears', () async {
       platform.failures['cancelNotifications'] = Exception('plugin');

@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
@@ -447,6 +448,89 @@ void main() {
     expect(fakes.secureStore.values, isEmpty);
   });
 
+  for (final retry in [false, true]) {
+    test(
+      'sign-out cannot interleave with a sibling refresh '
+      '${retry ? 'retrying a kept write' : 'committing new tokens'}',
+      () async {
+        final alice = await fakes.seedAccount(
+          fullServer270(),
+          tokens: issueTokens(issuedAt: now, lifetime: Duration.zero),
+          needsReauth: true,
+        );
+        final fresh = issueTokens(issuedAt: now);
+        final sibling = SessionManager(
+          accountId: alice.id,
+          tokenStore: TokenStore(fakes.secureStore),
+          refresh: (_) async => fresh,
+          onSessionEnded: (_) async {},
+          clockOffsets: fakes.clockOffsets,
+          clock: () => now,
+        );
+        if (retry) {
+          fakes.secureStore.beforeWrite = (_) async =>
+              throw StateError('temporarily locked');
+          expect(await sibling.validAccessToken(), fresh.accessToken);
+        }
+        final writing = Completer<void>();
+        final release = Completer<void>();
+        fakes.secureStore.beforeWrite = (key) async {
+          if (key != TokenStore.refreshTokenKey(alice.id)) return;
+          writing.complete();
+          await release.future;
+        };
+        final request = sibling.validAccessToken();
+        await writing.future;
+
+        final signingOut = signOut(alice.id);
+        await pumpEventQueue();
+        final stillRegistered = await fakes.registry.find(alice.id);
+        release.complete();
+        await signingOut;
+
+        expect(stillRegistered, isNotNull);
+        expect(await request, fresh.accessToken);
+        expect(await fakes.registry.find(alice.id), isNull);
+        expect(fakes.secureStore.values, isEmpty);
+        expect(await fakes.clockOffsets.read(alice.id), isNull);
+      },
+    );
+  }
+
+  test('sign-out does not wait for a sibling on the network or let its '
+      'response replace a subsequent sign-in', () async {
+    final connection = fullServer270();
+    final alice = await fakes.seedAccount(
+      connection,
+      tokens: issueTokens(issuedAt: now, lifetime: Duration.zero),
+      needsReauth: true,
+    );
+    final sent = Completer<void>();
+    final response = Completer<TokenSet>();
+    final sibling = SessionManager(
+      accountId: alice.id,
+      tokenStore: TokenStore(fakes.secureStore),
+      refresh: (_) {
+        sent.complete();
+        return response.future;
+      },
+      onSessionEnded: (_) async {},
+      clock: () => now,
+    );
+    final request = sibling.validAccessToken();
+    await sent.future;
+    await signOut(alice.id);
+    final signedIn = issueTokens(issuedAt: now, sessionId: 'new-sign-in');
+    await fakes.seedAccount(connection, tokens: signedIn);
+    response.complete(issueTokens(issuedAt: now));
+
+    expect(await request, signedIn.accessToken);
+    expect(
+      (await fakes.tokenStore.read(alice.id))?.refreshToken,
+      signedIn.refreshToken,
+    );
+  });
+
   group('a sign-out that fails after the session was retired', () {
     test('keeps the account, marked to sign in again', () async {
       final alice = await fakes.seedAccount(
@@ -645,6 +729,54 @@ void main() {
       expect(fakes.secureStore.values, isEmpty);
     });
   });
+  test(
+    'a sibling refresh finishing during deletion finds no old token',
+    () async {
+      final alice = await fakes.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now, lifetime: Duration.zero),
+        needsReauth: true,
+      );
+      final response = Completer<TokenSet>();
+      final sent = Completer<void>();
+      final sibling = SessionManager(
+        accountId: alice.id,
+        tokenStore: TokenStore(fakes.secureStore),
+        refresh: (_) {
+          sent.complete();
+          return response.future;
+        },
+        onSessionEnded: (_) async {},
+        clock: () => now,
+      );
+      final request = expectLater(
+        sibling.validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+      await sent.future;
+      final deleting = Completer<void>();
+      final release = Completer<void>();
+      fakes.secureStore.beforeDelete = (key) async {
+        if (key != TokenStore.refreshTokenKey(alice.id)) return;
+        deleting.complete();
+        await release.future;
+      };
+      fakes.secureStore.operations.clear();
+      final signingOut = signOut(alice.id);
+      await deleting.future;
+      response.complete(issueTokens(issuedAt: now));
+      await pumpEventQueue();
+      release.complete();
+      await signingOut;
+      await request;
+
+      expect(fakes.secureStore.values, isEmpty);
+      expect(
+        fakes.secureStore.operations,
+        isNot(contains(startsWith('write'))),
+      );
+    },
+  );
 }
 
 /// Writes fail while [failing] is set, each with its number.

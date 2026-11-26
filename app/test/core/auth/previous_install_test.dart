@@ -102,6 +102,27 @@ void main() {
 
     expect(auth.preferences.values, isNot(contains(installMarkerKey)));
   });
+
+  test('a retried start joins the check still running instead of wiping '
+      'after the tokens it stored', () async {
+    final registryRead = Completer<void>();
+    auth.preferences.beforeRead = (key) async {
+      if (key == AccountRegistry.storageKey) await registryRead.future;
+    };
+    final first = purge();
+    await pumpEventQueue();
+    final retried = purge();
+    registryRead.complete();
+    await Future.wait([first, retried]);
+    expect(
+      auth.secureStore.operations.where((op) => op.startsWith('deleteAll')),
+      hasLength(1),
+    );
+
+    auth.secureStore.values['account.new.refresh_token'] = 'signed in';
+    await purge();
+    expect(auth.secureStore.values, hasLength(1));
+  });
 }
 
 /// Like a Keystore whose plugin thread is stuck behind a call that never

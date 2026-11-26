@@ -163,21 +163,21 @@ void main() {
     expect(data.engine.ensureInitialSyncCalls, 1);
   });
 
-  testWidgets('cancel signs out after confirming and deletes the local data', (
+  testWidgets('cancel warns about unsent work before deleting local data', (
     tester,
   ) async {
+    data.tasks.pendingChanges = 2;
     final auth = await pumpFirstSync(tester);
     final accountId = (await auth.registry.load()).activeAccountId;
 
     await tester.tap(find.text(en.firstSyncCancel));
     await pumpUntil(tester, find.text(en.signOutDialogTitle));
+    final body = en.signOutDialogBody(
+      en.signOutDialogAccount('Alice Example', 'alice'),
+      'tasks.example.org',
+    );
     expect(
-      find.text(
-        en.signOutDialogBody(
-          en.signOutDialogAccount('Alice Example', 'alice'),
-          'tasks.example.org',
-        ),
-      ),
+      find.text('$body ${en.signOutDialogPendingChanges(2)}'),
       findsOneWidget,
     );
     await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));

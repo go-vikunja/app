@@ -7,6 +7,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/tasks_dao.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
@@ -33,11 +34,20 @@ const _parentArchived = 3016;
 /// changed. Without `trash` a restore is refused as on a server without
 /// the trash.
 final class LocalProjectRepository implements ProjectRepository {
-  new(this._db, this._sync, this._write, {this._trash});
+  new(
+    this._db,
+    this._sync,
+    this._write, {
+    required this._readProject,
+    required this._readTask,
+    this._trash,
+  });
 
   final AppDatabase _db;
   final SyncEngine _sync;
   final VikunjaWriteClient _write;
+  final Future<Project> Function(int) _readProject;
+  final Future<Task> Function(int) _readTask;
   final TrashPort? _trash;
 
   @override
@@ -260,14 +270,81 @@ final class LocalProjectRepository implements ProjectRepository {
 
   @override
   Future<void> deleteProject(int projectId) async {
+    final descendants = (await _db.projectsDao.subtreeOf(projectId))
+      ..remove(projectId);
     await _write.projects.delete(projectId);
+
+    final gone = {projectId};
+    final survivors = <Project>[];
+    var canCheckTasks = true;
+    // DELETE does not return the server's subtree. A cached child may
+    // have moved; only a coded missing/trashed response proves it is gone.
+    for (final id in descendants) {
+      try {
+        final project = await _readProject(id);
+        if (project.id == id) survivors.add(project);
+      } on NotFound catch (error) {
+        if (error.projectGone) gone.add(id);
+      } on Object catch (error) {
+        _log.fine('Could not check project $id: ${error.runtimeType}');
+        if (_cannotContinueChecking(error)) {
+          canCheckTasks = false;
+          break;
+        }
+      }
+    }
+    final checkedTasks = canCheckTasks
+        ? await _checkQueuedTaskMemberships(gone)
+        : const <TaskMembership, Task?>{};
     await _db.transaction(() async {
-      final purged = await _db.projectsDao.purgeSubtree(projectId);
+      for (final project in survivors) {
+        await _db.projectsDao.moveProject(
+          project.id,
+          parentProjectId: project.parentProjectId,
+          position: project.position,
+        );
+      }
+      final viewIds = await _db.projectsDao.purgeDeletedProjects(
+        gone,
+        checkedTasks: checkedTasks,
+      );
       await LocalListPreferences(_db)
-          .forget(projectIds: purged.projectIds, viewIds: purged.viewIds);
+          .forget(projectIds: gone, viewIds: viewIds);
     });
     _settle('Deleted project $projectId');
   }
+
+  Future<Map<TaskMembership, Task?>> _checkQueuedTaskMemberships(
+    Set<int> gone,
+  ) async {
+    final checked = <TaskMembership, Task?>{};
+    for (final cached in await _db.tasksDao.queuedMembershipsInProjects(gone)) {
+      try {
+        final task = await _readTask(cached.id);
+        if (task.id == cached.id && task.projectId > 0) checked[cached] = task;
+      } on NotFound catch (error) {
+        // A task can also have moved to an unrelated, now trashed project.
+        final trashedProjectId = error.trash?.id;
+        if (error.taskGone ||
+            (error.projectGone &&
+                (trashedProjectId == null ||
+                    gone.contains(trashedProjectId) ||
+                    gone.contains(error.trash?.trashedRootId)))) {
+          checked[cached] = null;
+        }
+      } on Object catch (error) {
+        _log.fine('Could not check task ${cached.id}: ${error.runtimeType}');
+        if (_cannotContinueChecking(error)) break;
+      }
+    }
+    return checked;
+  }
+
+  static bool _cannotContinueChecking(Object error) =>
+      error is NetworkFailure ||
+      error is RateLimited ||
+      error is TokenRejected ||
+      error is SessionEnded;
 
   /// Like a duplicate, the project comes with a run that starts after the
   /// restore, which finds it new and pulls it whole.

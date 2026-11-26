@@ -54,31 +54,35 @@ final class SignInTokens {
 
   /// Stores [tokens] for [accountId]. Throws when storage keeps refusing
   /// them; old tokens it cannot read do not stop it.
-  Future<ReplacedTokens> store(String accountId, TokenSet tokens) async {
-    StoredTokens? previous;
-    var unreadable = false;
-    try {
-      previous = await _tokenStore.read(accountId);
-    } on Object catch (error) {
-      _log.warning(
-        'Could not read the old tokens of account $accountId: '
-        '${error.runtimeType}',
-      );
-      unreadable = true;
-    }
-    await _write(accountId, tokens);
-    return ReplacedTokens._(previous, unreadable: unreadable, by: tokens);
-  }
+  Future<ReplacedTokens> store(String accountId, TokenSet tokens) =>
+      _tokenStore.mutate(accountId, (store) async {
+        StoredTokens? previous;
+        var unreadable = false;
+        try {
+          previous = await store.read();
+        } on Object catch (error) {
+          _log.warning(
+            'Could not read the old tokens of account $accountId: '
+            '${error.runtimeType}',
+          );
+          unreadable = true;
+        }
+        await _write(store, accountId, tokens);
+        return ReplacedTokens._(previous, unreadable: unreadable, by: tokens);
+      });
 
   /// A write that fails twice may mean that secure storage lost its key
   /// for good, which only a reset of the storage repairs: the third write
   /// lets the platform reset it, which it does only when the key really
   /// cannot be unwrapped, so a passing failure deletes nothing.
-  Future<void> _write(String accountId, TokenSet tokens) async {
+  Future<void> _write(
+    AccountTokenMutation store,
+    String accountId,
+    TokenSet tokens,
+  ) async {
     for (var attempt = 1; ; attempt++) {
       try {
-        await _tokenStore.write(
-          accountId,
+        await store.write(
           tokens,
           recoverLostKey: attempt == storageWriteAttempts,
         );
@@ -139,11 +143,13 @@ final class SignInTokens {
   /// never throws.
   Future<bool> takeBack(String accountId, TokenSet tokens) async {
     try {
-      final stored = await _tokenStore.read(accountId);
-      if (stored?.refreshToken != tokens.refreshToken) return false;
-      await _tokenStore.delete(accountId);
-      _log.info('Took back the tokens of account $accountId');
-      return true;
+      return await _tokenStore.mutate(accountId, (store) async {
+        final stored = await store.read();
+        if (stored?.refreshToken != tokens.refreshToken) return false;
+        await store.delete();
+        _log.info('Took back the tokens of account $accountId');
+        return true;
+      });
     } on Object catch (error) {
       _log.warning(
         'Could not take back the tokens of account $accountId: '

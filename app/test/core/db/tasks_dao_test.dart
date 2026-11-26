@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
 import '../../helpers/sample_data.dart';
@@ -448,6 +449,30 @@ void main() {
       );
       expect(await db.tasksDao.find(2), isNull);
     });
+
+    test(
+      'sync keeps a task with a failed upload until it is discarded',
+      () async {
+        final op = (await db.outboxDao.queueUpload(
+          2,
+          const QueuedUpload(file: 'a', fileName: 'a.txt', size: 1),
+          now: monday,
+        ))!;
+        await db.outboxDao.markFailed(op, const Forbidden());
+
+        expect(await db.tasksDao.purgeInProjectExcept(5, {1}, runId: 'next'), (
+          purged: 1,
+          kept: 0,
+        ));
+        expect(await db.tasksDao.purgeInProjects([5]), 1);
+        expect(await db.tasksDao.purgeNotInRun('next'), 1);
+        expect(await db.tasksDao.findRow(2), isNotNull);
+
+        await db.outboxDao.removeUpload(op);
+        expect(await db.tasksDao.purgeNotInRun('later'), 1);
+        expect(await db.tasksDao.findRow(2), isNull);
+      },
+    );
   });
 
   group('tasks created here', () {

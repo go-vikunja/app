@@ -290,6 +290,18 @@ void main() {
       expect(platform.requests.single.headers.keys, isNot(contains('X-Token')));
       expect(platform.requests.single.followRedirects, isFalse);
     });
+
+    test(
+      'never lets the platform follow a redirect, even when asked',
+      () async {
+        await dio().get<String>(
+          'https://vikunja.example.com/api/v1/info',
+          options: Options(followRedirects: true),
+        );
+
+        expect(platform.requests.single.followRedirects, isFalse);
+      },
+    );
   });
 
   group('headers', () {
@@ -550,6 +562,54 @@ void main() {
     test('an origin without any profile is blocked too', () async {
       await expectLater(
         dio().get<String>('http://192.168.1.20:3456/api/v1/user'),
+        failsWith<CleartextBlockedException>(),
+      );
+      expect(platform.requests, isEmpty);
+    });
+
+    for (final uncertainty in [false, true]) {
+      test('does not dispatch after persisted consent is '
+          '${uncertainty ? 'unreadable' : 'revoked externally'}', () async {
+        final revoked = preferences.values[NetworkProfiles.storageKey]!;
+        await profiles.consentToCleartext(origin);
+        await profiles.metadataFor(origin); // Warm this isolate's snapshot.
+        final client = dio();
+        final url = '${origin.uri}/api/v1/user';
+        final auth = Options(headers: {'Authorization': 'Bearer dummy'});
+        await client.get<String>(url, options: auth);
+        expect(
+          platform.requests.single.headers['X-Token'],
+          'dummy-http-header',
+        );
+
+        // Simulates another isolate: no local change notification.
+        if (uncertainty) {
+          preferences.failReads.add(NetworkProfiles.storageKey);
+        } else {
+          preferences.values[NetworkProfiles.storageKey] = revoked;
+        }
+        await expectLater(
+          client.get<String>(url, options: auth),
+          uncertainty
+              ? failsWith<ConnectionProfileLockedException>()
+              : failsWith<CleartextBlockedException>(),
+        );
+        expect(platform.requests, hasLength(1));
+      });
+    }
+
+    test('rechecks consent after reading profile secrets', () async {
+      final revoked = preferences.values[NetworkProfiles.storageKey]!;
+      await profiles.consentToCleartext(origin);
+      secureStore.beforeRead = (_) async {
+        preferences.values[NetworkProfiles.storageKey] = revoked;
+      };
+
+      await expectLater(
+        dio().post<String>(
+          '${origin.uri}/api/v2/oauth/token',
+          data: {'refresh_token': 'dummy'},
+        ),
         failsWith<CleartextBlockedException>(),
       );
       expect(platform.requests, isEmpty);

@@ -119,8 +119,9 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
   }
 
   /// Applied to the latest draft, so two edits in one frame both count.
-  void _update(TaskDraft Function(TaskDraft draft) change) =>
-      setState(() => _draft = change(_draft!));
+  void _update(TaskDraft Function(TaskDraft draft) change) {
+    if (!_saving) setState(() => _draft = change(_draft!));
+  }
 
   Future<void> _pickProject() async {
     final projects = ref.read(projectsProvider).value ?? const <Project>[];
@@ -194,12 +195,15 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
   }
 
   Future<void> _save() async {
+    if (!_canSave) return;
     final repository = ref.read(taskRepositoryProvider);
     final draft = _draft;
     final original = _original;
     final current = _current;
     if (repository == null || draft == null || original == null) return;
     if (current == null) return;
+    final route = ModalRoute.of(context);
+    if (route?.isCurrent != true) return;
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     setState(() => _saving = true);
@@ -215,10 +219,8 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       action: 'Saving the edit page',
       messenger: messenger,
     );
-    if (!mounted) return;
-    // Back asks again and the edit can be saved once more; not queued, the
-    // task went before the write and the page shows it as gone.
-    if (!saved || !queued) {
+    if (!mounted || route?.isActive != true) return;
+    if (!saved || !queued || route?.isCurrent != true) {
       setState(() => _saving = false);
       return;
     }
@@ -255,9 +257,9 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
 
     return PopScope(
       // Edits to a task no longer here cannot be saved: nothing to ask.
-      canPop: !_dirty || _saving || gone,
+      canPop: !_saving && (!_dirty || gone),
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_leaveIfConfirmed());
+        if (!didPop && !_saving) unawaited(_leaveIfConfirmed());
       },
       child: Scaffold(
         appBar: ReadableAppBar(
@@ -280,23 +282,31 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
               body: l10n.taskEditGoneBody,
             ),
           ),
-          final draft? => _Form(
-            draft: draft,
-            originalHexColor: _original?.hexColor.toLowerCase() ?? '',
-            description: current?.description ?? '',
-            onEditDescription: current == null || archived
-                ? null
-                : () => unawaited(_editDescription()),
-            titleController: _title,
-            titleTooLong: !_titleFits,
-            fieldKeys: _fieldKeys,
-            project: ref.watch(projectByIdProvider(draft.projectId)),
-            projects: projects,
-            onChanged: _update,
-            onPickProject: () => unawaited(_pickProject()),
-            onPickLabels: () => unawaited(_pickLabels()),
-            onPickAssignees: () => unawaited(_pickAssignees()),
-            onPickReminder: ({index}) => unawaited(_pickReminder(index: index)),
+          final draft? => AbsorbPointer(
+            absorbing: _saving,
+            child: ExcludeFocus(
+              excluding: _saving,
+              child: _Form(
+                draft: draft,
+                originalHexColor: _original?.hexColor.toLowerCase() ?? '',
+                description: current?.description ?? '',
+                onEditDescription: current == null || archived
+                    ? null
+                    : () => unawaited(_editDescription()),
+                titleController: _title,
+                saving: _saving,
+                titleTooLong: !_titleFits,
+                fieldKeys: _fieldKeys,
+                project: ref.watch(projectByIdProvider(draft.projectId)),
+                projects: projects,
+                onChanged: _update,
+                onPickProject: () => unawaited(_pickProject()),
+                onPickLabels: () => unawaited(_pickLabels()),
+                onPickAssignees: () => unawaited(_pickAssignees()),
+                onPickReminder: ({index}) =>
+                    unawaited(_pickReminder(index: index)),
+              ),
+            ),
           ),
           null => CenteredScrollView(
             maxWidth: ReadableWidth.form,
@@ -315,6 +325,7 @@ class _Form extends ConsumerWidget {
     required this.description,
     required this.onEditDescription,
     required this.titleController,
+    required this.saving,
     required this.titleTooLong,
     required this.fieldKeys,
     required this.project,
@@ -333,6 +344,7 @@ class _Form extends ConsumerWidget {
   final String description;
   final VoidCallback? onEditDescription;
   final TextEditingController titleController;
+  final bool saving;
 
   /// Changed and still over the limit, which a stored title may be.
   final bool titleTooLong;
@@ -381,6 +393,7 @@ class _Form extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
                       controller: titleController,
+                      readOnly: saving,
                       // Wraps, but Return confirms instead of adding a line:
                       // titles are one line everywhere.
                       maxLines: null,

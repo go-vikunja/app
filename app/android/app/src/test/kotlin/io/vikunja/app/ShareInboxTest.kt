@@ -1,9 +1,12 @@
 package io.vikunja.app
 
+import java.io.File
+import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ShareInboxTest {
@@ -18,9 +21,74 @@ class ShareInboxTest {
         val newer = checkNotNull(pending.current)
 
         assertFalse(pending.clear(older.id))
+        assertNull(pending.forId(older.id))
         assertEquals(newer, pending.current)
+        assertEquals(newer, pending.forId(newer.id))
         assertTrue(pending.clear(newer.id))
         assertNull(pending.current)
+    }
+
+    @Test
+    fun `a delayed clear deletes only its own files and leaves moved uploads alone`() = withCache { root ->
+        val cache = ShareCopyCache(File(root, "inbox"))
+        val first = cache.forShare(1)
+        val oldCopy = first.copy("old")
+        val moved = File(root, "upload")
+        assertTrue(first.copy("uploaded").renameTo(moved))
+        val second = cache.forShare(2)
+        val newCopy = second.copy("new")
+
+        first.purge()
+
+        assertFalse(oldCopy.parentFile!!.exists())
+        assertEquals("new", newCopy.readText())
+        assertEquals("uploaded", moved.readText())
+    }
+
+    @Test
+    fun `startup cleanup never sweeps the current process even when it reuses a share ID`() = withCache { root ->
+        val previous = ShareCopyCache(root).forShare(1).copy("previous")
+        val currentCache = ShareCopyCache(root)
+        val current = currentCache.forShare(1).copy("current")
+
+        currentCache.purgePreviousProcesses()
+
+        assertFalse(previous.exists())
+        assertEquals("current", current.readText())
+    }
+
+    @Test
+    fun `cancelling one copy removes its partial file and prevents a late open`() = withCache { root ->
+        val share = ShareCopyCache(root).forShare(1)
+        val finished = share.copy("ready")
+        val partial = share.target()
+        share.open(partial) { false }.use { sink ->
+            sink.write(1)
+            share.discard(partial)
+            // An already-open descriptor no longer names a file.
+            sink.write(2)
+        }
+        val late = share.target()
+
+        assertThrows(CopyStoppedException::class.java) { share.open(late) { true } }
+        assertFalse(partial.exists())
+        assertFalse(late.exists())
+        assertEquals("ready", finished.readText())
+        share.purge()
+        assertThrows(CopyStoppedException::class.java) { share.open(late) { true } }
+        assertFalse(late.parentFile!!.exists())
+    }
+
+    private fun ShareCopyDirectory.copy(text: String): File =
+        target().also { target -> open(target) { false }.use { it.write(text.toByteArray()) } }
+
+    private fun withCache(test: (File) -> Unit) {
+        val cache = Files.createTempDirectory(File(".").toPath(), "share-cache-test-").toFile()
+        try {
+            test(cache)
+        } finally {
+            cache.deleteRecursively()
+        }
     }
 
     private fun isForeign(

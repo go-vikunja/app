@@ -290,6 +290,33 @@ void main() {
   });
 
   group('unsaved changes', () {
+    testWidgets(
+      'a pending save prevents editing and leaves only after commit',
+      (tester) async {
+        final held = Completer<void>();
+        data.tasks.beforeWrite = () => held.future;
+        await openEditPage(tester, 1);
+        await tester.enterText(titleField(), 'Quarterly report Q4');
+        await tester.pump();
+
+        await tester.tap(saveButton());
+        await tester.pump();
+        expect(tester.widget<TextField>(titleField()).readOnly, isTrue);
+        expect(tester.testTextInput.isVisible, isFalse);
+        await pressBack(tester);
+        expect(find.byType(TaskEditPage), findsOneWidget);
+        expect(find.text(en.taskEditDiscardTitle), findsNothing);
+
+        held.complete();
+        await tester.pumpAndSettle();
+        expect(await popped, isTrue);
+        expect(
+          data.tasks.all.firstWhere((task) => task.id == 1).title,
+          'Quarterly report Q4',
+        );
+      },
+    );
+
     testWidgets('a save the device cannot store stays on the page: it says '
         'so, Save works again and back still asks', (tester) async {
       await openEditPage(tester, 1);

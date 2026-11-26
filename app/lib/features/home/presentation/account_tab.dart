@@ -39,7 +39,6 @@ import 'package:vikunja_mobile/features/session/application/sign_in_controller.d
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/session/presentation/background_sync_warning.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
-import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dart';
 
@@ -59,13 +58,7 @@ class AccountTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     RegisteredAccount entry,
-  ) => removeAccount(
-    context,
-    ref,
-    entry,
-    pendingChanges:
-        ref.read(pendingChangesProvider).unwrapPrevious().value ?? 0,
-  );
+  ) => removeAccount(context, ref, entry);
 
   void _openSettings(BuildContext context) =>
       unawaited(GoRouter.of(context).push(AppRoutes.accountSettings));

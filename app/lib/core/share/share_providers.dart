@@ -36,11 +36,14 @@ final class NoShareIntentSource implements ShareIntentSource {
   Stream<IncomingShare> get shares => const Stream.empty();
 
   @override
-  Future<CopiedSharedFile> copy(String uri, {required int maxBytes}) =>
-      Future.error(const SharedFileUnreadable());
+  Future<CopiedSharedFile> copy(
+    IncomingShare share,
+    String uri, {
+    required int maxBytes,
+  }) => Future.error(const SharedFileUnreadable());
 
   @override
-  Future<void> cancelCopy(String uri) async {}
+  Future<void> cancelCopy(IncomingShare share, String uri) async {}
 
   @override
   Future<void> clear(IncomingShare share) async {}

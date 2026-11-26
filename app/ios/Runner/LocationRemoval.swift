@@ -34,16 +34,31 @@ enum LocationRemoval {
   }
 
   private static func removeFromImage(at url: URL) throws {
-    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-      let type = CGImageSourceGetType(source)
+    guard let original = CGImageSourceCreateWithURL(url as CFURL, nil),
+      let type = CGImageSourceGetType(original)
     else { throw Failure.unreadable }
-    guard hasLocation(source) else { return }
+    let isPng = UTType(type as String) == .png
+    let stripped =
+      isPng ? try pngWithoutLocationText(Data(contentsOf: url, options: .mappedIfSafe)) : nil
+    let source: CGImageSource
+    if let stripped {
+      guard let copy = CGImageSourceCreateWithData(stripped as CFData, nil) else {
+        throw Failure.notCopied
+      }
+      source = copy
+    } else {
+      source = original
+    }
+    guard hasLocation(source) else {
+      if let stripped { try stripped.write(to: url, options: .atomic) }
+      return
+    }
     let count = CGImageSourceGetCount(source)
     let data = NSMutableData()
     guard let destination = CGImageDestinationCreateWithData(data, type, count, nil) else {
       throw Failure.notCopied
     }
-    if UTType(type as String) == .png {
+    if isPng {
       // Image I/O's lossless copy keeps a PNG's location, and PNG loses nothing when written again.
       // The properties carry what the XMP does not: text chunks, DPI, orientation, an APNG's loop
       // count and frame delays.
@@ -75,7 +90,44 @@ enum LocationRemoval {
     guard let copy = CGImageSourceCreateWithData(data, nil), !hasLocation(copy) else {
       throw Failure.locationKept
     }
+    if isPng, try pngWithoutLocationText(data as Data) != nil {
+      throw Failure.locationKept
+    }
     try data.write(to: url, options: .atomic)
+  }
+
+  /// Image I/O does not expose arbitrary PNG text keywords. Remove the entire named chunk,
+  /// compressed or not; the other chunks keep their bytes and checksums.
+  private static func pngWithoutLocationText(_ data: Data) throws -> Data? {
+    var offset = 8
+    var lastKept = 0
+    var stripped: Data?
+    while data.count - offset >= 12 {
+      let length = (offset..<(offset + 4)).reduce(0) { $0 * 256 + Int(data[$1]) }
+      guard length <= data.count - offset - 12 else { throw Failure.unreadable }
+      let start = offset + 8
+      let end = start + length + 4
+      let type = String(decoding: data[(offset + 4)..<start], as: UTF8.self)
+      switch type {
+      case "tEXt", "zTXt", "iTXt":
+        let keywordBytes = data[start..<(start + min(length, 80))]
+        guard let terminator = keywordBytes.firstIndex(of: 0), terminator > start,
+          let keyword = String(data: data[start..<terminator], encoding: .isoLatin1)
+        else { throw Failure.unreadable }
+        if let name = keyword.split(separator: ":").last, namesLocation(String(name)) {
+          if stripped == nil { stripped = Data() }
+          stripped?.append(contentsOf: data[lastKept..<offset])
+          lastKept = end
+        }
+      case "IEND":
+        stripped?.append(contentsOf: data[lastKept...])
+        return stripped
+      default:
+        break
+      }
+      offset = end
+    }
+    throw Failure.unreadable
   }
 
   /// Without {GPS} and without what Image I/O would write back into the XMP from the other

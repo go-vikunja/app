@@ -62,10 +62,12 @@ final class ShareOutcome {
 /// task, the description and every file go through the outbox. A Cupertino
 /// sheet on iOS, a bottom sheet elsewhere. [onSubmit] gets the confirmed
 /// share's work, which goes on when the sheet is dragged away meanwhile;
-/// it never throws.
+/// it never throws. [onPrepare] supplies a way to call off preparation
+/// and wait for location removal before clearing the share.
 Future<ShareOutcome?> showShareSheet(
   BuildContext context, {
   required IncomingShare share,
+  ValueChanged<Future<void> Function()>? onPrepare,
   ValueChanged<Future<ShareOutcome?>>? onSubmit,
 }) {
   Widget aboveKeyboard(BuildContext context, Widget child) => Padding(
@@ -88,6 +90,7 @@ Future<ShareOutcome?> showShareSheet(
               ShareSheet(
                 share: share,
                 scrollController: scrollController,
+                onPrepare: onPrepare,
                 onSubmit: onSubmit,
               ),
             ),
@@ -107,7 +110,11 @@ Future<ShareOutcome?> showShareSheet(
           context,
           FractionallySizedBox(
             heightFactor: 0.9,
-            child: ShareSheet(share: share, onSubmit: onSubmit),
+            child: ShareSheet(
+              share: share,
+              onPrepare: onPrepare,
+              onSubmit: onSubmit,
+            ),
           ),
         ),
       );
@@ -129,12 +136,14 @@ class ShareSheet extends ConsumerStatefulWidget {
   const new({
     required this.share,
     this.scrollController,
+    this.onPrepare,
     this.onSubmit,
     super.key,
   });
 
   final IncomingShare share;
   final ScrollController? scrollController;
+  final ValueChanged<Future<void> Function()>? onPrepare;
   final ValueChanged<Future<ShareOutcome?>>? onSubmit;
 
   @override
@@ -174,11 +183,12 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     final attachments = ref.read(attachmentRepositoryProvider);
     _files = ShareFilesController(
       source: ref.read(shareIntentSourceProvider),
-      files: widget.share.files,
+      share: widget.share,
       uploadsEnabled: attachments?.uploadsEnabled ?? false,
       maxBytes: attachments?.maxUploadBytes ?? 0,
       locations: ref.read(shareLocationRemovalProvider),
     );
+    widget.onPrepare?.call(_files.stopPreparing);
     unawaited(_files.prepare());
     for (final controller in [_title, _appended]) {
       controller.addListener(_onTextChanged);
@@ -243,7 +253,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
           },
         ),
     ]);
-    if (!mounted) return;
+    if (!mounted || !sheetIsOpen(route)) return;
     // A skipped file's copy is deleted; its row would offer it again.
     final kept = {for (final file in wanted) file.path};
     for (final (item, copy) in ready) {

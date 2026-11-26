@@ -16,6 +16,7 @@ dependencies:
   drift: ^2.35.2
   drift_flutter: ^0.3.1
   dynamic_color: ^2.1.0
+  ffi: ^2.2.0
   file_selector: ^1.1.0
   # Held at the version the iOS build was tested with; the newer ones, reviewed
   # on 2026-11-18, wait for the device test (docs/releasing.md#held-ios-plugins).

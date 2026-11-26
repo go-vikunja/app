@@ -41,3 +41,22 @@ QueuedUpload decodeQueuedUpload(String json) => switch (jsonDecode(json)) {
     ),
   _ => const QueuedUpload(file: '', fileName: '', size: 0),
 };
+
+/// [payload], a queued upload, with [id] as the highest attachment id its
+/// task had before the upload's first request. Attachment ids only grow, so
+/// whatever that request stored has a larger one; a fence already recorded
+/// stays, as an earlier request may have stored the file.
+String withAttachmentsBefore(String payload, int id) {
+  final decoded = jsonDecode(payload) as Map<String, Object?>;
+  if (decoded[_attachmentsBeforeKey] is int) return payload;
+  return jsonEncode({...decoded, _attachmentsBeforeKey: id});
+}
+
+/// The fence [withAttachmentsBefore] recorded; null for an upload never
+/// posted, and for one an earlier version posted.
+int? attachmentsBeforeOf(String payload) => switch (jsonDecode(payload)) {
+  {_attachmentsBeforeKey: final int id} => id,
+  _ => null,
+};
+
+const _attachmentsBeforeKey = 'attachments_before';

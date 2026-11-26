@@ -14,7 +14,8 @@ final _log = Logger('InactiveOutboxes');
 
 /// The outbox of any account, active or not.
 abstract interface class AccountOutboxes {
-  /// Opens the account's database.
+  /// Opens the account's database. Uploads set aside for an Undo count
+  /// too: a wipe of the account's data loses them as well.
   Future<int> queuedOps(String accountId);
 
   /// Builds the account's sender when it has none, which starts a drain.
@@ -31,7 +32,7 @@ final class _ProviderAccountOutboxes implements AccountOutboxes {
 
   @override
   Future<int> queuedOps(String accountId) =>
-      _ref.read(appDatabaseProvider(accountId)).outboxDao.count();
+      _ref.read(appDatabaseProvider(accountId)).outboxDao.countWithSetAside();
 
   @override
   Future<void> drain(String accountId) =>

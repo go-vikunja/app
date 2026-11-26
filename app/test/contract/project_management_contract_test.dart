@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_project_view_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
@@ -129,7 +130,13 @@ void main() {
             engine = engineOn(db);
             addTearDown(engine.dispose);
             quiet = RecordingSyncEngine();
-            projects = LocalProjectRepository(db, quiet, writes);
+            projects = LocalProjectRepository(
+              db,
+              quiet,
+              writes,
+              readProject: reads.projects.read,
+              readTask: reads.tasks.read,
+            );
             addTearDown(projects.dispose);
             views = LocalProjectViewRepository(
               db,
@@ -405,6 +412,48 @@ void main() {
             expect(await projectTasksIn(db, gardenId), isEmpty);
             expect(await projectTasksIn(db, shedId), isEmpty);
             await expectLikeFreshSync();
+          });
+
+          test('a delete keeps work on a remotely moved task', () async {
+            final project = await projects.createProject(
+              NewProject(title: 'Delete $name', parentProjectId: rootId),
+            );
+            final child = await projects.createProject(
+              NewProject(title: 'Child $name', parentProjectId: project),
+            );
+            final doomed = await seeder.create('/projects/$child/tasks', {
+              'title': 'Rake',
+            });
+            final moved = await seeder.create('/projects/$child/tasks', {
+              'title': 'Seeds',
+            });
+            await _pace();
+            await engine.refresh();
+            final now = DateTime.timestamp();
+            await db.outboxDao.queueUpdate(
+              moved,
+              const TaskChanges(title: 'Edited here'),
+              now: now,
+            );
+            for (final id in [moved, doomed]) {
+              await db.outboxDao.queueUpload(
+                id,
+                QueuedUpload(file: '$id', fileName: 'a.txt', size: 1),
+                now: now,
+              );
+            }
+            await seeder.patch('/tasks/$moved', {'project_id': rootId});
+
+            await projects.deleteProject(project);
+
+            expect(await db.projectsDao.loadProject(project), isNull);
+            expect(await db.projectsDao.loadProject(child), isNull);
+            expect(await db.tasksDao.findRow(doomed), isNull);
+            expect((await db.tasksDao.find(moved))?.projectId, rootId);
+            expect((await db.tasksDao.find(moved))?.title, 'Edited here');
+            final ops = await db.outboxDao.all();
+            expect(ops.map((op) => op.taskId), [moved, moved]);
+            expect(await db.outboxDao.uploadFiles(), {'$moved'});
           });
         });
       }

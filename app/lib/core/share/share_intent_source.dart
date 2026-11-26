@@ -108,16 +108,22 @@ abstract interface class ShareIntentSource {
   /// Shares that arrive while the app runs; each is also [pending].
   Stream<IncomingShare> get shares;
 
-  /// Copies a file of the pending share into the share inbox, off the main
-  /// thread, under a random name. Throws [SharedFileTooLarge] above
-  /// [maxBytes] and [SharedFileUnreadable] when it cannot be read.
-  Future<CopiedSharedFile> copy(String uri, {required int maxBytes});
+  /// Copies a file into [share]'s inbox, off the main thread, under a
+  /// random name. Throws [SharedFileTooLarge] above [maxBytes] and
+  /// [SharedFileUnreadable] when it cannot be read or [share] is no longer
+  /// pending. A returned path stays usable until [clear].
+  Future<CopiedSharedFile> copy(
+    IncomingShare share,
+    String uri, {
+    required int maxBytes,
+  });
 
-  /// Calls off a [copy] of [uri] still running, which then throws
+  /// Calls off a [copy] of [uri] for [share] still running, which then throws
   /// [SharedFileUnreadable]; nothing when none runs.
-  Future<void> cancelCopy(String uri);
+  Future<void> cancelCopy(IncomingShare share, String uri);
 
-  /// Forgets [share] only if it is still pending, calls off its copies and
-  /// deletes the inbox copies that were not moved away. Answers at once.
+  /// Forgets [share] only if it is still pending. Calls off its copies and
+  /// deletes its own inbox files that were not moved away, even when
+  /// another share is pending. Call it after all use of its paths ends.
   Future<void> clear(IncomingShare share);
 }

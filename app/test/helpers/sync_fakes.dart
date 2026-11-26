@@ -1797,6 +1797,12 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     _notifyUploads();
   }
 
+  final failedUploadCopies = <String, QueuedUploadCopy>{};
+
+  @override
+  Future<QueuedUploadCopy?> failedUploadCopy(String operationId) async =>
+      failedUploadCopies[operationId];
+
   void _notifyUploads() {
     if (!_uploadChanges.isClosed) _uploadChanges.add(null);
   }
@@ -1906,6 +1912,13 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     writes.add('sendPending');
     await beforeWrite?.call();
     return sendBlockedBy;
+  }
+
+  @override
+  Future<void> keepHeldChanges(String operationId) async {
+    writes.add('keepHeld $operationId');
+    await beforeWrite?.call();
+    _resolve(operationId);
   }
 
   @override
@@ -2094,6 +2107,9 @@ final class SyncFakes {
   final AccountDataFakes shared;
   final accounts = <String, AccountDataFakes>{};
   final files = FakeAccountDatabaseFiles();
+  AttachmentDownloads attachmentDownloads = AttachmentDownloads(
+    () async => Directory('/no-cache'),
+  );
 
   /// No share is waiting unless a test puts one there.
   final shareSource = FakeShareIntentSource();
@@ -2154,9 +2170,7 @@ final class SyncFakes {
     accountDatabaseFilesProvider.overrideWithValue(files),
     // A cache folder that never exists: a sign-out has nothing to delete,
     // and no screen test waits on real file system calls.
-    attachmentDownloadsProvider.overrideWithValue(
-      AttachmentDownloads(() async => Directory('/no-cache')),
-    ),
+    attachmentDownloadsProvider.overrideWithValue(attachmentDownloads),
     accountOutboxesProvider.overrideWithValue(outboxes),
     syncEngineProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).engine,

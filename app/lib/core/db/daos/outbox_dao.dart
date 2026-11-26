@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -97,6 +98,20 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     for (final kind in OutboxOperationKind.values)
       if (kind.createsOnServer) kind.name,
   });
+
+  static final String _recurringScheduleError = encodeFailure(
+    recurringScheduleConflict,
+  );
+
+  static final String _unconfirmedWriteError = encodeFailure(unconfirmedWrite);
+
+  // Keep the claim with the upload payload, including when it is set aside
+  // for Undo. Wall-clock timestamps can repeat across different claims.
+  static const _recoveryClaimKey = '_recovery_claim';
+  static const _recoveryClaimPath = '\$.$_recoveryClaimKey';
+
+  static Expression<bool> _isNotScheduleNotice($OutboxTable o) =>
+      o.lastError.isNull() | o.lastError.equals(_recurringScheduleError).not();
 
   final _random = Random.secure();
 
@@ -391,25 +406,21 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     return await _deleteOf(taskId);
   }
 
-  /// Drops the create of [createOperationId] with its row and every op of
-  /// the task, when it was never sent, or [lookedUp] its earlier attempt
-  /// left no task on the server, and a delete of the task is queued: the
-  /// server is never asked (again). False, with nothing changed,
-  /// otherwise, also when the delete was taken back first.
-  Future<bool> cancelDeletedCreate(
-    String createOperationId, {
-    bool lookedUp = false,
-  }) => transaction(() async {
-    final create = await find(createOperationId);
-    if (create == null ||
-        create.kind != OutboxOperationKind.createTask.name ||
-        (create.sentAt != null && !lookedUp) ||
-        !await hasQueuedDelete(create.taskId)) {
-      return false;
-    }
-    await cancelCreate(create.taskId);
-    return true;
-  });
+  /// Drops a never-sent create and all its dependent ops when a delete is
+  /// queued. False if the create may have reached the server or the delete
+  /// was taken back first.
+  Future<bool> cancelDeletedCreate(String createOperationId) =>
+      transaction(() async {
+        final create = await find(createOperationId);
+        if (create == null ||
+            create.kind != OutboxOperationKind.createTask.name ||
+            create.sentAt != null ||
+            !await hasQueuedDelete(create.taskId)) {
+          return false;
+        }
+        await cancelCreate(create.taskId);
+        return true;
+      });
 
   /// The head of the queue: the oldest op that has not failed, whatever
   /// its `next_attempt_at`; the sender waits for that itself. Uploads are
@@ -495,28 +506,40 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// name for the caller to delete, null when the op is gone or not an
   /// upload. With no op of [id], a set-aside upload of that id goes
   /// instead: one set aside while on its way that then reached the server,
-  /// so it never comes back.
-  Future<String?> removeUpload(String id) => transaction(() async {
-    final op = await find(id);
-    if (op == null) {
-      final entries = await _setAside();
-      final entry = entries.where((entry) => entry.op.id == id).firstOrNull;
-      if (entry == null) return null;
-      await _storeSetAside([
-        for (final other in entries)
-          if (other.op.id != id) other,
-      ]);
-      return decodeQueuedUpload(entry.op.payload).file;
-    }
-    if (op.kind != OutboxOperationKind.uploadAttachment.name) return null;
-    await (delete(outbox)..where((o) => o.id.equals(id))).go();
-    return decodeQueuedUpload(op.payload).file;
-  });
+  /// so it never comes back. A recovery with [ifRecoveryClaim] must still
+  /// own that claim; a set-aside copy qualifies only for the same claim.
+  Future<String?> removeUpload(String id, {OutboxRow? ifRecoveryClaim}) =>
+      transaction(() async {
+        final op = await find(id);
+        if (op == null) {
+          final entries = await _setAside();
+          final entry = entries.where((entry) => entry.op.id == id).firstOrNull;
+          if (entry == null ||
+              (ifRecoveryClaim != null &&
+                  (entry.op.state != OutboxState.pending.name ||
+                      !_sameUploadRecovery(entry.op, ifRecoveryClaim)))) {
+            return null;
+          }
+          await _storeSetAside([
+            for (final other in entries)
+              if (other.op.id != id) other,
+          ]);
+          return decodeQueuedUpload(entry.op.payload).file;
+        }
+        if (op.kind != OutboxOperationKind.uploadAttachment.name ||
+            (ifRecoveryClaim != null &&
+                !_ownsUploadRecovery(op, ifRecoveryClaim))) {
+          return null;
+        }
+        await (delete(outbox)..where((o) => o.id.equals(id))).go();
+        return decodeQueuedUpload(op.payload).file;
+      });
 
   /// Takes the task's uploads out of the queue's reach for a delete's
   /// Undo, in send order, each kept as it was until [until]; returns how
-  /// many. One on its way may have reached the server, so it is kept
-  /// pending and marked so, as [resetSending] marks one. It does not
+  /// many. One on its way is kept pending; once its request went out it
+  /// may have reached the server, so it is marked so, as [resetSending]
+  /// marks one. It does not
   /// remove them: the caller removes the task's ops in the same
   /// transaction.
   Future<int> setAsideUploadsOf(
@@ -541,13 +564,98 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           op: op.state == OutboxState.sending.name
               ? op.copyWith(
                   state: OutboxState.pending.name,
-                  sentAt: Value(op.sentAt ?? op.lastAttemptAt ?? now.toUtc()),
+                  sentAt: Value(
+                    op.sentAt ??
+                        (_postedUnderClaim(op)
+                            ? op.lastAttemptAt ?? now.toUtc()
+                            : null),
+                  ),
                 )
-              : op,
+              // A claim reset or failed before the delete was applied no
+              // longer owns its earlier verification result.
+              : op.copyWith(payload: _withoutUploadRecoveryClaim(op.payload)),
           until: until,
         ),
     ]);
     return ops.length;
+  });
+
+  /// Records a definitive refusal of an upload to a gone task. If its
+  /// delete has already been applied, the upload can safely go after Undo.
+  /// Undo assigns a new id but keeps the payload (including the stored
+  /// copy's unique name) and the uncertainty from this particular attempt.
+  /// [postedAt] and [attachmentsBefore] are what the attempt passed to
+  /// [markPosted]; a null [postedAt] is a refusal of the read before it.
+  Future<void> refuseUploadToGoneTask(
+    OutboxRow attempt, {
+    required DateTime? postedAt,
+    required NotFound failure,
+    int? attachmentsBefore,
+  }) => transaction(() async {
+    final sentAt = attempt.lastAttemptAt;
+    if (sentAt == null || attempt.sentAt != null) return;
+    final posted = postedAt == null
+        ? attempt.payload
+        : _posted(attempt.payload, postedAt, attachmentsBefore);
+    final current = await find(attempt.id);
+    if (current != null) {
+      if (current.state == OutboxState.sending.name &&
+          current.sentAt == null &&
+          current.lastAttemptAt == sentAt &&
+          current.payload == posted) {
+        await markFailed(attempt.id, failure);
+      }
+      return;
+    }
+    // The delete can set the op aside even before markPosted writes.
+    final previousPayload = _withoutUploadRecoveryClaim(attempt.payload);
+    final postedPayload = _withoutUploadRecoveryClaim(posted);
+    bool matches(OutboxRow op) {
+      if (op.taskId != attempt.taskId || op.sentAt != sentAt) return false;
+      final payload = _withoutUploadRecoveryClaim(op.payload);
+      return payload == postedPayload || payload == previousPayload;
+    }
+
+    final entries = await _setAside();
+    if (entries.any((entry) => matches(entry.op))) {
+      await _storeSetAside([
+        for (final entry in entries)
+          if (matches(entry.op))
+            SetAsideUpload(
+              op: entry.op.copyWith(
+                payload: _withoutUploadRecoveryClaim(entry.op.payload),
+                sentAt: const Value(null),
+              ),
+              until: entry.until,
+            )
+          else
+            entry,
+      ]);
+      return;
+    }
+
+    final candidates =
+        await (select(outbox)..where(
+              (o) =>
+                  o.taskId.equals(attempt.taskId) &
+                  o.id.equals(attempt.id).not() &
+                  o.kind.equals(OutboxOperationKind.uploadAttachment.name) &
+                  o.sentAt.equals(const EpochMillis().toSql(sentAt)),
+            ))
+            .get();
+    final restored = candidates.where(matches).singleOrNull;
+    if (restored == null) return;
+    await _write(
+      restored.id,
+      _retaken(null).copyWith(
+        payload: Value(_withoutUploadRecoveryClaim(restored.payload)),
+        sentAt: const Value(null),
+        // A lookup already in flight must not finish against the new send.
+        id: restored.state == OutboxState.sending.name
+            ? Value(_newId())
+            : const Value.absent(),
+      ),
+    );
   });
 
   /// Keeps the task's set-aside uploads until [until]; nothing is written
@@ -713,22 +821,69 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// in after the sender read the queue is sent too. Null when the op is
   /// no longer pending: it was taken back, discarded or dropped meanwhile,
   /// or another sender has it.
-  Future<OutboxRow?> claim(String id, {required DateTime at}) => transaction(
-    () async {
-      final claimed =
-          await (update(outbox)..where(
-                (o) =>
-                    o.id.equals(id) & o.state.equals(OutboxState.pending.name),
-              ))
-              .write(
-                OutboxCompanion(
-                  state: Value(OutboxState.sending.name),
-                  lastAttemptAt: Value(at.toUtc()),
+  Future<OutboxRow?> claim(
+    String id, {
+    required DateTime at,
+  }) => transaction(() async {
+    final claimed =
+        await (update(outbox)..where(
+              (o) => o.id.equals(id) & o.state.equals(OutboxState.pending.name),
+            ))
+            .write(
+              OutboxCompanion.custom(
+                state: Variable.withString(OutboxState.sending.name),
+                lastAttemptAt: Variable.withInt(const EpochMillis().toSql(at)),
+                payload: CaseWhenExpression(
+                  cases: [
+                    CaseWhen(
+                      outbox.kind.equals(
+                            OutboxOperationKind.uploadAttachment.name,
+                          ) &
+                          outbox.sentAt.isNotNull(),
+                      then: FunctionCallExpression('json_set', [
+                        outbox.payload,
+                        const Constant(_recoveryClaimPath),
+                        Variable.withString(_newId()),
+                      ]),
+                    ),
+                  ],
+                  orElse: outbox.payload,
                 ),
-              );
-      return claimed == 0 ? null : await find(id);
-    },
-  );
+              ),
+            );
+    return claimed == 0 ? null : await find(id);
+  });
+
+  static String _withoutUploadRecoveryClaim(String payload) {
+    final decoded = jsonDecode(payload);
+    if (decoded is! Map<String, Object?> ||
+        !decoded.containsKey(_recoveryClaimKey)) {
+      return payload;
+    }
+    return jsonEncode(decoded..remove(_recoveryClaimKey));
+  }
+
+  // Recovery never rewrites its payload. Its nonce distinguishes even
+  // two claims made at the same wall-clock time.
+  static bool _sameUploadRecovery(OutboxRow current, OutboxRow attempt) =>
+      attempt.sentAt != null &&
+      current.sentAt == attempt.sentAt &&
+      current.payload == attempt.payload;
+
+  static bool _ownsUploadRecovery(OutboxRow current, OutboxRow attempt) =>
+      current.state == OutboxState.sending.name &&
+      _sameUploadRecovery(current, attempt);
+
+  /// Applies an upload lookup's failure only while [attempt] still owns
+  /// the claim. The check and the caller's database writes are atomic.
+  Future<void> withUploadRecoveryClaim(
+    OutboxRow attempt,
+    Future<void> Function() apply,
+  ) => transaction(() async {
+    final current = await find(attempt.id);
+    if (current == null || !_ownsUploadRecovery(current, attempt)) return;
+    await apply();
+  });
 
   /// A claimed op that cannot go yet goes back to the queue as it was.
   Future<void> unclaim(String id) =>
@@ -792,6 +947,91 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     return true;
   });
 
+  /// The occurrence moved on. Retire its Done before sending [rest], so
+  /// another failure (including a description conflict) never revives it.
+  /// Keep [unmatched] separately, as a notice rather than a pending edit:
+  /// nothing should merge it back into a write or overlay it on [current].
+  Future<void> settleDone(
+    OutboxRow op,
+    TaskChanges rest,
+    Task current, {
+    required TaskChanges unmatched,
+    TaskChanges heldBase = const TaskChanges(),
+  }) => transaction(() async {
+    await storeRewritten(op, rest, retake: false);
+    if (!unmatched.isEmpty) {
+      final at = op.lastAttemptAt ?? op.createdAt;
+      final id = await _insert(
+        kind: OutboxOperationKind.updateTask,
+        taskId: op.taskId,
+        // The base rides along unread by everything but [keepHeldChanges].
+        payload: jsonEncode({
+          ...taskChangesToJson(unmatched),
+          if (!heldBase.isEmpty) _heldBaseKey: taskChangesToJson(heldBase),
+        }),
+        now: at,
+      );
+      await _write(id, failedWith(recurringScheduleConflict));
+    }
+    await _refreshPendingChanges(op.taskId);
+    await attachedDatabase.tasksDao.upsertAll([current]);
+  });
+
+  /// "Keep my version" for a repeating task's notice ([settleDone]): what
+  /// it held back is queued again as a new edit of the task as it is now,
+  /// except its dates and reminders, set for the previous occurrence, and
+  /// any field whose value here is no longer the server's from when the
+  /// notice was made (changed since, here or on the web). The notice goes.
+  /// False, with the notice kept, when the task is no longer here or is
+  /// queued for deletion, or the op is no notice. [serverCover] stands in
+  /// for the cover when this device has none ([localCover]).
+  Future<bool> keepHeldChanges(
+    String id, {
+    required DateTime now,
+    int? serverCover,
+  }) => transaction(() async {
+    final op = await find(id);
+    if (op == null || op.lastError != _recurringScheduleError) {
+      return false;
+    }
+    final task = await attachedDatabase.tasksDao.find(op.taskId);
+    final row = await _row(op.taskId);
+    if (task == null || row == null || row.pendingDelete) return false;
+    final json = jsonDecode(op.payload) as Map<String, Object?>;
+    final kept = stillApplicable(
+      taskChangesFromJson(json),
+      switch (json[_heldBaseKey]) {
+        final Map<String, Object?> base => taskChangesFromJson(base),
+        _ => const TaskChanges(),
+      },
+      task,
+      coverImageAttachmentId: await localCover(op.taskId) ?? serverCover,
+    );
+    if (!kept.isEmpty && !await queueUpdate(op.taskId, kept, now: now)) {
+      return false;
+    }
+    await (delete(outbox)..where((o) => o.id.equals(id))).go();
+    return true;
+  });
+
+  static const _heldBaseKey = 'held_base';
+
+  /// The cover this device shows for the task: a queued change, else its
+  /// stored details; null when it knows neither.
+  Future<int?> localCover(int taskId) async =>
+      (await pendingChangesFor(taskId))?.coverImageAttachmentId ??
+      await _storedCover(taskId);
+
+  /// The cover the task's stored details show; null when none are stored.
+  Future<int?> _storedCover(int taskId) async {
+    final loads = attachedDatabase.taskDetailLoads;
+    final query = selectOnly(loads)
+      ..addColumns([loads.coverImageAttachmentId])
+      ..where(loads.taskId.equals(taskId));
+    final row = await query.getSingleOrNull();
+    return row?.read(loads.coverImageAttachmentId);
+  }
+
   /// A create or upload whose request may have reached the server: the
   /// first such attempt's time stays, so the lookup reaches back before
   /// every attempt; the last request's time ([markPosted]) bounds it.
@@ -803,21 +1043,68 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       });
 
   /// The request of the task create or upload [id] leaves the device at
-  /// [at]; the last such time bounds the lookup for a lost answer. Other
-  /// ops are left alone.
-  Future<void> markPosted(String id, {required DateTime at}) =>
+  /// [at]; the last such time bounds the lookup for a lost answer. An
+  /// upload also keeps [attachmentsBefore], the fence of its first request
+  /// (see [withAttachmentsBefore]). Other ops are left alone.
+  Future<void> markPosted(
+    String id, {
+    required DateTime at,
+    int? attachmentsBefore,
+  }) => transaction(() async {
+    final op = await find(id);
+    if (op == null ||
+        (op.kind != OutboxOperationKind.createTask.name &&
+            op.kind != OutboxOperationKind.uploadAttachment.name)) {
+      return;
+    }
+    await _write(
+      id,
+      OutboxCompanion(
+        payload: Value(_posted(op.payload, at, attachmentsBefore)),
+      ),
+    );
+  });
+
+  /// The request of the claimed task create [claim] leaves the device at
+  /// [at]. False, with nothing written, when [claim] no longer holds the op
+  /// (a reset handed it back, or another sender took it since): its request
+  /// must not go then.
+  Future<bool> markCreatePosted(OutboxRow claim, {required DateTime at}) =>
       transaction(() async {
-        final op = await find(id);
+        final op = await find(claim.id);
         if (op == null ||
-            (op.kind != OutboxOperationKind.createTask.name &&
-                op.kind != OutboxOperationKind.uploadAttachment.name)) {
-          return;
+            op.kind != OutboxOperationKind.createTask.name ||
+            op.state != OutboxState.sending.name ||
+            op.lastAttemptAt != claim.lastAttemptAt) {
+          return false;
         }
         await _write(
-          id,
-          OutboxCompanion(payload: Value(withPostedAt(op.payload, at))),
+          op.id,
+          OutboxCompanion(payload: Value(_posted(op.payload, at, null))),
         );
+        return true;
       });
+
+  /// Whether the claim of the task create or upload [op] left `sending`
+  /// may have reached the server: only once it reached [markPosted] or
+  /// [markCreatePosted]. Before that it only read (the create's project, the
+  /// upload's fence), so it must not become a create blocked for good or a
+  /// lookup that can never find the file. A `posted_at` older than the claim
+  /// is a past attempt's.
+  static bool _postedUnderClaim(OutboxRow op) {
+    final posted = postedAtOf(op.payload);
+    final attempt = op.lastAttemptAt;
+    return posted != null && (attempt == null || !posted.isBefore(attempt));
+  }
+
+  // What [markPosted] writes; [refuseUploadToGoneTask] compares with it.
+  static String _posted(String payload, DateTime at, int? attachmentsBefore) =>
+      withPostedAt(
+        attachmentsBefore == null
+            ? payload
+            : withAttachmentsBefore(payload, attachmentsBefore),
+        at,
+      );
 
   /// A failed op whose task has a newer queued op is folded into that op
   /// instead: an update takes the fields the newer update does not set, a
@@ -825,8 +1112,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// send in either order, and a Retry can never overwrite a newer edit.
   /// Two updates are not folded when either has `sent_at` (its Done may
   /// have reached the server, see [markDoneAttempt]): the failed one stays
-  /// failed for Retry or Discard, since its next attempt may drop the body
-  /// it sent once, and an edit folded into it would go with it.
+  /// failed for Retry or Discard, so its occurrence check stays separate
+  /// from a later edit.
   /// A rejected create takes the edit queued behind it while it was in
   /// flight, so that edit cannot revert a later one folded into the
   /// create; only done, labels and assignees stay queued behind it. A
@@ -1033,16 +1320,31 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   static bool _isFailedUpdate(OutboxRow op) =>
       op.kind == OutboxOperationKind.updateTask.name &&
-      op.state == OutboxState.failed.name;
+      op.state == OutboxState.failed.name &&
+      op.lastError != _recurringScheduleError;
 
-  /// A failed op goes back to the queue with a clean slate.
-  Future<void> retry(String id) => _write(id, _retaken(null));
+  /// Neither an outdated schedule edit nor a task create that may be on
+  /// the server can be safely sent again.
+  static Expression<bool> _isRetryable($OutboxTable o) =>
+      _isNotScheduleNotice(o) &
+      (o.kind.equals(OutboxOperationKind.createTask.name) &
+              o.lastError.equals(_unconfirmedWriteError))
+          .not();
+
+  /// A failed op goes back to the queue with a clean slate, unless it is
+  /// not [_isRetryable].
+  Future<void> retry(String id) => (update(
+    outbox,
+  )..where((o) => o.id.equals(id) & _isRetryable(o))).write(_retaken(null));
 
   /// [retry] for each op of [ids] that is still failed; one that went
   /// meanwhile, or is on its way again, is left alone. Returns how many.
   Future<int> retryFailed(Iterable<String> ids) =>
       (update(outbox)..where(
-            (o) => o.id.isIn(ids) & o.state.equals(OutboxState.failed.name),
+            (o) =>
+                o.id.isIn(ids) &
+                o.state.equals(OutboxState.failed.name) &
+                _isRetryable(o),
           ))
           .write(_retaken(null));
 
@@ -1071,14 +1373,15 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   });
 
   /// Ops left in `sending` for at least [olderThan] go back to pending: a
-  /// killed run, a disposed sender or a failed local apply left them, as
-  /// no live sender takes that long over one op. A younger one may still
-  /// be on its way in another isolate and stays, and so do the uploads in
-  /// [keep], which the caller is still streaming. A create (of a task or a
-  /// label) or upload among them may have reached the server, so it is
-  /// marked uncertain as of its attempt (an earlier `sent_at` stays), and
-  /// the next attempt looks for the task, label or attachment before
-  /// sending it again.
+  /// killed run, a disposed sender or a failed local apply may leave them.
+  /// A younger one may still be on its way in another isolate and stays,
+  /// and so do the uploads in [keep]. A live upload lookup can outlast
+  /// [olderThan], so its result must still match its claim. A label create
+  /// among the reset ops, or a task create or upload whose request went out
+  /// under that claim, may have reached the server, so it is marked
+  /// uncertain as of its attempt (an earlier `sent_at` stays), and the next
+  /// attempt uses its recovery path. A task create stopped before its
+  /// request goes again as if never tried.
   ///
   /// The first call with a [process] (the caller's process id) other than
   /// the one stored ([sendingProcessKey]) resets every op `sending` at
@@ -1106,8 +1409,18 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
               millis.toSql(now.add(age)),
             )) &
         outbox.id.isNotIn(keep);
+    final upload = outbox.kind.equals(
+      OutboxOperationKind.uploadAttachment.name,
+    );
+    final taskCreate = outbox.kind.equals(OutboxOperationKind.createTask.name);
     final creates = update(outbox)
-      ..where((o) => sending & o.kind.isIn(createKinds));
+      ..where(
+        (o) =>
+            sending &
+            o.kind.isIn(createKinds) &
+            upload.not() &
+            taskCreate.not(),
+      );
     await creates.write(
       OutboxCompanion.custom(
         sentAt: coalesce([
@@ -1117,6 +1430,16 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         ]),
       ),
     );
+    final posted = await (select(
+      outbox,
+    )..where((o) => sending & (upload | taskCreate) & o.sentAt.isNull())).get();
+    for (final op in posted) {
+      if (!_postedUnderClaim(op)) continue;
+      await _write(
+        op.id,
+        OutboxCompanion(sentAt: Value(op.lastAttemptAt ?? now.toUtc())),
+      );
+    }
     return await (update(outbox)..where((o) => sending)).write(
       OutboxCompanion(state: Value(OutboxState.pending.name)),
     );
@@ -1234,7 +1557,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   Future<bool> hasQueuedOps(int taskId) async {
     final op =
         await (select(outbox)
-              ..where((o) => o.taskId.equals(taskId))
+              ..where((o) => o.taskId.equals(taskId) & _isNotScheduleNotice(o))
               ..limit(1))
             .getSingleOrNull();
     return op != null;
@@ -1245,14 +1568,16 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         const TasksCompanion(pendingDelete: Value(false)),
       );
 
-  /// The merge of the task's update ops in send order; null without one.
+  /// The merge of the task's update ops in send order, excluding old
+  /// schedule notices; null without one.
   Future<TaskChanges?> pendingChangesFor(int taskId) async {
     final ops =
         await (select(outbox)
               ..where(
                 (o) =>
                     o.taskId.equals(taskId) &
-                    o.kind.equals(OutboxOperationKind.updateTask.name),
+                    o.kind.equals(OutboxOperationKind.updateTask.name) &
+                    _isNotScheduleNotice(o),
               )
               ..orderBy([(o) => OrderingTerm.asc(o.sequence)]))
             .get();
@@ -1301,14 +1626,20 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     return query.map((row) => row.read(count)!).getSingle();
   }
 
-  /// The tasks with a queued op, whatever its state.
+  /// [count] plus the uploads set aside for a delete's Undo: everything a
+  /// wipe of the account's data would lose.
+  Future<int> countWithSetAside() =>
+      transaction(() async => await count() + (await _setAside()).length);
+
+  /// The tasks with a queued op, whatever its state, except schedule
+  /// notices, which never have any pending changes.
   Stream<Set<int>> watchPendingTaskIds() =>
       watchTables({outbox}, loadPendingTaskIds);
 
   Future<Set<int>> loadPendingTaskIds() async {
     final query = selectOnly(outbox, distinct: true)
       ..addColumns([outbox.taskId])
-      ..where(outbox.labelId.isNull());
+      ..where(outbox.labelId.isNull() & _isNotScheduleNotice(outbox));
     return {for (final row in await query.get()) row.read(outbox.taskId)!};
   }
 
@@ -1526,10 +1857,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   /// The newest one: an older one, left behind failed while a later edit
   /// was in flight, must not take an edit the newer op would then revert.
-  /// None when that one's Done may have reached the server (`sent_at`): it
-  /// takes no more edits, as a later attempt drops the body it sent once it
-  /// finds the Done landed, and an edit merged in after the attempt would
-  /// go with it.
+  /// None when that one's Done may have reached the server (`sent_at`):
+  /// its occurrence check must stay separate from later edits.
   Future<OutboxRow?> _unsentUpdate(int taskId) async {
     final newest =
         await (select(outbox)
@@ -1537,7 +1866,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
                 (o) =>
                     o.taskId.equals(taskId) &
                     o.kind.equals(OutboxOperationKind.updateTask.name) &
-                    o.state.equals(OutboxState.sending.name).not(),
+                    o.state.equals(OutboxState.sending.name).not() &
+                    _isNotScheduleNotice(o),
               )
               ..orderBy([(o) => OrderingTerm.desc(o.sequence)])
               ..limit(1))
@@ -1569,7 +1899,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
                     OutboxOperationKind.updateTask.name,
                     OutboxOperationKind.deleteTask.name,
                   ]) &
-                  o.state.equals(OutboxState.sending.name).not(),
+                  o.state.equals(OutboxState.sending.name).not() &
+                  _isNotScheduleNotice(o),
             )
             ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
             ..limit(1))

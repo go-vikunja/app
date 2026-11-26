@@ -62,7 +62,12 @@ final class _SwitchableWriteClient implements VikunjaWriteClient {
   ReactionsWritePort get reactions => _real.reactions;
 
   void _check() {
-    if (offline) throw const NetworkFailure(NetworkProblem.unreachable);
+    if (offline) {
+      throw const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: 'connection refused',
+      );
+    }
   }
 }
 

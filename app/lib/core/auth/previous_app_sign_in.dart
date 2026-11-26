@@ -12,16 +12,16 @@ import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_in_tokens.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 
 final _log = Logger('PreviousAppSignIn');
 
 Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 
-enum PreviousAppSessionSkip { insecure, unsupported }
+enum PreviousAppSessionSkip { insecure, originChanged, unsupported }
 
-/// The previous app's session is not tried: over http this app asks
-/// first, which the previous app never did, and a server below the
-/// support floor cannot be used.
+/// The previous app's session is only tried on the original HTTPS origin
+/// and on a server at or above the support floor.
 final class PreviousAppSessionNotKept implements Exception {
   const new(this.reason);
 
@@ -108,6 +108,11 @@ final class PreviousAppSignIn {
     PreviousAppSignInCancellation? cancellation,
   }) async {
     final cancel = cancellation ?? PreviousAppSignInCancellation();
+    if (cancel.isCancelled) return null;
+    final original = normalizeServerAddress(serverAddress);
+    if (!original.hasExplicitScheme || original.root.scheme != 'https') {
+      throw const PreviousAppSessionNotKept(PreviousAppSessionSkip.insecure);
+    }
     final ServerConnection connection;
     try {
       connection = await _connector.connect(
@@ -119,8 +124,14 @@ final class PreviousAppSignIn {
       rethrow;
     }
     if (cancel.isCancelled) return null;
-    if (connection.isInsecure) {
+    final tokenBase = connection.apiBaseUri(connection.preferredApiVersion);
+    if (tokenBase.scheme != 'https') {
       throw const PreviousAppSessionNotKept(PreviousAppSessionSkip.insecure);
+    }
+    if (OriginKey.tryOf(tokenBase) != OriginKey.of(original.root)) {
+      throw const PreviousAppSessionNotKept(
+        PreviousAppSessionSkip.originChanged,
+      );
     }
     if (!connection.capabilities.isSupported) {
       throw const PreviousAppSessionNotKept(PreviousAppSessionSkip.unsupported);

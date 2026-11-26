@@ -460,10 +460,13 @@ void _drainQuietly(Future<void> Function() drain) => unawaited(
 /// over.
 @riverpod
 ProjectRepository accountProjectRepository(Ref ref, String accountId) {
+  final read = ref.watch(readClientProvider(accountId));
   final repository = LocalProjectRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(syncEngineProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
+    readProject: read.projects.read,
+    readTask: read.tasks.read,
     trash: ref.watch(trashPortProvider(accountId)),
   );
   ref.onDispose(repository.dispose);

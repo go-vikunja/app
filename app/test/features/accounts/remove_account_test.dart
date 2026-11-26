@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -147,6 +149,36 @@ void main() {
     );
   });
 
+  testWidgets('removing another account waits for a fresh count of its outbox '
+      'even before its badge loads', (tester) async {
+    await accounts.seed(withCarol: false);
+    final badge = Completer<void>();
+    accounts.bobData.tasks
+      ..outboxLoaded = badge.future
+      ..pendingChanges = 2;
+    accounts.aliceData.tasks.pendingChanges = 9;
+    await accounts.pump(tester);
+    await openTab(tester, en.tabAccount);
+    expect(inSection(find.text(en.accountBadgeUnsent(2))), findsNothing);
+
+    final query = Completer<void>();
+    accounts.data.outboxes
+      ..counted.clear()
+      ..beforeCount = (_) => query.future;
+    await openRemoveDialog(tester, 'Bob');
+    expect(accounts.data.outboxes.counted, [accounts.bob.id]);
+    expect(find.text(en.removeAccountDialogTitle), findsNothing);
+
+    query.complete();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining(en.removeAccountDialogPendingChanges(2)),
+      findsOneWidget,
+    );
+    expect(accounts.data.files.deleted, isEmpty);
+  });
+
   testWidgets('cancelling the removal keeps the account', (tester) async {
     await accounts.seed(withCarol: false);
     await accounts.pump(tester);
@@ -190,6 +222,35 @@ void main() {
     expect(accounts.data.files.deleted, isEmpty);
   });
 
+  testWidgets('work queued while the sign-out dialog is open is confirmed '
+      'again before anything is deleted', (tester) async {
+    await accounts.seed(withCarol: false);
+    await accounts.pump(tester);
+    await openTab(tester, en.tabAccount);
+    await scrollTo(tester, find.text(en.homeSignOutOfThisAccount));
+
+    await tester.tap(find.text(en.homeSignOutOfThisAccount));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining(en.signOutDialogPendingChanges(1)),
+      findsNothing,
+    );
+
+    // A widget's Done lands meanwhile.
+    accounts.aliceData.tasks.pendingChanges = 1;
+    await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining(en.signOutDialogPendingChanges(1)),
+      findsOneWidget,
+    );
+    expect(accounts.data.files.deleted, isEmpty);
+    await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));
+    await tester.pumpAndSettle();
+    expect(accounts.data.files.deleted, [accounts.alice.id]);
+  });
+
   testWidgets('signing out of the active account switches to the most '
       'recently active other one', (tester) async {
     await accounts.seed();
@@ -220,6 +281,30 @@ void main() {
     expect(find.text(en.accountSignedOutOf('Alice Example')), findsOneWidget);
     expect(accounts.aliceData.engine.disposed, isTrue);
     expect(accounts.carolData.engine.disposed, isFalse);
+  });
+
+  testWidgets('signing out warns when the active outbox cannot be checked', (
+    tester,
+  ) async {
+    await accounts.seed(withCarol: false);
+    await accounts.pump(tester);
+    await openTab(tester, en.tabAccount);
+    await scrollTo(tester, find.text(en.homeSignOutOfThisAccount));
+    accounts.data.outboxes
+      ..counted.clear()
+      ..beforeCount = (_) async => throw StateError('Database unavailable');
+
+    await tester.tap(find.text(en.homeSignOutOfThisAccount));
+    await tester.pumpAndSettle();
+
+    expect(accounts.data.outboxes.counted, [accounts.alice.id]);
+    expect(
+      find.textContaining(en.signOutDialogPendingChangesUnknown),
+      findsOneWidget,
+    );
+    await tester.tap(find.text(en.signOutDialogCancel));
+    await tester.pumpAndSettle();
+    expect(accounts.data.files.deleted, isEmpty);
   });
 
   testWidgets('signing out of the last account returns to the connect '

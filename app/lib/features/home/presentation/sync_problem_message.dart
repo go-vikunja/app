@@ -2,9 +2,36 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
+import 'package:vikunja_mobile/core/text/html_to_text.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
-/// What failed and why, for the Sync problems section.
-String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
+/// What failed and why, for the Sync problems section. [projectName]
+/// names a project a held move would go to.
+String describeSyncProblem(
+  AppLocalizations l10n,
+  SyncProblem problem, {
+  String? Function(int projectId)? projectName,
+}) {
+  if (isRecurringScheduleConflict(problem.failure)) {
+    final changes = problem.changes ?? const TaskChanges();
+    final held = _heldValues(l10n, changes, projectName);
+    final schedule = _heldSchedule(l10n, changes);
+    return [
+      l10n.syncProblemRecurringScheduleConflict,
+      if (held.isNotEmpty) l10n.syncProblemHeldChanges(held.join(', ')),
+      if (schedule.isNotEmpty)
+        l10n.syncProblemHeldSchedule(schedule.join(', ')),
+    ].join('\n');
+  }
+  if (isUnconfirmedWrite(problem.failure)) {
+    return switch (problem.kind) {
+      OutboxOperationKind.createTask => l10n.syncProblemCreateUnconfirmed,
+      OutboxOperationKind.uploadAttachment => l10n.syncProblemUploadUnconfirmed(
+        problem.fileName ?? '',
+      ),
+      _ => l10n.syncProblemUnexpected,
+    };
+  }
   final what = switch (problem.kind) {
     OutboxOperationKind.createTask => l10n.syncProblemCreateFailed,
     OutboxOperationKind.updateTask => l10n.syncProblemUpdateFailed,
@@ -51,6 +78,56 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     _ => l10n.syncProblemUnexpected,
   };
   return '$what $why';
+}
+
+/// What a repeating task's notice held back that "Keep my version" may
+/// apply, each with the value it would set where it can be told briefly.
+List<String> _heldValues(
+  AppLocalizations l10n,
+  TaskChanges changes,
+  String? Function(int projectId)? projectName,
+) => [
+  if (changes.title case final title?)
+    l10n.syncProblemHeldValue(l10n.taskEditTitleLabel, title),
+  if (changes.description case final description?)
+    l10n.syncProblemHeldValue(
+      l10n.taskDetailDescription,
+      _excerpt(htmlToPlainText(description)),
+    ),
+  if (changes.projectId case final projectId?)
+    switch (projectName?.call(projectId)) {
+      final name? => l10n.syncProblemHeldValue(l10n.taskEditProject, name),
+      null => l10n.taskEditProject,
+    },
+  if (changes.priority case final priority?)
+    l10n.syncProblemHeldValue(
+      l10n.taskDetailPriority,
+      priorityLabel(l10n, TaskPriority.fromValue(priority)),
+    ),
+  if (changes.percentDone case final percent?)
+    l10n.taskPercentDone((percent * 100).round()),
+  if (changes.hexColor case final hex? when hex.isEmpty) l10n.taskEditNoColour,
+  if (changes.hexColor case final hex? when hex.isNotEmpty)
+    l10n.taskEditColourSemantics('#${hex.replaceFirst('#', '')}'),
+  if (changes.isFavorite == true) l10n.taskAddFavourite,
+  if (changes.isFavorite == false) l10n.taskRemoveFavourite,
+  if (changes.repeatAfter != null || changes.repeatMode != null)
+    l10n.taskEditRepeat,
+  if (changes.coverImageAttachmentId != null) l10n.taskDetailCoverImage,
+];
+
+/// The dates and reminders a notice held back, which were set for the
+/// previous occurrence and are never applied again.
+List<String> _heldSchedule(AppLocalizations l10n, TaskChanges changes) => [
+  if (changes.dueDate != null) l10n.taskDetailDueDate,
+  if (changes.startDate != null) l10n.taskDetailStartDate,
+  if (changes.endDate != null) l10n.taskDetailEndDate,
+  if (changes.reminders != null) l10n.taskDetailReminders,
+];
+
+String _excerpt(String text) {
+  final line = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return line.length <= 60 ? line : '${line.substring(0, 59).trimRight()}…';
 }
 
 /// The update changes list positions and nothing else, so its only write

@@ -428,7 +428,13 @@ void main() {
               perPage: only.info.maxItemsPerPage,
             );
             addTearDown(taskRepository.dispose);
-            projectRepository = LocalProjectRepository(db, engine, writes);
+            projectRepository = LocalProjectRepository(
+              db,
+              engine,
+              writes,
+              readProject: reads.projects.read,
+              readTask: reads.tasks.read,
+            );
             addTearDown(projectRepository.dispose);
             savedFilters = LocalSavedFilterRepository(db, engine, writes);
             await engine.ensureInitialSync();

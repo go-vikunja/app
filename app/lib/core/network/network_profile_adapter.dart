@@ -58,9 +58,15 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    // The platform clients follow a redirect natively, past this adapter:
+    // an https origin could hand the request to an http one without its
+    // consent. Every caller handles a 3xx itself.
+    final dispatch = options.followRedirects
+        ? options.copyWith(followRedirects: false)
+        : options;
     final origin = OriginKey.tryOf(options.uri);
     if (origin == null) {
-      return await _platform.fetch(options, requestStream, cancelFuture);
+      return await _platform.fetch(dispatch, requestStream, cancelFuture);
     }
     final NetworkProfile? profile;
     try {
@@ -78,11 +84,11 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
         );
       }
       _dropDartIo(origin);
-      return await _platform.fetch(options, requestStream, cancelFuture);
+      return await _platform.fetch(dispatch, requestStream, cancelFuture);
     }
     if (profile == null || (!profile.hasHeaders && !profile.needsDartIo)) {
       _dropDartIo(origin);
-      return await _platform.fetch(options, requestStream, cancelFuture);
+      return await _platform.fetch(dispatch, requestStream, cancelFuture);
     }
     final sent = _withProfileHeaders(options, profile.headers);
     try {

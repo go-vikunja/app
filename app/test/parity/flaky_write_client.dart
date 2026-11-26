@@ -40,7 +40,12 @@ final class FlakyWriteClient implements VikunjaWriteClient {
 
   Future<T> _call<T>(WriteCall call, Future<T> Function() send) async {
     attempts.add(call);
-    if (offline) throw const NetworkFailure(NetworkProblem.unreachable);
+    if (offline) {
+      throw const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: 'connection refused',
+      );
+    }
     sent.add(call);
     final answer = await send();
     final losing = loseNext[call] ?? 0;

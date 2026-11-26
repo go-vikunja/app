@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -55,6 +56,7 @@ void main() {
     required Duration ago,
     OutboxOperationKind kind = OutboxOperationKind.updateTask,
     int taskId = 1,
+    TaskChanges? changes,
   }) => SyncProblem(
     operationId: id,
     kind: kind,
@@ -62,6 +64,7 @@ void main() {
     taskTitle: title,
     failure: failure,
     failedAt: now.subtract(ago),
+    changes: changes,
   );
 
   testWidgets('nothing about the outbox shows while it is empty', (
@@ -276,6 +279,62 @@ void main() {
     expect(find.text('Errand'), findsNothing);
   });
 
+  testWidgets('an unconfirmed upload can be saved without changing the queue', (
+    tester,
+  ) async {
+    final cache = Directory.systemTemp.createTempSync('outbox_export_test');
+    addTearDown(() => cache.deleteSync(recursive: true));
+    final source = File('${cache.path}/queued')..writeAsBytesSync([8, 9]);
+    data.tasks.failedUploadCopies['upload'] = (
+      file: source,
+      fileName: 'photo.png',
+      mimeType: 'image/png',
+    );
+    data.tasks.syncProblems = [
+      problem(
+        id: 'upload',
+        title: 'Photos',
+        failure: unconfirmedWrite,
+        ago: Duration.zero,
+        kind: OutboxOperationKind.uploadAttachment,
+      ),
+    ];
+    List<int>? exported;
+    data.fileActions.beforeCall = (call) async {
+      exported = File(call.split(' ')[1]).readAsBytesSync();
+    };
+    data.attachmentDownloads = AttachmentDownloads(() async => cache);
+    await pumpAccountTab(tester);
+
+    final save = find.text(en.attachmentSaveToDevice);
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pump();
+    for (var attempt = 0; attempt < 100 && exported == null; attempt++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    expect(exported, [8, 9]);
+    for (
+      var attempt = 0;
+      attempt < 100 && find.text(en.attachmentSaved).evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    expect(find.text(en.attachmentSaved), findsOneWidget);
+    expect(data.fileActions.calls.single, endsWith(' photo.png image/png'));
+    expect(data.fileActions.origins.single, isNotNull);
+    expect(source.readAsBytesSync(), [8, 9]);
+    expect(data.tasks.writes, isEmpty);
+    expect(find.text('Photos'), findsOneWidget);
+  });
+
   testWidgets('two or more problems with Retry get Retry all beside the '
       'heading, which sends them in one go', (tester) async {
     final semantics = tester.ensureSemantics();
@@ -324,6 +383,44 @@ void main() {
     expect(find.byType(StatusCard), findsOneWidget);
     expect(retryAll, findsNothing);
     semantics.dispose();
+  });
+
+  testWidgets('a recurring schedule notice offers discard or keeping the '
+      'held changes, not replay', (tester) async {
+    data.tasks.syncProblems = [
+      problem(
+        id: 'held',
+        title: 'Weekly review',
+        failure: recurringScheduleConflict,
+        ago: Duration.zero,
+        changes: const TaskChanges(title: 'Weekly retro'),
+      ),
+      problem(
+        id: 'dates',
+        title: 'Water plants',
+        failure: recurringScheduleConflict,
+        ago: Duration.zero,
+        taskId: 2,
+        changes: TaskChanges(dueDate: DateChange.set(now)),
+      ),
+    ];
+    await pumpAccountTab(tester);
+
+    expect(
+      find.textContaining(en.syncProblemRecurringScheduleConflict),
+      findsNWidgets(2),
+    );
+    expect(find.text(en.retry), findsNothing);
+    expect(find.text(en.syncProblemDiscard), findsNWidgets(2));
+    // Dates alone belong to the previous occurrence: nothing to keep.
+    expect(find.text(en.syncProblemKeepMine), findsOneWidget);
+
+    await tester.tap(find.text(en.syncProblemKeepMine));
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['keepHeld held']);
+    expect(find.text('Weekly review'), findsNothing);
+    expect(find.text('Water plants'), findsOneWidget);
   });
 
   testWidgets('one problem with Retry needs no Retry all', (tester) async {

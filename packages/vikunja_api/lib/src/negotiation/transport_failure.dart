@@ -73,15 +73,47 @@ NetworkProblem _problemOf(ServerConnectionFailure failure) => switch (failure) {
   _ => NetworkProblem.unreachable,
 };
 
+/// The cause of a timeout while the connection was still being opened,
+/// before the request's first byte was written: dio's `connectionTimeout`,
+/// which only its dart:io adapter raises, around opening the connection.
+/// The native adapters fold the connect time into one request timeout and
+/// never raise it; the outbox reads the server before an unsent create
+/// instead.
+final class ConnectTimedOut {
+  const new([this.error]);
+
+  final Object? error;
+
+  @override
+  String toString() => switch (error) {
+    null => 'ConnectTimedOut',
+    final error => 'ConnectTimedOut($error)',
+  };
+}
+
+/// The cause of a request refused by a Dio that was closed before the
+/// request started: Dio checks before its interceptors run, so nothing of
+/// the request left the device. One that started before the close goes
+/// on over the adapter and fails, if at all, with another cause.
+final class ClientClosed {
+  const new();
+
+  @override
+  String toString() => 'ClientClosed';
+}
+
 /// Whether [failure] proves that its request never reached the server: the
-/// connection settings stopped it, TLS failed, or no connection could be
-/// opened (no network, an unknown host, a refused port). A timeout or a
-/// connection lost on the way may have delivered it.
+/// connection settings stopped it, TLS failed, its client was closed, or no
+/// connection could be opened (no network, an unknown host, a refused port,
+/// a connect timeout). Any other timeout or a connection lost on the way
+/// may have delivered it.
 bool neverReachedServer(NetworkFailure failure) => switch (failure.problem) {
-  NetworkProblem.timeout => false,
-  NetworkProblem.unreachable => _notConnectedMarkers.hasMatch(
-    '${failure.cause ?? ''}'.toLowerCase().replaceAll(_urls, ' '),
-  ),
+  NetworkProblem.timeout => failure.cause is ConnectTimedOut,
+  NetworkProblem.unreachable =>
+    failure.cause is ClientClosed ||
+        _notConnectedMarkers.hasMatch(
+          '${failure.cause ?? ''}'.toLowerCase().replaceAll(_urls, ' '),
+        ),
   NetworkProblem.tls ||
   NetworkProblem.clientCertificate ||
   NetworkProblem.cleartextBlocked ||

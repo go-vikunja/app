@@ -638,6 +638,45 @@ void main() {
       }
     });
 
+    test('only a connect timeout says the request never left', () async {
+      final connect = await _failureFor(
+        failsWith(
+          (r) => DioException.connectionTimeout(
+            timeout: Duration.zero,
+            requestOptions: r,
+          ),
+        ),
+      );
+      final receive = await _failureFor(
+        failsWith(
+          (r) => DioException.receiveTimeout(
+            timeout: Duration.zero,
+            requestOptions: r,
+          ),
+        ),
+      );
+      expect(neverReachedServer(connect as NetworkFailure), isTrue);
+      expect(neverReachedServer(receive as NetworkFailure), isFalse);
+    });
+
+    test('a request a closed Dio refuses never left', () async {
+      final dio = fakeDio({_url: refused})..close();
+      final VikunjaFailure failure;
+      try {
+        await dio.get<Object?>(_url);
+        fail('the request succeeded');
+      } on DioException catch (error) {
+        failure = normalizeError(error);
+      }
+      expect(
+        failure,
+        isA<NetworkFailure>()
+            .having((f) => f.problem, 'problem', NetworkProblem.unreachable)
+            .having((f) => f.cause, 'cause', isA<ClientClosed>()),
+      );
+      expect(neverReachedServer(failure as NetworkFailure), isTrue);
+    });
+
     test('a refused connection is unreachable', () async {
       expect(
         await _failureFor(refused),

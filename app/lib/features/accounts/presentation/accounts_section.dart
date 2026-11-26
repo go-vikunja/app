@@ -5,7 +5,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_tile.dart';
@@ -70,20 +69,12 @@ class _AccountMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
-    final unsent =
-        ref.watch(accountPendingChangesProvider(entry.id)).value ?? 0;
     return PopupMenuButton<_AccountAction>(
       tooltip: l10n.accountMoreActions(accountTitle(entry.account)),
       enabled: enabled,
       onSelected: (action) => switch (action) {
         _AccountAction.remove => unawaited(
-          removeAccount(
-            context,
-            ref,
-            entry,
-            pendingChanges: unsent,
-            fromAccountsList: true,
-          ),
+          removeAccount(context, ref, entry, fromAccountsList: true),
         ),
       },
       itemBuilder: (context) => [

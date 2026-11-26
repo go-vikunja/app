@@ -3,18 +3,23 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show safeFileName;
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
+import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
 import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/home/presentation/description_conflict_sheet.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problem_message.dart';
+import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
@@ -73,6 +78,7 @@ class SyncProblemsSection extends ConsumerWidget {
                 key: ValueKey(problem.operationId),
                 problem: problem,
                 now: now,
+                accountId: entry.id,
                 serverRoot: entry.connection.rootUri,
               ),
             ),
@@ -124,12 +130,14 @@ class _ProblemCard extends ConsumerStatefulWidget {
   const new({
     required this.problem,
     required this.now,
+    required this.accountId,
     required this.serverRoot,
     super.key,
   });
 
   final SyncProblem problem;
   final DateTime now;
+  final String accountId;
   final Uri serverRoot;
 
   @override
@@ -227,10 +235,77 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
     }
   }
 
+  /// Overwrites the server's values of what a repeating task's notice held.
+  Future<void> _keepHeld() => _resending(
+    (repository) => repository.keepHeldChanges(widget.problem.operationId),
+  );
+
   /// The outbox reports the outcome through the problems and the count.
   Future<void> _retry() => _resending(
     (repository) => repository.retrySyncProblem(widget.problem.operationId),
   );
+
+  Future<void> _saveUpload(BuildContext buttonContext) async {
+    if (_busy) return;
+    final accountId = widget.accountId;
+    if (ref.read(activeAccountIdProvider) != accountId) return;
+    final repository = ref.read(taskRepositoryProvider);
+    if (repository == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final box = buttonContext.findRenderObject();
+    final origin = box is RenderBox && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+    final files = ref.read(fileActionsProvider);
+    final downloads = ref.read(attachmentDownloadsProvider);
+    setState(() => _busy = true);
+    try {
+      await saveLocalChange(
+        context,
+        () async {
+          final copy = await repository.failedUploadCopy(
+            widget.problem.operationId,
+          );
+          if (!mounted || ref.read(activeAccountIdProvider) != accountId) {
+            return;
+          }
+          if (copy == null) {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.syncProblemUploadFileMissing)),
+            );
+            return;
+          }
+          final name = safeFileName(copy.fileName);
+          final saved = await downloads.withExportCopy(
+            accountId,
+            copy.file,
+            name,
+            (file) async {
+              if (!mounted || ref.read(activeAccountIdProvider) != accountId) {
+                return false;
+              }
+              return await files.saveAs(
+                file,
+                fileName: name,
+                mimeType: copy.mimeType ?? 'application/octet-stream',
+                origin: origin,
+              );
+            },
+          );
+          if (saved && mounted) {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.attachmentSaved)),
+            );
+          }
+        },
+        action: 'Saving a queued upload copy',
+        messenger: messenger,
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _resending(
     Future<void> Function(TaskRepository repository) action,
@@ -261,7 +336,12 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
     return StatusCard(
       icon: Icons.sync_problem,
       title: problem.taskTitle,
-      body: describeSyncProblem(l10n, problem),
+      body: describeSyncProblem(
+        l10n,
+        problem,
+        projectName: (id) =>
+            ref.read(projectByIdProvider(id))?.displayTitle(l10n),
+      ),
       footnote: isJustNow(problem.failedAt, now: widget.now)
           ? l10n.syncProblemFailedJustNow
           : l10n.syncProblemFailedAt(
@@ -283,7 +363,34 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
               label: Text(l10n.syncProblemCompare),
             ),
           ],
+          final failure when isRecurringScheduleConflict(failure) => [
+            TextButton(
+              onPressed: enabled ? () => unawaited(_discard()) : null,
+              style: buttonStyle,
+              child: Text(l10n.syncProblemDiscard),
+            ),
+            // Dates and reminders alone belong to the previous occurrence.
+            if (!heldBody(problem.changes ?? const TaskChanges()).isEmpty)
+              TextButton(
+                onPressed: enabled ? () => unawaited(_keepHeld()) : null,
+                style: buttonStyle,
+                child: Text(l10n.syncProblemKeepMine),
+              ),
+          ],
           _ => [
+            if (problem.kind == OutboxOperationKind.uploadAttachment &&
+                uploadProblemReason(problem.failure) !=
+                    UploadProblemReason.fileMissing)
+              Builder(
+                builder: (buttonContext) => TextButton.icon(
+                  onPressed: enabled
+                      ? () => unawaited(_saveUpload(buttonContext))
+                      : null,
+                  style: buttonStyle,
+                  icon: const Icon(Icons.download_outlined),
+                  label: Text(l10n.attachmentSaveToDevice),
+                ),
+              ),
             TextButton(
               onPressed: enabled ? () => unawaited(_discard()) : null,
               style: buttonStyle,
@@ -303,10 +410,14 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
   }
 }
 
-/// An upload whose stored copy is gone fails again at once; a description
-/// conflict is resolved by choosing a version.
+/// An unconfirmed task create cannot be checked again. An upload whose
+/// stored copy is gone fails again at once; a description conflict is
+/// resolved by choosing a version.
 bool _retryable(SyncProblem problem) =>
     problem.failure is! DescriptionConflict &&
+    !isRecurringScheduleConflict(problem.failure) &&
+    !(problem.kind == OutboxOperationKind.createTask &&
+        isUnconfirmedWrite(problem.failure)) &&
     (problem.kind != OutboxOperationKind.uploadAttachment ||
         uploadProblemReason(problem.failure) !=
             UploadProblemReason.fileMissing);

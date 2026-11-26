@@ -222,6 +222,37 @@ void main() {
       );
     });
 
+    testWidgets('kept after work queued while it was asked, it is asked '
+        'again once that work is sent', (tester) async {
+      final httpId = accountIdFor(insecureServer().rootUri, 7);
+      final httpData = data.accounts[httpId] = AccountDataFakes(
+        now: DateTime.now(),
+      );
+      await pumpBoth(tester, httpsActive: true);
+      expect(find.text(en.httpAccountRemoveTitle), findsOneWidget);
+
+      // A twice-come reminder's Done lands meanwhile.
+      httpData.tasks.pendingChanges = 1;
+      await tester.tap(
+        find.widgetWithText(TextButton, en.removeAccountDialogConfirm),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining(en.removeAccountDialogPendingChanges(1)),
+        findsOneWidget,
+      );
+      await tester.tap(find.text(en.signOutDialogCancel));
+      await tester.pumpAndSettle();
+
+      await restart(tester);
+      expect(find.text(en.httpAccountRemoveTitle), findsNothing);
+
+      httpData.tasks.pendingChanges = 0;
+      await restart(tester);
+      expect(find.text(en.httpAccountRemoveTitle), findsOneWidget);
+      expect(accountIds(tester), [httpEntry.id, httpsEntry.id]);
+    });
+
     testWidgets('is not made while the http account is the active one', (
       tester,
     ) async {

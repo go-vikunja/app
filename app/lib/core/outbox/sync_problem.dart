@@ -14,13 +14,35 @@ enum OutboxOperationKind {
       this == createLabel || this == updateLabel || this == deleteLabel;
 
   /// A request that may leave something on the server without an answer,
-  /// which a later attempt looks for first.
+  /// which a later attempt must not blindly repeat.
   bool get createsOnServer =>
       this == createTask || this == uploadAttachment || this == createLabel;
 }
 
-/// A queued change the server rejected for good. The local edit stays
-/// visible until the user retries or discards it.
+/// Persisted diagnostic for a create or upload whose result is unknown.
+const unconfirmedWrite = UnexpectedResponse(
+  null,
+  message: 'the server may have accepted this write; cannot verify its result',
+);
+
+bool isUnconfirmedWrite(VikunjaFailure failure) =>
+    failure is UnexpectedResponse &&
+    failure.statusCode == null &&
+    failure.message == unconfirmedWrite.message;
+
+const recurringScheduleConflict = UnexpectedResponse(
+  null,
+  message: 'the repeating task advanced; its schedule edit cannot be replayed',
+);
+
+bool isRecurringScheduleConflict(VikunjaFailure failure) =>
+    failure is UnexpectedResponse &&
+    failure.statusCode == null &&
+    failure.message == recurringScheduleConflict.message;
+
+/// A queued change that could not safely complete. The local edit stays
+/// visible until the user resolves it, except when it names a past
+/// occurrence: the task shows the current schedule instead.
 @immutable
 final class SyncProblem {
   const new({

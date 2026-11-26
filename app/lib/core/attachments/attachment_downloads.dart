@@ -64,10 +64,35 @@ final class AttachmentDownloads {
     if (directory.existsSync()) await directory.delete(recursive: true);
   }
 
+  /// Stages [source] for a system file action without handing it a path into
+  /// the private outbox. The action can finish if the queue drops its copy.
+  Future<T> withExportCopy<T>(
+    String accountId,
+    File source,
+    String fileName,
+    Future<T> Function(File file) action,
+  ) async {
+    final account = await _accountDirectory(accountId);
+    await account.create(recursive: true);
+    final directory = await account.createTemp('export-');
+    try {
+      final copy = await source.copy(
+        p.join(directory.path, safeFileName(fileName)),
+      );
+      return await action(copy);
+    } finally {
+      try {
+        if (directory.existsSync()) await directory.delete(recursive: true);
+      } on FileSystemException catch (error) {
+        _log.info(
+          'Could not remove an export copy: ${error.osError?.errorCode}',
+        );
+      }
+    }
+  }
+
   Future<void> purgeAccount(String accountId) async {
-    final directory = Directory(
-      p.join((await _root()).path, _checked(accountId)),
-    );
+    final directory = await _accountDirectory(accountId);
     if (directory.existsSync()) await directory.delete(recursive: true);
   }
 
@@ -103,6 +128,9 @@ final class AttachmentDownloads {
 
   Future<Directory> _root() async =>
       Directory(p.join((await _cacheDirectory()).path, folder));
+
+  Future<Directory> _accountDirectory(String accountId) async =>
+      Directory(p.join((await _root()).path, _checked(accountId)));
 
   Future<Directory> _attachmentDirectory(
     String accountId,

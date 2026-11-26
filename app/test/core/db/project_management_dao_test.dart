@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
@@ -145,7 +146,7 @@ void main() {
     }
   });
 
-  group('purging a deleted subtree', () {
+  group('purging confirmed deleted projects', () {
     test('removes the projects, their views, boards and snapshots and '
         'returns their ids', () async {
       final loadedAt = DateTime.utc(2026, 10, 19);
@@ -165,10 +166,9 @@ void main() {
         loadedAt: loadedAt,
       );
 
-      final purged = await db.projectsDao.purgeSubtree(1);
+      final purgedViews = await db.projectsDao.purgeDeletedProjects({1, 2, 3});
 
-      expect(purged.projectIds, {1, 2, 3});
-      expect(purged.viewIds, {11, 12, 21});
+      expect(purgedViews, {11, 12, 21});
       expect((await db.projectsDao.loadAll()).map((p) => p.id), [4]);
       expect(await db.projectsDao.loadView(11), isNull);
       expect(await db.projectsDao.loadView(21), isNull);
@@ -179,8 +179,8 @@ void main() {
       expect((await db.listSnapshotsDao.load('view:41')).positions, {41: 1});
     });
 
-    test('takes the tasks with unsent changes and their ops too, and '
-        'cancels creates', () async {
+    test('removes queued work only for confirmed gone tasks and cancels '
+        'creates', () async {
       await db.tasksDao.upsertAll([
         sampleTask(id: 31, title: 'Edited'),
         sampleTask(id: 32, title: 'Deleted', projectId: 2),
@@ -208,7 +208,18 @@ void main() {
         now: now,
       );
 
-      await db.projectsDao.purgeSubtree(1);
+      final memberships = await db.tasksDao.queuedMembershipsInProjects({
+        1,
+        2,
+        3,
+      });
+      await db.projectsDao.purgeDeletedProjects(
+        {1, 2, 3},
+        checkedTasks: {
+          for (final membership in memberships)
+            if (membership.id != 33) membership: null,
+        },
+      );
 
       expect(await db.tasksDao.findRow(31), isNull);
       expect(await db.tasksDao.findRow(32), isNull);
@@ -219,6 +230,97 @@ void main() {
       expect(await db.tasksDao.findRow(41), isNotNull);
       final queued = {for (final op in await db.outboxDao.all()) op.taskId};
       expect(queued, {33, 41});
+    });
+
+    test('keeps an uncertain create whose request went to a surviving '
+        'project, though a later move named a deleted one', () async {
+      final sentElsewhere = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 4, title: 'Lost answer'),
+        now: now,
+      );
+      final sentHere = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 3, title: 'Gone with it'),
+        now: now,
+      );
+      for (final id in [sentElsewhere, sentHere]) {
+        final create = (await db.outboxDao.all()).singleWhere(
+          (op) => op.taskId == id,
+        );
+        await db.outboxDao.markUncertain(create.id, sentAt: now);
+      }
+      await db.outboxDao.queueUpdate(
+        sentElsewhere,
+        const TaskChanges(projectId: 3),
+        now: now,
+      );
+
+      await db.projectsDao.purgeDeletedProjects({1, 2, 3});
+
+      expect(await db.tasksDao.findRow(sentElsewhere), isNotNull);
+      expect(await db.tasksDao.findRow(sentHere), isNull);
+      expect((await db.outboxDao.all()).map((op) => op.taskId).toSet(), {
+        sentElsewhere,
+      });
+    });
+
+    test("keeps a repeating task's schedule notice: its task is checked "
+        'with queued work, not evicted', () async {
+      final review = sampleTask(id: 34, title: 'Weekly review');
+      await db.tasksDao.upsertAll([review]);
+      await db.outboxDao.queueUpdate(
+        34,
+        const TaskChanges(done: true, title: 'Weekly retro'),
+        now: now,
+      );
+      await db.outboxDao.settleDone(
+        (await db.outboxDao.all()).single,
+        const TaskChanges(),
+        review,
+        unmatched: const TaskChanges(title: 'Weekly retro'),
+      );
+      expect((await db.tasksDao.findRow(34))!.pendingChanges, isNull);
+
+      final memberships = await db.tasksDao.queuedMembershipsInProjects({
+        1,
+        2,
+        3,
+      });
+      expect(memberships.map((m) => m.id), [34]);
+
+      // Unverified: the row and its notice stay.
+      await db.projectsDao.purgeDeletedProjects({1, 2, 3});
+
+      expect(await db.tasksDao.findRow(34), isNotNull);
+      final notice = (await db.outboxDao.loadProblems()).single;
+      expect(notice.taskId, 34);
+      expect(isRecurringScheduleConflict(notice.failure), isTrue);
+    });
+
+    test('an evicted task loses its own edges, but edges to it stay: '
+        'eviction does not prove it gone', () async {
+      final evicted = sampleTask(id: 31, title: 'Maybe moved');
+      final home = sampleTask(id: 41, title: 'At home', projectId: 4);
+      await db.tasksDao.upsertAll([
+        evicted.copyWith(
+          relatedTasks: {
+            TaskRelationKind.related: [home],
+          },
+        ),
+        home.copyWith(
+          relatedTasks: {
+            TaskRelationKind.related: [evicted],
+          },
+        ),
+      ]);
+
+      await db.projectsDao.purgeDeletedProjects({1, 2, 3});
+
+      expect(await db.tasksDao.findRow(31), isNull);
+      final edges = {
+        for (final row in await db.select(db.taskRelations).get())
+          (row.taskId, row.otherTaskId),
+      };
+      expect(edges, {(41, 31)});
     });
   });
 

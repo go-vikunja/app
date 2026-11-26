@@ -773,6 +773,22 @@ final class LocalTaskRepository
   Future<void> cancelUpload(String operationId) =>
       _outbox.cancelUpload(operationId);
 
+  @override
+  Future<QueuedUploadCopy?> failedUploadCopy(String operationId) async {
+    final uploads = _uploads;
+    final op = await _db.outboxDao.find(operationId);
+    if (uploads == null ||
+        op == null ||
+        op.kind != OutboxOperationKind.uploadAttachment.name ||
+        op.state != OutboxState.failed.name) {
+      return null;
+    }
+    final upload = decodeQueuedUpload(op.payload);
+    final file = await uploads.fileFor(upload.file);
+    if (!file.existsSync()) return null;
+    return (file: file, fileName: upload.fileName, mimeType: upload.mimeType);
+  }
+
   /// The server copies the task as it has it, so the task's queued
   /// changes go first; a copy without them would lose them. The request is
   /// not idempotent: a copy made without the answer arriving comes with
@@ -828,6 +844,10 @@ final class LocalTaskRepository
   @override
   Future<void> useWebDescription(String operationId) =>
       _outbox.useWebDescription(operationId);
+
+  @override
+  Future<void> keepHeldChanges(String operationId) =>
+      _outbox.keepHeldChanges(operationId);
 
   @override
   Future<VikunjaFailure?> sendPendingChanges() => _outbox.sendNow();

@@ -212,6 +212,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   List<TaskReminder> _reminders = const [];
   RepeatSetting _repeat = RepeatSetting.none;
   bool _adding = false;
+  bool _addingBatch = false;
   String? _error;
 
   /// A title or a description is typed, which leaving would drop.
@@ -447,6 +448,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   };
 
   void _edit(TextEditingValue value) {
+    if (_addingBatch) return;
     _text.value = value;
     _focus.requestFocus();
   }
@@ -630,6 +632,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     final prefixes = _prefixes;
     setState(() {
       _adding = true;
+      _addingBatch = lines.length > 1;
       _error = null;
     });
     _guardSwipe();
@@ -650,17 +653,22 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       );
       final left = await _placeInColumn(repository, partly.createdTaskIds);
       if (!mounted) return;
-      // The lines added are queued; only the rest may be added again.
-      _text.value = TextEditingValue(
-        text: partly.remainingText,
-        selection: TextSelection.collapsed(offset: partly.remainingText.length),
-      );
+      if (_addingBatch || _text.text == text) {
+        // Only the unqueued lines of this batch may be added again.
+        _text.value = TextEditingValue(
+          text: partly.remainingText,
+          selection: TextSelection.collapsed(
+            offset: partly.remainingText.length,
+          ),
+        );
+      }
       final added = l10n.newTaskAddedPartly(
         partly.createdTaskIds.length,
         partly.lineCount,
       );
       setState(() {
         _adding = false;
+        _addingBatch = false;
         _error = [
           added,
           ?_leftInDefaultColumn(l10n, left),
@@ -674,6 +682,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       if (!mounted) return;
       setState(() {
         _adding = false;
+        _addingBatch = false;
         _error = _failureText(l10n, error);
       });
       _guardSwipe();
@@ -700,12 +709,16 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           ].join(', '),
         ),
     ];
-    if (ref.read(newTaskKeepOpenProvider).value ?? false) {
+    final newTitle = _withoutAdded(_text.value, text);
+    final newDescription = _withoutAdded(_description.value, description);
+    if ((ref.read(newTaskKeepOpenProvider).value ?? false) ||
+        newTitle.text.trim().isNotEmpty ||
+        newDescription.text.trim().isNotEmpty) {
       _keepOpenForNext(
         [confirmation, ...warnings].join('\n'),
         announcer,
-        added: text,
-        addedDescription: description,
+        title: newTitle,
+        description: newDescription,
       );
       return;
     }
@@ -742,21 +755,20 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     );
   }
 
-  /// Takes the [added] title and [addedDescription] out of their fields for
-  /// the next task, keeping what was typed during the add; the project,
-  /// the due date, the priority, the labels, the reminders and the repeat
-  /// stay, as they would for several pasted lines. The confirmation shows
-  /// under the title, since the sheet covers the snackbar.
+  /// Keeps the remaining [title] and [description] for the next task, with
+  /// the same options. The confirmation shows under the title, since the
+  /// sheet covers the snackbar.
   void _keepOpenForNext(
     String confirmation,
     Announcer announcer, {
-    required String added,
-    required String addedDescription,
+    required TextEditingValue title,
+    required TextEditingValue description,
   }) {
-    _text.value = _withoutAdded(_text.value, added);
-    _description.value = _withoutAdded(_description.value, addedDescription);
+    _text.value = title;
+    _description.value = description;
     setState(() {
       _adding = false;
+      _addingBatch = false;
       _added = confirmation;
     });
     _guardSwipe();
@@ -1011,6 +1023,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             controller: _text,
             focusNode: _focus,
             autofocus: true,
+            readOnly: _addingBatch,
             // Several lines only when pasted; the action key adds.
             minLines: 1,
             maxLines: 6,
@@ -1339,6 +1352,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
 TextEditingValue _withoutAdded(TextEditingValue value, String added) {
   if (added.isEmpty || !value.text.startsWith(added)) return value;
   final rest = value.text.substring(added.length);
+  if (rest.isNotEmpty && rest == rest.trimLeft()) return value;
   final removed = value.text.length - rest.trimLeft().length;
   int shift(int offset) => offset < 0 ? offset : math.max(0, offset - removed);
   return TextEditingValue(

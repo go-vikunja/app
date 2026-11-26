@@ -682,7 +682,7 @@ _RoutedAccount _routedAccount(Ref ref) {
   final accounts = ref.read(accountsProvider);
   final active = accounts.value?.activeAccount;
   return (
-    reading: accounts is AsyncLoading && !accounts.hasValue,
+    reading: accountsStillOpening(accounts),
     id: active?.id,
     guest: active?.account.isLinkShare ?? false,
     firstSyncDue: needsFirstSync(_syncStatusOfActive(ref, accounts).value),
@@ -702,7 +702,7 @@ String? _redirect({
   required AsyncValue<bool> notificationsOnboarded,
   required bool hasServer,
 }) {
-  if (accounts case AsyncLoading(hasValue: false)) return AppRoutes.splash;
+  if (accountsStillOpening(accounts)) return AppRoutes.splash;
   final signedIn = accounts.value?.activeAccount != null;
   if (!signedIn) {
     return switch (location) {

@@ -1154,6 +1154,35 @@ void main() {
       expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
     });
 
+    testWidgets('a successful add keeps newer text even with Keep open off', (
+      tester,
+    ) async {
+      final held = Completer<void>();
+      harness.service.beforeSubmit = () => held.future;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      await tapInSheet(tester, en.newTaskMoreOptions);
+      await tester.enterText(descriptionField(), 'Whole');
+      await tester.ensureVisible(addButton());
+      await tester.pumpAndSettle();
+      await tester.tap(addButton());
+      await tester.pump();
+
+      await tester.enterText(composerField(), 'Buy milkshake');
+      await tester.enterText(descriptionField(), 'Wholegrain');
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+      expect(composerText(tester), 'Buy milkshake');
+      expect(
+        tester.widget<TextField>(descriptionField()).controller!.text,
+        'Wholegrain',
+      );
+      expect(inSheet(en.newTaskCreated('Buy milk')), findsOneWidget);
+      expect(harness.data.listPreferences.newTaskKeepOpen, isFalse);
+    });
+
     testWidgets('an add that ends while the project picker is open closes the '
         'picker and the sheet, and shows the confirmation', (tester) async {
       final held = Completer<void>();
@@ -1448,6 +1477,66 @@ void main() {
       final title = composerController(tester).value;
       expect(title.text, 'Buy bread');
       expect(title.selection, const TextSelection.collapsed(offset: 9));
+    });
+
+    testWidgets(
+      'a pending batch protects its input and leaves only unqueued lines',
+      (tester) async {
+        final held = Completer<void>();
+        harness.service
+          ..submitError = const QuickAddPartlyFailed(
+            createdTaskIds: [-1],
+            lineCount: 2,
+            remainingText: 'Buy eggs',
+            cause: QuickAddNoProject(),
+          )
+          ..beforeSubmit = () => held.future;
+        await harness.open(tester);
+        await setComposerText(tester, 'Buy milk\nBuy eggs');
+        final addBatch = find.widgetWithText(
+          FilledButton,
+          en.newTaskAddMany(2),
+        );
+        await tester.ensureVisible(addBatch);
+        await tester.pumpAndSettle();
+        await tester.tap(addBatch);
+        await tester.pump();
+
+        expect(tester.widget<TextField>(composerField()).readOnly, isTrue);
+        expect(composerText(tester), 'Buy milk\nBuy eggs');
+
+        held.complete();
+        await tester.pumpAndSettle();
+
+        expect(tester.widget<TextField>(composerField()).readOnly, isFalse);
+        expect(composerText(tester), 'Buy eggs');
+      },
+    );
+
+    testWidgets('a partial single-task result preserves a newer title', (
+      tester,
+    ) async {
+      final held = Completer<void>();
+      harness.service
+        ..submitError = const QuickAddPartlyFailed(
+          createdTaskIds: [-1],
+          lineCount: 1,
+          remainingText: '',
+          cause: QuickAddNoProject(),
+        )
+        ..beforeSubmit = () => held.future;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      await tester.ensureVisible(addButton());
+      await tester.pumpAndSettle();
+      await tester.tap(addButton());
+      await tester.pump();
+
+      await tester.enterText(composerField(), 'Buy milk and eggs');
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(composerText(tester), 'Buy milk and eggs');
     });
 
     testWidgets('the warnings of an add show under the title too', (

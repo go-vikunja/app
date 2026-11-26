@@ -4,13 +4,16 @@ import 'dart:io' show SocketException;
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
+import 'package:vikunja_mobile/core/storage/process_lock.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -89,8 +92,10 @@ void main() {
     SessionDiagnostics? diagnostics,
     AppPart part = AppPart.app,
     RefreshGate? mayStartRefresh,
+    Duration retireWaitLimit = const Duration(seconds: 10),
   }) => SessionManager(
     accountId: _accountId,
+    retireWaitLimit: retireWaitLimit,
     tokenStore: tokenStore,
     clockOffsets: clockOffsets,
     diagnostics: diagnostics,
@@ -148,6 +153,67 @@ void main() {
 
       expect(refreshCalls, isEmpty);
     });
+
+    test(
+      'token lock timeout is local to create and upload before dispatch',
+      () async {
+        final stored = await store(expiresIn: const Duration(seconds: 59));
+        final session = createManager();
+        final connection = fullServer270();
+        final adapter = _CountingAdapter();
+        final base = Dio()..httpClientAdapter = adapter;
+        final dio = createAuthenticatedDio(
+          base: base,
+          connection: connection,
+          tokens: session,
+        );
+        addTearDown(base.close);
+        addTearDown(dio.close);
+        final client = createWriteClient(dio: dio, connection: connection);
+        final held = Completer<void>();
+        final release = Completer<void>();
+        final holding = tokenStore.mutate(_accountId, (_) {
+          held.complete();
+          return release.future;
+        });
+        await held.future;
+
+        final preDispatchTimeout = throwsA(
+          isA<NetworkFailure>()
+              .having((f) => f.problem, 'problem', NetworkProblem.timeout)
+              .having((f) => f.cause, 'cause', isA<ProcessLockTimeout>())
+              .having(failedWithoutToken, 'failed without a token', isTrue)
+              .having(failedOnTheNetwork, 'failed on the network', isFalse)
+              .having(failedAsOutage, 'failed as an outage', isFalse),
+        );
+        try {
+          await Future.wait([
+            expectLater(
+              client.tasks.create(const NewTask(projectId: 1, title: 'Draft')),
+              preDispatchTimeout,
+            ),
+            expectLater(
+              client.attachments.upload(
+                2,
+                fileName: 'notes.txt',
+                bytes: Stream.value([1]),
+                length: 1,
+              ),
+              preDispatchTimeout,
+            ),
+          ]);
+          expect(adapter.requests, 0);
+          expect(refreshCalls, [stored.refreshToken]);
+          expect(await storedRefreshToken(), stored.refreshToken);
+        } finally {
+          release.complete();
+          await holding;
+        }
+
+        expect(await session.validAccessToken(), isNot(stored.accessToken));
+        expect(refreshCalls, [stored.refreshToken]);
+      },
+    );
 
     test(
       'hands out the new token only after the refresh token is stored',
@@ -961,6 +1027,8 @@ void main() {
       flaky.failNextRead = true;
       response.complete(issueTokens(issuedAt: now));
       await pending;
+      expect(flaky.failNextRead, isTrue, reason: 'retired before commit');
+      flaky.failNextRead = false;
       expect(await storedRefreshToken(), stored.refreshToken);
       expect(ended, isEmpty);
     });
@@ -987,6 +1055,39 @@ void main() {
       gate.complete();
       await retiring;
       expect(await storedRefreshToken(), fresh.refreshToken);
+    });
+
+    test('does not wait past its limit for a commit whose read never '
+        'answers, and that commit writes nothing', () async {
+      final stored = await store(expiresIn: Duration.zero);
+      secureStore.operations.clear();
+      final fresh = issueTokens(issuedAt: now);
+      var answered = false;
+      onRefresh = (_) async {
+        answered = true;
+        return fresh;
+      };
+      final reading = Completer<void>();
+      final stuck = Completer<void>();
+      // After the answer, the next read is the commit's, under the lock.
+      secureStore.beforeRead = (_) {
+        if (!answered) return Future.value();
+        if (!reading.isCompleted) reading.complete();
+        return stuck.future;
+      };
+      final manager = createManager(
+        retireWaitLimit: const Duration(milliseconds: 50),
+      );
+      unawaited(manager.validAccessToken().then((_) {}, onError: (_) {}));
+      await reading.future;
+
+      await manager.retire().timeout(const Duration(seconds: 5));
+
+      secureStore.beforeRead = null;
+      stuck.complete();
+      await pumpEventQueue();
+      expect(await storedRefreshToken(), stored.refreshToken);
+      expect(secureStore.operations, isNot(contains(startsWith('write'))));
     });
 
     test('a retired manager hands out nothing', () async {

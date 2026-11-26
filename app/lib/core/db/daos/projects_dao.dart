@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/tasks_dao.dart';
 import 'package:vikunja_mobile/core/db/mappers/project_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/user_mappers.dart';
 import 'package:vikunja_mobile/core/db/tables/projects.dart';
@@ -174,24 +175,26 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
         return ids;
       });
 
-  /// Removes the project and its stored subtree, as the server deletes it:
-  /// their views, boards and list snapshots, and their tasks
-  /// (`TasksDao.purgeInDeletedProjects`, unsent changes and their ops
-  /// included). Returns the ids of the projects and of their views.
-  Future<({Set<int> projectIds, Set<int> viewIds})> purgeSubtree(
-    int projectId,
-  ) => transaction(() async {
-    final ids = await subtreeOf(projectId);
+  /// Removes only the projects confirmed deleted on the server, not their
+  /// cached descendants: their views, boards and list snapshots. Task
+  /// cleanup leaves unverified queued work alone. Returns the view ids.
+  Future<Set<int>> purgeDeletedProjects(
+    Set<int> ids, {
+    Map<TaskMembership, Task?> checkedTasks = const {},
+  }) => transaction(() async {
     final viewQuery = selectOnly(projectViews)
       ..addColumns([projectViews.id])
       ..where(projectViews.projectId.isIn(ids));
     final viewIds = {
       for (final row in await viewQuery.get()) row.read(projectViews.id)!,
     };
-    await attachedDatabase.tasksDao.purgeInDeletedProjects(ids);
+    await attachedDatabase.tasksDao.purgeInDeletedProjects(
+      ids,
+      checkedTasks: checkedTasks,
+    );
     await purge(ids);
     await attachedDatabase.kanbanDao.removeGoneViews();
-    return (projectIds: ids, viewIds: viewIds);
+    return viewIds;
   });
 
   /// Adds or replaces the view as the server answered it, its downloads

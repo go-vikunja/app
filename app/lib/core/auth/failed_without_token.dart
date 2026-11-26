@@ -1,14 +1,17 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/storage/process_lock.dart';
 
-/// No token could be had for the request, so the server never processed
-/// it: the refresh was put off, or secure storage refused to read.
-/// Neither is an outage, though both arrive as a `NetworkFailure`.
+/// No token could be had for the request, so the server never processed it.
+/// A deferred refresh, unreadable storage, or a token lock timing out is
+/// local to the client, even though it arrives as a `NetworkFailure`.
 bool failedWithoutToken(Object? error) =>
     error is NetworkFailure &&
     switch (error.cause) {
-      RefreshDeferred() || SecureStorageUnreadable() => true,
+      RefreshDeferred() ||
+      SecureStorageUnreadable() ||
+      ProcessLockTimeout() => true,
       _ => false,
     };
 

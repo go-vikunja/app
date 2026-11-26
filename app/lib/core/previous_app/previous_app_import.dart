@@ -37,7 +37,8 @@ final class PreviousAppFindings {
 
   final PreviousAppRecord record;
 
-  /// In memory only, and only from the run that read it.
+  /// In memory only, and only when [record]'s server came from an explicitly
+  /// stored HTTPS address, never from recent servers.
   final String? refreshToken;
 
   @override
@@ -100,7 +101,8 @@ final class PreviousAppImport {
     if (!traces.any && values.isEmpty) return null;
 
     final recent = _newestFirst(values[_recentServersKey]);
-    final server = _normalized(values[_serverKey]) ?? recent.firstOrNull;
+    final storedAddress = _address(values[_serverKey]);
+    final server = storedAddress?.root ?? recent.firstOrNull;
     await _applySettings(values);
     final record = PreviousAppRecord(
       server: server,
@@ -116,8 +118,10 @@ final class PreviousAppImport {
         'Could not store the previous app record: ${error.runtimeType}',
       );
     }
-    final refreshToken = switch (values[_refreshTokenKey]) {
-      final token? when token.isNotEmpty => token,
+    final refreshToken = switch ((storedAddress, values[_refreshTokenKey])) {
+      (ServerAddress(hasExplicitScheme: true, :final root), final token?)
+          when root.scheme == 'https' && token.isNotEmpty =>
+        token,
       _ => null,
     };
     final canKeepSession = refreshToken != null;
@@ -215,14 +219,14 @@ List<Uri> _newestFirst(String? json) {
   if (decoded is! List<Object?>) return const [];
   return {
     for (final entry in decoded.reversed)
-      if (entry is String) ?_normalized(entry),
+      if (entry is String) ?_address(entry)?.root,
   }.toList();
 }
 
-Uri? _normalized(String? address) {
+ServerAddress? _address(String? address) {
   if (address == null) return null;
   try {
-    return normalizeServerAddress(address).root;
+    return normalizeServerAddress(address);
   } on Object {
     return null;
   }

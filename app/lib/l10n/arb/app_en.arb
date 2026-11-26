@@ -510,6 +510,7 @@
       }
     }
   },
+  "signOutDialogPendingChangesUnknown": "The app could not check for unsent changes. Any unsent changes for this account will be lost if you continue.",
   "signOutDialogCancel": "Cancel",
   "signOutDialogConfirm": "Sign out",
   "removeAccountDialogTitle": "Remove account?",
@@ -643,6 +644,14 @@
         "example": "Bob"
       }
     }
+  },
+  "startupAccountsLoading": "Loading saved accounts…",
+  "@startupAccountsLoading": {
+    "description": "Status on the startup screen while the app opens its local accounts."
+  },
+  "startupAccountsSlow": "Loading your saved accounts is taking longer than expected. You can wait or try again.",
+  "@startupAccountsSlow": {
+    "description": "Status on the startup screen when local account storage is taking too long, beside the Try again button."
   },
   "addAccountTagline": "Sign in with another account, on one of your servers or a new one.",
   "addAccountYourServers": "Your servers",
@@ -1793,6 +1802,15 @@
   },
   "syncProblemRejected": "The server rejected the change.",
   "syncProblemUnexpected": "The server answered in an unexpected way.",
+  "syncProblemCreateUnconfirmed": "The task may already be on the server. Your draft and its changes are still on this device. Check the project before discarding this draft or creating the task again.",
+  "syncProblemUploadUnconfirmed": "The server may already have “{name}”. You can save the local copy to your device. Retry checks the attachment again without uploading another copy.",
+  "@syncProblemUploadUnconfirmed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "syncProblemServerKeptFailing": "The server kept answering with an error; try again later.",
   "@syncProblemServerKeptFailing": {
     "description": "Entry in the Sync problems section of the Account tab, after the sentence that says what could not be saved: the server answered the change with an error (HTTP 5xx) many times in a row, usually over an hour or two, so the app stopped sending it until the user taps Try again."
@@ -5057,9 +5075,40 @@
   "projectEditDescription": "Description",
   "projectEditNoDescription": "No description",
   "syncProblemDescriptionConflict": "The description was changed on the web too.",
+  "syncProblemRecurringScheduleConflict": "This repeating task moved to its next occurrence. Some changes could not be safely applied again, so the server’s version was kept for them. Keep your version to apply them now, except anything that has changed since, or discard them.",
+  "syncProblemHeldChanges": "Not applied: {changes}",
+  "@syncProblemHeldChanges": {
+    "description": "Under a repeating task's sync notice: the comma-separated fields it held back.",
+    "placeholders": {
+      "changes": {
+        "type": "String"
+      }
+    }
+  },
+  "syncProblemHeldValue": "{field} “{value}”",
+  "@syncProblemHeldValue": {
+    "description": "A held-back field and the value Keep my version would set, in the list under a repeating task's sync notice.",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "syncProblemHeldSchedule": "Set for the previous occurrence and not applied again: {fields}",
+  "@syncProblemHeldSchedule": {
+    "description": "Under a repeating task's sync notice: the dates and reminders it held back, which are never applied again.",
+    "placeholders": {
+      "fields": {
+        "type": "String"
+      }
+    }
+  },
   "syncProblemKeepMine": "Keep my version",
   "@syncProblemKeepMine": {
-    "description": "Sends the phone's description, overwriting the web's."
+    "description": "Sync problem action: sends the phone's version, overwriting the web's. For a description conflict it sends the phone's description; for a repeating task's notice it re-applies the held changes, except dates, reminders and anything changed since."
   },
   "syncProblemUseWebs": "Use the web version",
   "@syncProblemUseWebs": {

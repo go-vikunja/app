@@ -14,7 +14,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
+import java.io.FileOutputStream
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -30,9 +30,13 @@ internal class PendingShare<T> {
     private var nextId = 0L
 
     @Synchronized
-    fun replace(share: T) {
+    fun replace(share: T): Entry<T>? {
+        val previous = current
         current = Entry(++nextId, share)
+        return previous
     }
+
+    fun forId(id: Long?): Entry<T>? = current?.takeIf { it.id == id }
 
     @Synchronized
     fun clear(id: Long?): Boolean {
@@ -43,29 +47,62 @@ internal class PendingShare<T> {
     }
 }
 
+internal class ShareCopyDirectory(private val directory: File) {
+    fun target(): File = File(directory, randomFileName())
+
+    // Open and unlink are ordered so a stopped worker cannot recreate a
+    // file after cancellation or cleanup, even if its provider answers late.
+    @Synchronized
+    fun open(target: File, stopped: () -> Boolean): FileOutputStream {
+        if (stopped()) throw CopyStoppedException()
+        directory.mkdirs()
+        return FileOutputStream(target)
+    }
+
+    @Synchronized
+    fun discard(target: File) {
+        target.delete()
+    }
+
+    @Synchronized
+    fun purge() {
+        directory.deleteRecursively()
+    }
+}
+
+internal class ShareCopyCache(private val root: File) {
+    private val process = File(root, randomFileName())
+
+    fun forShare(id: Long) = ShareCopyDirectory(File(process, id.toString()))
+
+    // No share is replayed across processes. Never sweep a live process's
+    // directories, even if this work runs after a new copy has started.
+    fun purgePreviousProcesses() {
+        root.listFiles()?.filter { it != process }?.forEach { it.deleteRecursively() }
+    }
+}
+
 // The share MainActivity received, offered to Dart over a channel until
 // Dart clears it. It lives in the process, not the activity, so a
 // recreated activity still has it; a new process never replays it, because
 // MainActivity strips the share from its intent once taken. Shared files
 // are read only through content URIs of other apps (never file://, never
 // this app's own providers, which would hand out the app's private files),
-// and only those of the pending share; copies go to cache/share-inbox under
-// random names. Nothing shared is logged. A sending app's provider may
-// never answer or never deliver: every call to it runs on a thread of its
-// own, at most MAX_PROVIDER_CALLS at a time, with a time limit the main
-// thread watches, and nothing else waits behind it. A provider that ran out
+// and only those of the pending share; copies go to cache/share-inbox in
+// a directory per share, under random names. Nothing shared is logged.
+// A sending app's provider may never answer or never deliver: every
+// read runs on a thread of its own, at most MAX_PROVIDER_CALLS at a time.
+// The main thread watches the time limit. A provider that ran out
 // of time gets no further calls for the share.
 class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
     MethodChannel.MethodCallHandler {
 
     private val channel = MethodChannel(messenger, CHANNEL)
     private val main = Handler(Looper.getMainLooper())
+    private val cache = copyCache(context)
 
     init {
         channel.setMethodCallHandler(this)
-        if (pending.current == null) {
-            purges.execute { purgeFiles(File(context.cacheDir, INBOX), olderThanMillis = DAY_MILLIS) }
-        }
     }
 
     fun detach() = channel.setMethodCallHandler(null)
@@ -87,47 +124,60 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
                 }
             }
             "copy" -> {
+                val id = call.argument<Number>("id")?.toLong()
                 val uri = call.argument<String>("uri")
                 val maxBytes = call.argument<Number>("maxBytes")?.toLong()
                 if (uri == null || maxBytes == null) {
                     result.error("bad_arguments", null, null)
                 } else {
-                    val copy = Copy(uri, result, main, started = now())
-                    if (authorityOf(uri) in stalled || !slots.tryTake()) {
-                        copy.answer { it.error("unreadable", null, null) }
-                    } else {
-                        copies.add(copy)
-                        providerCalls.execute {
-                            try {
-                                copy(copy, maxBytes)
-                            } finally {
-                                slots.give()
-                            }
-                        }
-                        watch(copy)
-                    }
+                    startCopy(id, uri, maxBytes, result)
                 }
             }
             "cancelCopy" -> {
+                val id = call.argument<Number>("id")?.toLong()
                 val uri = call.argument<String>("uri")
-                copies.filter { it.uri == uri }.forEach { it.stop() }
+                val state = shareCopies[id]
+                state?.active?.filter { it.uri.toString() == uri }?.forEach { it.stop() }
                 result.success(null)
             }
             "clear" -> {
                 val id = call.argument<Number>("id")?.toLong()
-                if (!pending.clear(id)) {
+                pending.clear(id)
+                val state = shareCopies.remove(id)
+                if (state == null) {
                     result.success(null)
                     return
                 }
-                stopCopies()
-                stalled.clear()
+                state.stop()
                 purges.execute {
-                    purgeFiles(File(context.cacheDir, INBOX))
+                    state.directory.purge()
                     main.post { result.success(null) }
                 }
             }
             else -> result.notImplemented()
         }
+    }
+
+    private fun startCopy(id: Long?, uri: String, maxBytes: Long, result: MethodChannel.Result) {
+        val entry = pending.forId(id)
+        val content = entry?.share?.uris?.firstOrNull { it.toString() == uri }
+        if (entry == null || content == null ||
+            content.authority in entry.share.stalled || !slots.tryTake()
+        ) {
+            result.error("unreadable", null, null)
+            return
+        }
+        val state = shareCopies.getOrPut(entry.id) { ShareCopies(cache.forShare(entry.id)) }
+        val copy = Copy(entry, content, state, result, started = now())
+        state.active.add(copy)
+        providerCalls.execute {
+            try {
+                copy(copy, maxBytes)
+            } finally {
+                slots.give()
+            }
+        }
+        watch(copy)
     }
 
     // What the providers say about the files, as far as each answers within
@@ -167,7 +217,7 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
                     main.postDelayed(this, DESCRIBE_LIMIT_MILLIS - (now - last))
                     return
                 }
-                share.uris.getOrNull(describing.get())?.authority?.let { stalled.add(it) }
+                share.uris.getOrNull(describing.get())?.authority?.let { share.stalled.add(it) }
                 finish.run()
             }
         }
@@ -200,7 +250,7 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
                 override fun run() {
                     if (copy.stopped) return
                     if (copyOverdue(now(), copy.started, copy.lastProgress, OPEN_LIMIT_MILLIS, IDLE_LIMIT_MILLIS)) {
-                        authorityOf(copy.uri)?.let { stalled.add(it) }
+                        copy.uri.authority?.let { copy.entry.share.stalled.add(it) }
                         copy.stop()
                     } else {
                         main.postDelayed(this, WATCH_INTERVAL_MILLIS)
@@ -213,65 +263,73 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
 
     private fun copy(copy: Copy, maxBytes: Long) {
         try {
-            val uri = pending.current?.share?.uris?.firstOrNull { it.toString() == copy.uri }
-            if (uri == null || !isForeignContent(context, uri)) {
-                copy.answer { it.error("unreadable", null, null) }
-                return
+            if (copy.stopped || !isForeignContent(context, copy.uri)) {
+                throw CopyStoppedException()
             }
-            val directory = File(context.cacheDir, INBOX).apply { mkdirs() }
-            val target = File(directory, randomFileName())
-            try {
-                val size = copyArriving(
-                    context.contentResolver,
-                    uri,
-                    target,
-                    maxBytes,
-                    copy.signal,
-                    IDLE_LIMIT_MILLIS,
-                    progressed = { copy.lastProgress = now() },
-                    stopped = { copy.stopped },
-                )
-                val path = target.absolutePath
-                if (!copy.answer { it.success(mapOf("path" to path, "size" to size)) }) {
-                    target.delete()
-                }
-            } catch (_: TooLargeException) {
-                copy.answer { it.error("too_large", null, null) }
-            } catch (_: Exception) {
-                copy.answer { it.error("unreadable", null, null) }
+            val size = copyArriving(
+                context.contentResolver,
+                copy.uri,
+                maxBytes,
+                copy.signal,
+                IDLE_LIMIT_MILLIS,
+                openTarget = { copy.state.directory.open(copy.target) { copy.stopped } },
+                progressed = { copy.lastProgress = now() },
+                stopped = { copy.stopped },
+            )
+            main.post {
+                copy.answer { it.success(mapOf("path" to copy.target.absolutePath, "size" to size)) }
             }
-        } finally {
-            copies.remove(copy)
+        } catch (error: Exception) {
+            copy.state.directory.discard(copy.target)
+            val code = if (error is TooLargeException) "too_large" else "unreadable"
+            main.post { copy.answer { it.error(code, null, null) } }
         }
     }
 
-    private class Share(val subject: String?, val text: String?, val uris: List<Uri>)
+    private class Share(val subject: String?, val text: String?, val uris: List<Uri>) {
+        val stalled = mutableSetOf<String>()
+    }
+
+    private class ShareCopies(val directory: ShareCopyDirectory) {
+        val active = mutableSetOf<Copy>()
+
+        fun stop() = active.toList().forEach { it.stop() }
+    }
 
     // One copy's answer, given once: by the copy, or as unreadable when it
     // is called off or runs out of time.
     private class Copy(
-        val uri: String,
+        val entry: PendingShare.Entry<Share>,
+        val uri: Uri,
+        val state: ShareCopies,
         private val result: MethodChannel.Result,
-        private val main: Handler,
         val started: Long,
     ) {
         val signal = CancellationSignal()
-        private val answered = AtomicBoolean(false)
+        val target = state.directory.target()
 
         // When the provider opened the file or last delivered; null before.
         @Volatile
         var lastProgress: Long? = null
 
-        val stopped: Boolean get() = answered.get()
+        @Volatile
+        var stopped = false
+            private set
 
+        // Deliver, replace, cancel and clear all run on the main thread.
         fun answer(reply: (MethodChannel.Result) -> Unit): Boolean {
-            if (!answered.compareAndSet(false, true)) return false
-            main.post { reply(result) }
+            if (stopped) return false
+            stopped = true
+            state.active.remove(this)
+            reply(result)
             return true
         }
 
         fun stop() {
-            if (answer { it.error("unreadable", null, null) }) signal.cancel()
+            if (answer { it.error("unreadable", null, null) }) {
+                purges.execute { state.directory.discard(target) }
+                providerCalls.execute { signal.cancel() }
+            }
         }
     }
 
@@ -279,7 +337,6 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
         const val ACTION_SHARE = "io.vikunja.app.action.SHARE"
         private const val CHANNEL = "io.vikunja.app/share"
         private const val INBOX = "share-inbox"
-        private const val DAY_MILLIS = 24L * 60 * 60 * 1000
         private const val MAX_TEXT_CHARS = 100_000
         private const val MAX_FILES = 50
         private const val DESCRIBE_LIMIT_MILLIS = 10_000L
@@ -298,16 +355,19 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
 
         private val slots = CallSlots(MAX_PROVIDER_CALLS)
 
-        private val copies: MutableSet<Copy> = ConcurrentHashMap.newKeySet()
+        // Owned by the main thread; delivered paths stay usable until Dart
+        // clears their share, even after it has been replaced.
+        private val shareCopies = mutableMapOf<Long, ShareCopies>()
+        private var processCache: ShareCopyCache? = null
 
-        // Authorities that ran out of time for the pending share.
-        private val stalled: MutableSet<String> = ConcurrentHashMap.newKeySet()
-
-        private fun stopCopies() = copies.forEach { it.stop() }
+        @Synchronized
+        private fun copyCache(context: Context): ShareCopyCache =
+            processCache ?: ShareCopyCache(File(context.cacheDir, INBOX)).also {
+                processCache = it
+                purges.execute(it::purgePreviousProcesses)
+            }
 
         private fun now() = SystemClock.elapsedRealtime()
-
-        private fun authorityOf(uri: String): String? = Uri.parse(uri).authority
 
         internal fun <S : Any> answerFor(
             share: S,
@@ -332,10 +392,8 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
                 uris = streamsOf(intent).filter { isForeignContent(context, it) },
             )
             if (share.subject != null || share.text != null || share.uris.isNotEmpty()) {
-                pending.replace(share)
-                // The earlier share's copies are of no use any more.
-                stopCopies()
-                stalled.clear()
+                val previous = pending.replace(share)
+                shareCopies[previous?.id]?.stop()
             }
         }
 

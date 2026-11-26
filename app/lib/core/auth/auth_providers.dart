@@ -104,6 +104,13 @@ BrowserSignIn browserSignIn(Ref ref) => BrowserSignIn(
   diagnostics: ref.watch(sessionDiagnosticsProvider),
 );
 
+const startupReadLimit = Duration(seconds: 5);
+
+/// A timed-out read still needs recovery, not the signed-out route.
+bool accountsStillOpening(AsyncValue<AccountRegistryState> accounts) =>
+    !accounts.hasValue &&
+    (accounts.isLoading || accounts.error is TimeoutException);
+
 /// The registry as this isolate last read or wrote it.
 @Riverpod(keepAlive: true)
 class Accounts extends _$Accounts {

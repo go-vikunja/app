@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 
 import 'backends.dart';
 import 'flaky_write_client.dart';
@@ -124,8 +125,8 @@ void parityScenarios(ParityBackend Function() backend) {
     expect(await world.db.outboxDao.count(), 0);
   });
 
-  test('S3a: a create whose answer was lost is adopted by its title on the '
-      'next attempt instead of being sent again', () async {
+  test('S3a: a create whose answer was lost is neither adopted by title nor '
+      'sent again', () async {
     final b = backend();
     final projectId = await b.seedProject('Lost create');
     final world = await ParityWorld.open(b);
@@ -140,17 +141,15 @@ void parityScenarios(ParityBackend Function() backend) {
     expect(await world.db.tasksDao.resolveId(localId), localId);
     expect((await world.db.outboxDao.all()).single.sentAt, isNotNull);
 
-    await world.sendNowFully();
+    final problem = (await world.db.outboxDao.loadProblems()).single;
+    expect(isUnconfirmedWrite(problem.failure), isTrue);
+    await world.sender.retry(problem.operationId);
 
     expect(world.writes.sentCount(WriteCall.createTask), 1);
     final onServer = await b.serverTasksIn(projectId);
     expect(_titles(onServer), ['Lost answer']);
-    expect(await world.db.tasksDao.resolveId(localId), onServer.single.id);
-    expect(await world.db.tasksDao.findRow(localId), isNull);
-    expect(
-      (await world.db.tasksDao.find(onServer.single.id))!.title,
-      'Lost answer',
-    );
+    expect(await world.db.tasksDao.resolveId(localId), localId);
+    expect((await world.db.tasksDao.find(localId))!.title, 'Lost answer');
   });
 
   test("S3b: a repeating task's done whose answer was lost is not applied "
@@ -351,7 +350,7 @@ void parityScenarios(ParityBackend Function() backend) {
 
   test('S8: files queued offline, for a synced task and for one created '
       'offline, arrive with their name, size and bytes; an upload whose '
-      'answer was lost is adopted, not uploaded twice', () async {
+      'answer was lost is verified, not uploaded twice', () async {
     final b = backend();
     final projectId = await b.seedProject('Uploads');
     final existingId = await b.seedTask(

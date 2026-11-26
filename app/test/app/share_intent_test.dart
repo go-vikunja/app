@@ -681,17 +681,60 @@ void main() {
     expect(fieldText(tester, en.taskEditTitleLabel), 'Second');
   });
 
-  testWidgets('a newer share replaces the one on screen', (tester) async {
+  testWidgets('a newer share replaces the one on screen without waiting for '
+      'its clear', (tester) async {
+    const first = IncomingShare(id: 1, text: 'First');
+    const second = IncomingShare(id: 2, text: 'Second');
+    final clearing = Completer<void>();
     await pumpSignedInApp(tester, sync: data);
-    data.shareSource.push(const IncomingShare(text: 'First'));
+    data.shareSource.push(first);
     await tester.pumpAndSettle();
 
-    data.shareSource.push(const IncomingShare(text: 'Second'));
+    data.shareSource.beforeCall = (call) async {
+      if (call == 'clear') await clearing.future;
+    };
+    data.shareSource.push(second);
     await tester.pumpAndSettle();
 
     expect(sheet, findsOneWidget);
     expect(fieldText(tester, en.taskEditTitleLabel), 'Second');
-    expect(data.shareSource.calls.where((call) => call == 'clear'), isEmpty);
+    expect(data.shareSource.clearedShares, [first]);
+    clearing.complete();
+    await tester.pumpAndSettle();
+    expect(await data.shareSource.pending(), second);
+  });
+
+  testWidgets('a superseded share is cleared only after its submitted '
+      'files move, not when the next share arrives', (tester) async {
+    const first = IncomingShare(id: 1, text: 'First', files: [_list, _other]);
+    const second = IncomingShare(id: 2, text: 'Second', files: [_list]);
+    final held = Completer<void>();
+    var writes = 0;
+    data.tasks.beforeWrite = () async {
+      if (++writes == 2) await held.future;
+    };
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.push(first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(action(en.shareCreate));
+    await tester.pump();
+    Navigator.of(tester.element(sheet)).pop();
+    await tester.pumpAndSettle();
+    data.shareSource.push(second);
+    await tester.pumpAndSettle();
+    expect(data.shareSource.clearedShares, isEmpty);
+
+    held.complete();
+    await tester.pumpAndSettle();
+    expect(data.tasks.writes, [
+      'create -1 First',
+      'queueUpload -1 list.pdf move',
+      'queueUpload -1 notes.txt move',
+    ]);
+    expect(data.shareSource.clearedShares, [first]);
+    expect(fieldText(tester, en.taskEditTitleLabel), 'Second');
+    expect(inSheet(find.text('list.pdf')), findsOneWidget);
   });
 
   group('over a New task sheet with a title typed', () {
@@ -761,7 +804,9 @@ void main() {
       expect(newTask, findsNothing);
       expect(sheet, findsOneWidget);
       expect(fieldText(tester, en.taskEditTitleLabel), 'Second');
-      expect(data.shareSource.calls.where((call) => call == 'clear'), isEmpty);
+      expect(data.shareSource.clearedShares, [
+        const IncomingShare(text: 'First'),
+      ]);
     });
   });
 

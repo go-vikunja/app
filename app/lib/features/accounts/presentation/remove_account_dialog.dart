@@ -9,8 +9,8 @@ typedef RemoveAccountChoice = ({bool confirmed, bool forgetConnectionSettings});
 
 /// Names the account and its server; a guest's is worded as removing the
 /// guest access. [pendingChanges] is how many queued changes the sign-out
-/// would throw away with the local database; the dialog says so while
-/// there are any. [nextAccount] is the account the app switches to
+/// would throw away with the local database, or null if the count could
+/// not be read. [nextAccount] is the account the app switches to
 /// afterwards. [fromAccountsList] words it as removing one of the other
 /// accounts, whose changes only that account's Send now can send, and only
 /// once it is signed in again if its session ended. [connectionSettings]
@@ -20,7 +20,7 @@ typedef RemoveAccountChoice = ({bool confirmed, bool forgetConnectionSettings});
 Future<RemoveAccountChoice> confirmRemoveAccount(
   BuildContext context, {
   required RegisteredAccount entry,
-  int pendingChanges = 0,
+  required int? pendingChanges,
   RegisteredAccount? nextAccount,
   bool fromAccountsList = false,
   String? connectionSettings,
@@ -40,7 +40,12 @@ Future<RemoveAccountChoice> confirmRemoveAccount(
       l10n.guestRemoveDialogBody(accountTitle(account), host)
     else
       l10n.signOutDialogBody(name, host),
-    if (pendingChanges > 0 && fromAccountsList && account.needsReauth && guest)
+    if (pendingChanges == null)
+      l10n.signOutDialogPendingChangesUnknown
+    else if (pendingChanges > 0 &&
+        fromAccountsList &&
+        account.needsReauth &&
+        guest)
       l10n.guestRemoveDialogPendingChangesOpenLinkFirst(pendingChanges)
     else if (pendingChanges > 0 && fromAccountsList && account.needsReauth)
       l10n.removeAccountDialogPendingChangesSignInFirst(pendingChanges)

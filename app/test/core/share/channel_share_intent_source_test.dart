@@ -126,24 +126,32 @@ void main() {
 
   test('a copy answers the inbox path, or says why not', () async {
     answer = (call) => switch (call.arguments) {
-      {'uri': 'content://x/1'} => {'path': '/cache/share-inbox/a', 'size': 3},
+      {'id': 1, 'uri': 'content://x/1'} => {
+        'path': '/cache/share-inbox/process/1/a',
+        'size': 3,
+      },
       {'uri': 'content://x/2'} => throw PlatformException(code: 'too_large'),
       _ => throw PlatformException(code: 'unreadable'),
     };
     final shares = source();
+    const share = IncomingShare(id: 1);
 
-    final copied = await shares.copy('content://x/1', maxBytes: 10);
-    expect(copied.path, '/cache/share-inbox/a');
+    final copied = await shares.copy(share, 'content://x/1', maxBytes: 10);
+    expect(copied.path, '/cache/share-inbox/process/1/a');
     expect(copied.size, 3);
-    expect(calls.first.arguments, {'uri': 'content://x/1', 'maxBytes': 10});
+    expect(calls.first.arguments, {
+      'id': 1,
+      'uri': 'content://x/1',
+      'maxBytes': 10,
+    });
     await expectLater(
-      shares.copy('content://x/2', maxBytes: 10),
+      shares.copy(share, 'content://x/2', maxBytes: 10),
       throwsA(
         isA<SharedFileTooLarge>().having((e) => e.maxBytes, 'maxBytes', 10),
       ),
     );
     await expectLater(
-      shares.copy('content://x/3', maxBytes: 10),
+      shares.copy(const IncomingShare(id: 2), 'content://x/1', maxBytes: 10),
       throwsA(isA<SharedFileUnreadable>()),
     );
   });
@@ -161,15 +169,20 @@ void main() {
     expect(calls.last.arguments, {'id': 1});
   });
 
-  test('a copy can be called off', () async {
-    await source().cancelCopy('content://x/1');
+  test(
+    'a cancellation identifies the share even if another reused the URI',
+    () async {
+      final shares = source();
+      const older = IncomingShare(id: 1);
+      await shares.cancelCopy(older, 'content://x/1');
 
-    expect(calls.single.method, 'cancelCopy');
-    expect(calls.single.arguments, {'uri': 'content://x/1'});
+      expect(calls.single.method, 'cancelCopy');
+      expect(calls.single.arguments, {'id': 1, 'uri': 'content://x/1'});
 
-    messenger.setMockMethodCallHandler(channel, null);
-    await source().cancelCopy('content://x/1');
-  });
+      messenger.setMockMethodCallHandler(channel, null);
+      await shares.cancelCopy(older, 'content://x/1');
+    },
+  );
 
   test('a share that arrives while the app runs is announced', () async {
     final shares = source();

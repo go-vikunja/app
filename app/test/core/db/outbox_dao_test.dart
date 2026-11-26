@@ -1272,11 +1272,12 @@ void main() {
       );
     });
 
-    test('a create left in flight by a killed app is uncertain as of its '
+    test('a create whose request a killed app sent is uncertain as of its '
         'attempt, and an edit queues behind it', () async {
       final id = await create();
       final createOpId = (await createOp(id)).id;
       await db.outboxDao.markSending(createOpId, at: now);
+      await db.outboxDao.markCreatePosted(await createOp(id), at: now);
       await queue(1, done);
       await db.outboxDao.markSending((await ops()).last.id, at: now);
 
@@ -1308,11 +1309,26 @@ void main() {
       expect((await createOp(id)).sentAt, now);
     });
 
+    test(
+      'a create a killed app claimed but never sent goes back unmarked',
+      () async {
+        final id = await create();
+        await db.outboxDao.markSending((await createOp(id)).id, at: now);
+
+        expect(await db.outboxDao.resetSending(now: later), 1);
+
+        final op = await createOp(id);
+        expect(op.state, 'pending');
+        expect(op.sentAt, isNull);
+      },
+    );
+
     test('a create left in flight without an attempt time takes the reset '
         'time', () async {
       final id = await create();
       final op = await createOp(id);
       await db.outboxDao.markSending(op.id, at: now);
+      await db.outboxDao.markCreatePosted(await createOp(id), at: now);
       await db.customStatement(
         'UPDATE outbox SET last_attempt_at = NULL WHERE id = ?',
         [op.id],

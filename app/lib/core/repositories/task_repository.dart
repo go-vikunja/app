@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
@@ -6,6 +8,8 @@ import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
 export 'package:vikunja_mobile/core/outbox/task_deletion.dart';
+
+typedef QueuedUploadCopy = ({File file, String fileName, String? mimeType});
 
 /// Tasks as this device knows them; the same stream and error rules as
 /// `ProjectRepository`. Queued writes apply to the local row at once and
@@ -269,6 +273,10 @@ abstract interface class TaskRepository {
   /// aborted (what the server already stored stays there).
   Future<void> cancelUpload(String operationId);
 
+  /// The private copy of a failed upload, without changing its queue state.
+  /// Null if the operation is no longer a failed upload or the copy is gone.
+  Future<QueuedUploadCopy?> failedUploadCopy(String operationId);
+
   /// Queued changes not yet accepted by the server, failed ones included.
   Stream<int> watchPendingChanges();
 
@@ -297,6 +305,10 @@ abstract interface class TaskRepository {
     String operationId, {
     required String webDescription,
   });
+
+  /// "Keep my version" for a repeating task's notice: the changes it held
+  /// back are queued again as a new edit of the task as it is now.
+  Future<void> keepHeldChanges(String operationId);
 
   /// "Use the web's" for a `DescriptionConflict`: the queued description
   /// goes and the server's comes back; the other fields of the change are

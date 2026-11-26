@@ -97,7 +97,8 @@ final class NetworkProfiles {
   static final _waitingWriters = Queue<Completer<void>>();
   static int _generation = 0;
   static final _isolateChanges = StreamController<OriginKey?>.broadcast();
-  static final _processLock = ProcessLock(lockName);
+  // No stale writer may publish consent after a concurrent revocation.
+  static final _processLock = ProcessLock(lockName, requireLock: true);
 
   final PreferencesStore _preferences;
   final NetworkProfileSecrets _secrets;
@@ -115,13 +116,27 @@ final class NetworkProfiles {
   /// may have changed.
   Stream<OriginKey?> get changes => _isolateChanges.stream;
 
-  /// [origin]'s profile with its secrets, or null without one. Throws
+  /// [origin]'s profile with its secrets, or null without one. Cleartext
+  /// consent for a dispatch must come from persisted settings, not an
+  /// isolate's snapshot. Throws
   /// [ConnectionProfilesDamagedException], [ConnectionProfileLockedException]
   /// or [ConnectionProfileIncompleteException].
   Future<NetworkProfile?> forOrigin(OriginKey origin) async {
-    final profile = await metadataFor(origin);
+    final profile = origin.isSecure
+        ? await metadataFor(origin)
+        : (await _readPersisted(origin)).profiles[origin];
     if (profile == null || !profile.namesSecrets) return profile;
-    return profile.withSecrets(await _secretsFor(profile));
+    final secrets = await _secretsFor(profile);
+    if (!origin.isSecure && profile.hasCleartextConsent) {
+      // Consent can be revoked while secure storage is being read.
+      final current = (await _readPersisted(origin)).profiles[origin];
+      if (current == null || !current.hasCleartextConsent) return current;
+      if (current.revision != profile.revision) {
+        throw ConnectionProfileIncompleteException(origin.toString());
+      }
+      return current.withSecrets(secrets);
+    }
+    return profile.withSecrets(secrets);
   }
 
   /// Like [forOrigin] without touching secure storage.
@@ -255,7 +270,7 @@ final class NetworkProfiles {
       importedAt: _clock().toUtc(),
     );
     await _locked(() async {
-      final document = await _readForWrite(origin);
+      final document = await _readPersisted(origin);
       final current = document.profileOrEmpty(origin);
       final kept = current.hasHeaders
           ? await _storedSecrets(current)
@@ -278,7 +293,7 @@ final class NetworkProfiles {
   }
 
   Future<void> removeClientCertificate(OriginKey origin) => _locked(() async {
-    final document = await _readForWrite(origin);
+    final document = await _readPersisted(origin);
     final current = document.profiles[origin];
     if (current?.clientCertificate == null) return;
     final next = current!.copyWith(
@@ -305,7 +320,7 @@ final class NetworkProfiles {
         key: HeaderRules.normalizeValue(value),
     };
     await _locked(() async {
-      final document = await _readForWrite(origin);
+      final document = await _readPersisted(origin);
       final current = document.profileOrEmpty(origin);
       if (normalized.isNotEmpty &&
           !origin.isSecure &&
@@ -361,7 +376,7 @@ final class NetworkProfiles {
   /// never bumps the revision. Only an origin with another pin records.
   Future<void> recordPinMismatch(OriginKey origin, CertificateInfo seen) =>
       _locked(() async {
-        final document = await _readForWrite(origin);
+        final document = await _readPersisted(origin);
         final current = document.profiles[origin];
         final pin = current?.pin;
         if (current == null || pin == null || pin.sha256 == seen.sha256) {
@@ -385,7 +400,7 @@ final class NetworkProfiles {
       });
 
   Future<void> dismissPinMismatch(OriginKey origin) => _locked(() async {
-    final document = await _readForWrite(origin);
+    final document = await _readPersisted(origin);
     final current = document.profiles[origin];
     if (current?.lastPinMismatch == null) return;
     await _save(document, {
@@ -396,7 +411,7 @@ final class NetworkProfiles {
   /// Metadata first, then the secrets, so the metadata never names secrets
   /// that are gone.
   Future<void> forget(OriginKey origin) => _locked(() async {
-    final document = await _readForWrite(origin);
+    final document = await _readPersisted(origin);
     await _save(document, {origin: null});
     await _deleteSecrets(NetworkProfile.idFor(origin));
   });
@@ -486,12 +501,12 @@ final class NetworkProfiles {
     return _snapshot = _Snapshot(document, _clock(), generation);
   }
 
-  Future<_Document> _readForWrite(OriginKey origin) async {
+  Future<_Document> _readPersisted(OriginKey origin) async {
     final String? stored;
     try {
       stored = await _preferences.getString(storageKey);
     } on Object catch (error) {
-      _log.info('Metadata not readable for a write: ${error.runtimeType}');
+      _log.info('Metadata not readable: ${error.runtimeType}');
       throw ConnectionProfileLockedException(origin.toString());
     }
     try {
@@ -505,7 +520,7 @@ final class NetworkProfiles {
     OriginKey origin,
     NetworkProfile? Function(NetworkProfile current, int revision) change,
   ) => _locked(() async {
-    final document = await _readForWrite(origin);
+    final document = await _readPersisted(origin);
     final current = document.profileOrEmpty(origin);
     final next = change(current, document.nextRevision(current));
     if (next == null) return;

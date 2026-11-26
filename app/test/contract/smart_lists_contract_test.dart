@@ -225,7 +225,13 @@ void main() {
             perPage: only.info.maxItemsPerPage,
           );
           addTearDown(tasks.dispose);
-          projects = LocalProjectRepository(db, engine, writes);
+          projects = LocalProjectRepository(
+            db,
+            engine,
+            writes,
+            readProject: reads.projects.read,
+            readTask: reads.tasks.read,
+          );
           addTearDown(projects.dispose);
           await engine.ensureInitialSync();
         });

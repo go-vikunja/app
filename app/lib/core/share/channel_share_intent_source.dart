@@ -51,10 +51,15 @@ final class ChannelShareIntentSource implements ShareIntentSource {
   Stream<IncomingShare> get shares => _shares.stream;
 
   @override
-  Future<CopiedSharedFile> copy(String uri, {required int maxBytes}) async {
+  Future<CopiedSharedFile> copy(
+    IncomingShare share,
+    String uri, {
+    required int maxBytes,
+  }) async {
     final Map<String, Object?>? copied;
     try {
       copied = await _channel.invokeMapMethod<String, Object?>('copy', {
+        'id': share.id,
         'uri': uri,
         'maxBytes': maxBytes,
       });
@@ -77,9 +82,12 @@ final class ChannelShareIntentSource implements ShareIntentSource {
   }
 
   @override
-  Future<void> cancelCopy(String uri) async {
+  Future<void> cancelCopy(IncomingShare share, String uri) async {
     try {
-      await _channel.invokeMethod<void>('cancelCopy', {'uri': uri});
+      await _channel.invokeMethod<void>('cancelCopy', {
+        'id': share.id,
+        'uri': uri,
+      });
     } on MissingPluginException {
       return;
     } on PlatformException catch (error) {

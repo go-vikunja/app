@@ -51,6 +51,32 @@ void main() {
     await expectLater(downloads.purgeAccount('..'), throwsArgumentError);
   });
 
+  test(
+    'export stages a separate copy and cleans it up when saving fails',
+    () async {
+      final source = File(p.join(cache.path, 'queued'))
+        ..writeAsBytesSync([1, 2, 3]);
+      late File staged;
+      final saving = downloads.withExportCopy(accountId, source, 'photo.png', (
+        file,
+      ) async {
+        staged = file;
+        expect(
+          p.isWithin(p.join(cache.path, 'attachments', accountId), file.path),
+          isTrue,
+        );
+        expect(p.basename(file.path), 'photo.png');
+        expect(await file.readAsBytes(), [1, 2, 3]);
+        throw const FileSystemException('Save failed');
+      });
+
+      await expectLater(saving, throwsA(isA<FileSystemException>()));
+
+      expect(staged.parent.existsSync(), isFalse);
+      expect(source.readAsBytesSync(), [1, 2, 3]);
+    },
+  );
+
   test('a complete download is reused; a different size is not', () async {
     expect(await downloads.cached(accountId, 3, photo), isNull);
     final file = await downloads.fileFor(accountId, 3, photo);

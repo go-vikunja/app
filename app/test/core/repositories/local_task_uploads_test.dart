@@ -93,6 +93,30 @@ void main() {
     }
   }
 
+  test(
+    'a failed upload exposes its stored bytes until it is discarded',
+    () async {
+      write.beforeRequest = (_) async => throw const Forbidden();
+      final id = (await repository.queueUpload(
+        1,
+        sourcePath: picked('photo', [1, 2, 3]).path,
+        fileName: 'photo.png',
+        mimeType: 'image/png',
+        moveSource: true,
+      ))!;
+      await sender.drain();
+
+      final copy = (await repository.failedUploadCopy(id))!;
+      expect(copy.fileName, 'photo.png');
+      expect(copy.mimeType, 'image/png');
+      expect(await copy.file.readAsBytes(), [1, 2, 3]);
+      expect((await db.outboxDao.loadProblems()).single.operationId, id);
+
+      await repository.discardSyncProblem(id);
+      expect(await repository.failedUploadCopy(id), isNull);
+    },
+  );
+
   test('a file is copied into the uploads folder, queued under a safe name and '
       'sent', () async {
     final source = picked('photo', const [1, 2, 3]);
@@ -319,7 +343,10 @@ void main() {
       offline = false;
       write.beforeRequest = (request) async {
         if (offline && request.startsWith('upload')) {
-          throw const NetworkFailure(NetworkProblem.unreachable);
+          throw const NetworkFailure(
+            NetworkProblem.unreachable,
+            cause: 'connection refused',
+          );
         }
       };
     });
@@ -563,7 +590,10 @@ void main() {
       final gate = RequestGate()..pattern = 'delete';
       write.beforeRequest = (request) async {
         if (offline && request.startsWith('upload')) {
-          throw const NetworkFailure(NetworkProblem.unreachable);
+          throw const NetworkFailure(
+            NetworkProblem.unreachable,
+            cause: 'connection refused',
+          );
         }
         await gate(request);
       };

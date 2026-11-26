@@ -35,8 +35,13 @@ void main() {
     ]);
   });
 
-  Future<List<SavedFilterRef>> stored() =>
-      LocalProjectRepository(db, sync, server).watchSavedFilters().first;
+  Future<List<SavedFilterRef>> stored() => LocalProjectRepository(
+    db,
+    sync,
+    server,
+    readProject: (id) async => server.serverProjects[id]!,
+    readTask: (id) async => server.serverTasks[id]!,
+  ).watchSavedFilters().first;
 
   test('a new saved filter is stored with its definition at once and a sync '
       'follows', () async {

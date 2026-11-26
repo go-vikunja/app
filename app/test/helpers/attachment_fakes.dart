@@ -162,7 +162,7 @@ final class FakeFileActions implements FileActions {
 /// and else answers `/cache/share-inbox/<n>` with the file's size (0 when
 /// unknown); a URI that is not in the pending share is
 /// `SharedFileUnreadable`, as on the platform. [clear] forgets the pending
-/// share. Every call is recorded in [calls] (`pending`,
+/// share if it matches. Every call is recorded in [calls] (`pending`,
 /// `copy <uri> max <bytes>`, `cancelCopy <uri>`, `clear`); [beforeCall] can
 /// hold or fail one.
 final class FakeShareIntentSource implements ShareIntentSource {
@@ -174,6 +174,7 @@ final class FakeShareIntentSource implements ShareIntentSource {
   final Map<String, Exception> copyFailures = {};
   final List<String> calls = [];
   final List<String> copiedPaths = [];
+  final List<IncomingShare> clearedShares = [];
   Future<void> Function(String call)? beforeCall;
   var _nextCopy = 1;
 
@@ -192,8 +193,13 @@ final class FakeShareIntentSource implements ShareIntentSource {
   Stream<IncomingShare> get shares => controller.stream;
 
   @override
-  Future<CopiedSharedFile> copy(String uri, {required int maxBytes}) async {
+  Future<CopiedSharedFile> copy(
+    IncomingShare share,
+    String uri, {
+    required int maxBytes,
+  }) async {
     await _call('copy $uri max $maxBytes');
+    if (_pending != share) throw const SharedFileUnreadable();
     if (copyFailures[uri] case final failure?) throw failure;
     final file = _pending?.files.where((file) => file.uri == uri).firstOrNull;
     if (file == null) throw const SharedFileUnreadable();
@@ -211,10 +217,12 @@ final class FakeShareIntentSource implements ShareIntentSource {
   }
 
   @override
-  Future<void> cancelCopy(String uri) => _call('cancelCopy $uri');
+  Future<void> cancelCopy(IncomingShare share, String uri) =>
+      _call('cancelCopy $uri');
 
   @override
   Future<void> clear(IncomingShare share) async {
+    clearedShares.add(share);
     await _call('clear');
     if (_pending == share) _pending = null;
   }

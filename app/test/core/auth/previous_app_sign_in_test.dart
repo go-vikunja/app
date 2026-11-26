@@ -119,6 +119,59 @@ void main() {
     await expectNothingStored();
   });
 
+  for (final address in ['http://vikunja.example.com', 'vikunja.example.com']) {
+    test(
+      'does not discover or refresh with a legacy address of $address',
+      () async {
+        await expectLater(
+          signIn.signIn(serverAddress: address, refreshToken: _oldToken),
+          throwsA(isA<PreviousAppSessionNotKept>()),
+        );
+
+        expect(connector.inputs, isEmpty);
+        expect(fakes.tokenGateway.refreshedTokens, isEmpty);
+      },
+    );
+  }
+
+  for (final root in [
+    'https://other.example.com',
+    'https://vikunja.example.com:3456',
+  ]) {
+    test('does not refresh when discovery returns $root', () async {
+      connector.handler = (_) async => fullServer270(root: root);
+
+      await expectLater(
+        keep(),
+        throwsA(
+          isA<PreviousAppSessionNotKept>().having(
+            (error) => error.reason,
+            'reason',
+            PreviousAppSessionSkip.originChanged,
+          ),
+        ),
+      );
+      expect(fakes.tokenGateway.refreshedTokens, isEmpty);
+      await expectNothingStored();
+    });
+  }
+
+  test(
+    'allows discovery at a different path on the same HTTPS origin',
+    () async {
+      connector.handler = (_) async =>
+          fullServer270(root: 'https://vikunja.example.com:443/subpath');
+      fakes.tokenGateway.onRefresh = (_) async =>
+          issueTokens(issuedAt: now, userId: _alice.id);
+      fakes.accountGateway.onCurrentUser = (_) async => _alice;
+
+      final entry = await keep();
+
+      expect(entry?.account.serverRoot.path, '/subpath');
+      expect(fakes.tokenGateway.refreshedTokens, [_oldToken]);
+    },
+  );
+
   test('a server below the support floor is not tried', () async {
     connector.handler = (_) async => legacyServer200();
 

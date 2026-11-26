@@ -1,119 +1,163 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:isolate';
 import 'dart:ui' show IsolateNameServer;
 
+import 'package:ffi/ffi.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('ProcessLock');
 
+// The C function returns bool; NativeApi declares its pointer with Int8.
+final bool Function(int, Pointer<Dart_CObject>) _postMessage = NativeApi
+    .postCObject
+    .cast<NativeFunction<Bool Function(Int64, Pointer<Dart_CObject>)>>()
+    .asFunction<bool Function(int, Pointer<Dart_CObject>)>();
+
+// Dart_CObject is opaque in dart:ffi. For kNull, the union is unused.
+// Its largest and most strictly aligned fields determine the layout
+// (`dart_native_api.h`).
+final class _NullMessage extends Struct {
+  @Int()
+  external int type;
+
+  external _MessageStorage value;
+}
+
+final class _MessageStorage extends Union {
+  @Int64()
+  external int asInt64;
+
+  @Double()
+  external double asDouble;
+
+  external _ExternalTypedData asExternalTypedData;
+}
+
+final class _ExternalTypedData extends Struct {
+  @Int()
+  external int type;
+
+  @IntPtr()
+  external int length;
+
+  external Pointer<Uint8> data;
+  external Pointer<Void> peer;
+  external Pointer<NativeFunction<Void Function(Pointer<Void>, Pointer<Void>)>>
+  callback;
+}
+
+final class ProcessLockTimeout implements Exception {
+  const new(this.name);
+
+  final String name;
+
+  @override
+  String toString() => 'Could not acquire process lock $name';
+}
+
 /// A lock every isolate of this process honours: its holder registers a
-/// port under [name] with the `IsolateNameServer`, which takes one port per
-/// name, and its isolate's control port beside it. A file lock would not
-/// do, as POSIX record locks belong to the process
+/// port with the `IsolateNameServer`, which takes one port per name.
+/// A POSIX record lock would not do, as it belongs to the process
 /// (`file_lock_isolates_test.dart`).
 final class ProcessLock {
   new(
     this.name, {
     this.pollInterval = const Duration(milliseconds: 5),
     this.checkHolderAfter = const Duration(seconds: 1),
-    this.holderAnswer = const Duration(milliseconds: 500),
     this.giveUpAfter = const Duration(seconds: 10),
+    this.requireLock = false,
   });
 
   final String name;
   final Duration pollInterval;
 
-  /// How long a waiter polls before it asks the holder whether its isolate
-  /// still runs: one that ended while holding never lets go.
+  /// How long a waiter polls before checking whether the holder's port closed.
   final Duration checkHolderAfter;
-  final Duration holderAnswer;
 
-  /// Then [run] goes on without the lock, logged: a holder whose write
-  /// never returns must not stop every other isolate's writes for good.
+  /// Then [run] goes on without the lock, unless [requireLock] is set.
   final Duration giveUpAfter;
 
-  String get _controlName => '$name/control';
+  /// For security-sensitive writes: never proceed unlocked or take over
+  /// from an unresponsive holder that may still finish its write. Every
+  /// caller for a security-sensitive [name] must set this.
+  final bool requireLock;
 
   Future<T> run<T>(Future<T> Function() action) async {
-    final port = RawReceivePort(null, 'process lock $name');
-    final held = await _acquire(port.sendPort);
+    final port = RawReceivePort((Object? _) {}, 'process lock $name');
+    List<String>? claims;
     try {
+      claims = await _acquire(port.sendPort);
+      if (claims != null && claims.length > 1) {
+        _log.warning('The holder of the lock $name has gone; taking it over');
+      }
       return await action();
     } finally {
-      if (held && IsolateNameServer.lookupPortByName(name) == port.sendPort) {
-        // First, so that no waiter finds the next holder beside this
-        // isolate's control port.
-        if (IsolateNameServer.lookupPortByName(_controlName) ==
-            Isolate.current.controlPort) {
-          IsolateNameServer.removePortNameMapping(_controlName);
-        }
-        IsolateNameServer.removePortNameMapping(name);
-      }
+      // Detach the chain before removing its links and closing our port.
+      claims?.forEach(IsolateNameServer.removePortNameMapping);
       port.close();
     }
   }
 
-  Future<bool> _acquire(SendPort port) async {
+  Future<List<String>?> _acquire(SendPort port) async {
     final waited = Stopwatch()..start();
     var nextCheck = checkHolderAfter;
-    SendPort? seenWithoutControl;
     while (!IsolateNameServer.registerPortWithName(port, name)) {
       if (waited.elapsed >= giveUpAfter) {
+        if (requireLock) throw ProcessLockTimeout(name);
         _log.warning(
           'The lock $name is still held after ${giveUpAfter.inSeconds} s; '
           'going on without it',
         );
-        return false;
+        return null;
       }
       if (waited.elapsed >= nextCheck) {
         nextCheck = waited.elapsed + checkHolderAfter;
-        final holder = IsolateNameServer.lookupPortByName(name);
-        final control = IsolateNameServer.lookupPortByName(_controlName);
-        final bool gone;
-        if (holder == null) {
-          gone = false;
-        } else if (control == null) {
-          // A live holder registers its control port right after the lock
-          // and removes it right before letting go: one seen without it
-          // twice has ended in between.
-          gone = holder == seenWithoutControl;
-          seenWithoutControl = holder;
-        } else {
-          gone =
-              !await _answers(control) &&
-              IsolateNameServer.lookupPortByName(name) == holder &&
-              IsolateNameServer.lookupPortByName(_controlName) == control;
-        }
-        if (gone) {
-          _log.warning('The holder of the lock $name has gone; taking it over');
-          IsolateNameServer.removePortNameMapping(_controlName);
-          IsolateNameServer.removePortNameMapping(name);
-          continue;
-        }
+        final claims = _takeOver(port);
+        if (claims != null) return claims;
       }
       await Future<void>.delayed(pollInterval);
     }
-    IsolateNameServer.removePortNameMapping(_controlName);
-    IsolateNameServer.registerPortWithName(
-      Isolate.current.controlPort,
-      _controlName,
-    );
-    return true;
+    return [name];
   }
 
-  /// A ping, at its default immediate priority, is answered between any two
-  /// steps of a live isolate, also one busy with a long frame, and never by
-  /// one that has ended.
-  Future<bool> _answers(SendPort control) async {
-    final answer = Completer<bool>();
-    final reply = RawReceivePort((Object? _) {
-      if (!answer.isCompleted) answer.complete(true);
-    }, 'process lock $name check');
+  List<String>? _takeOver(SendPort port) {
+    final root = IsolateNameServer.lookupPortByName(name);
+    if (root == null) return null;
+    final claims = [name];
+    var holder = root;
+    while (true) {
+      // Claim a successor slot atomically. Looking up and then removing the
+      // dead holder's mapping could otherwise remove another waiter's claim.
+      final successorName =
+          '$name/successor/${root.nativePort}/${holder.nativePort}';
+      final successor = IsolateNameServer.lookupPortByName(successorName);
+      claims.add(successorName);
+      if (successor != null) {
+        holder = successor;
+      } else {
+        if (_portIsOpen(holder) ||
+            !IsolateNameServer.registerPortWithName(port, successorName)) {
+          return null;
+        }
+        // The old chain may have been released while we walked it.
+        if (IsolateNameServer.lookupPortByName(name) != root) {
+          IsolateNameServer.removePortNameMapping(successorName);
+          return null;
+        }
+        return claims;
+      }
+    }
+  }
+
+  /// The VM reports whether it enqueued a message, without needing the
+  /// receiver to answer. A lock port closes only after release or isolate exit.
+  static bool _portIsOpen(SendPort port) {
+    final message = calloc<_NullMessage>(); // Dart_CObject_kNull == 0.
     try {
-      Isolate(control).ping(reply.sendPort);
-      return await answer.future.timeout(holderAnswer, onTimeout: () => false);
+      return _postMessage(port.nativePort, message.cast());
     } finally {
-      reply.close();
+      calloc.free(message);
     }
   }
 }
