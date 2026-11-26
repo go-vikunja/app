@@ -76,6 +76,7 @@ void main() {
   ProviderContainer newContainer({
     bool headless = true,
     Duration Function(DateTime utc)? utcOffsetAt,
+    Duration? publishDebounce,
   }) {
     final files = FakeAccountDatabaseFiles();
     return ProviderContainer(
@@ -102,6 +103,8 @@ void main() {
         ),
         if (utcOffsetAt != null)
           utcOffsetAtProvider.overrideWithValue(utcOffsetAt),
+        if (publishDebounce != null)
+          widgetPublishDebounceProvider.overrideWithValue(publishDebounce),
       ],
     );
   }
@@ -515,39 +518,41 @@ void main() {
     expect(host.catalogs, contains(accountId));
   });
 
+  test('in the app, a publisher publishes when built, and again soon '
+      'after its session ended', () async {
+    final app = newContainer(headless: false, publishDebounce: Duration.zero);
+    addTearDown(app.dispose);
+    final entry = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: now, userId: alice.id),
+    );
+    await app.read(accountsProvider.future);
+    host.placed[1] = WidgetConfig(accountId: entry.id, kind: const TodayKind());
+    app.listen(accountWidgetPublishersProvider, (_, _) {});
+    await pumpEventQueue();
+    await app.read(widgetRefresherProvider).refresh(entry.id);
+    expect(host.snapshot('${entry.id}.today')?.state, WidgetSnapshotState.ok);
+
+    await app.read(accountRegistryProvider).markNeedsReauth(entry.id);
+    await app.read(accountsProvider.future);
+    for (var i = 0; i < 1000; i++) {
+      final state = host.snapshot('${entry.id}.today')?.state;
+      if (state == WidgetSnapshotState.needsReauth) break;
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+
+    expect(
+      host.snapshot('${entry.id}.today')?.state,
+      WidgetSnapshotState.needsReauth,
+    );
+  });
+
   group('in the app', () {
     late ProviderContainer app;
 
     setUp(() {
       app = newContainer(headless: false);
       addTearDown(app.dispose);
-    });
-
-    test('a publisher publishes when built, and again soon after its '
-        'session ended', () async {
-      final entry = await auth.seedAccount(
-        fullServer270(),
-        tokens: issueTokens(issuedAt: now, userId: alice.id),
-      );
-      await app.read(accountsProvider.future);
-      host.placed[1] = WidgetConfig(
-        accountId: entry.id,
-        kind: const TodayKind(),
-      );
-      app.listen(accountWidgetPublishersProvider, (_, _) {});
-      await pumpEventQueue();
-      await app.read(widgetRefresherProvider).refresh(entry.id);
-      expect(host.snapshot('${entry.id}.today')?.state, WidgetSnapshotState.ok);
-
-      await app.read(accountRegistryProvider).markNeedsReauth(entry.id);
-      await app.read(accountsProvider.future);
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
-      await pumpEventQueue();
-
-      expect(
-        host.snapshot('${entry.id}.today')?.state,
-        WidgetSnapshotState.needsReauth,
-      );
     });
 
     test('turning task titles off republishes without rows, turning them '

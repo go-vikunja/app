@@ -58,7 +58,7 @@ void main() {
   Future<void> choose(WidgetTester tester) async {
     await tester.runAsync(() async {
       await tester.tap(find.text(en.connectionChooseFile));
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await untilPickedCopiesAreGone(picker.files);
     });
     await tester.pumpAndSettle();
   }

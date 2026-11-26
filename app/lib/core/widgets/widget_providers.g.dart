@@ -230,6 +230,56 @@ final class WidgetPublishersProvider
 
 String _$widgetPublishersHash() => r'6dd3aa28971cb0768d3652f6dbf02f696bad8b19';
 
+/// The quiet a publisher waits for after a change to what its widgets
+/// read; a test shortens it.
+
+@ProviderFor(widgetPublishDebounce)
+final widgetPublishDebounceProvider = WidgetPublishDebounceProvider._();
+
+/// The quiet a publisher waits for after a change to what its widgets
+/// read; a test shortens it.
+
+final class WidgetPublishDebounceProvider
+    extends $FunctionalProvider<Duration, Duration, Duration>
+    with $Provider<Duration> {
+  /// The quiet a publisher waits for after a change to what its widgets
+  /// read; a test shortens it.
+  WidgetPublishDebounceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'widgetPublishDebounceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$widgetPublishDebounceHash();
+
+  @$internal
+  @override
+  $ProviderElement<Duration> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Duration create(Ref ref) {
+    return widgetPublishDebounce(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Duration value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Duration>(value),
+    );
+  }
+}
+
+String _$widgetPublishDebounceHash() =>
+    r'35ac19309701ca53a3f431947a7a784109bc1efc';
+
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back after it was hidden or
 /// the device's 24-hour switch or time zone changed, when the account's
@@ -315,7 +365,7 @@ final class WidgetPublisherProvider
   }
 }
 
-String _$widgetPublisherHash() => r'7860391b49a576d4d2888aaccc7df289b49a5879';
+String _$widgetPublisherHash() => r'47c200cb378c3c8ae15417f063fd09dec808e435';
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back after it was hidden or

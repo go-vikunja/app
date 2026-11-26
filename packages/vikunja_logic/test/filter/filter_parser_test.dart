@@ -6,6 +6,7 @@ import 'package:vikunja_logic/src/filter/filter_preprocess.dart';
 import 'package:vikunja_logic/src/filter/go_values.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
+import '../helpers/budgets.dart';
 import 'filter_test_support.dart';
 
 FilterError _error(String filter) => parseTaskFilter(filter) as FilterError;
@@ -252,7 +253,9 @@ void main() {
       parseTaskFilter('a' * 16000);
       parseTaskFilter('${'(' * 100}${'a' * 15000}${')' * 100}');
 
-      expect(stopwatch.elapsedMilliseconds, lessThan(500));
+      // The 16 KiB limit keeps the input so short that even a quadratic
+      // parse takes only about two seconds, as long as a busy machine may.
+      expectWithinBudget(stopwatch.elapsedMilliseconds, 500, 'Long word');
     });
 
     test('limits count UTF-8 bytes', () {

@@ -284,13 +284,16 @@ void main() {
       expect(matched, greaterThan(1000));
     });
 
+    // Nothing caps the transforms' input, so the blanks are four times the
+    // filter's 16 KiB limit: a quadratic pass over them takes far longer
+    // than the limit.
     test('long runs of blanks cost linear time', () {
       final stopwatch = Stopwatch()..start();
-      _forApi('labels = ${' ' * 16000}x&');
-      _fromApi('labels = ${' ' * 16000}x(');
-      _forApi('labels = "a ' * 1500);
+      _forApi('labels = ${' ' * 64000}x&');
+      _fromApi('labels = ${' ' * 64000}x(');
+      _forApi('labels = "a ' * 6000);
 
-      expect(stopwatch.elapsedMilliseconds, lessThan(500));
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 3)));
     });
   });
 }

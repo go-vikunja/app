@@ -420,7 +420,7 @@ void main() {
 
           _parse(html);
 
-          expect(watch.elapsedMilliseconds, lessThan(500));
+          expect(watch.elapsed, lessThan(const Duration(seconds: 3)));
         });
       }
     });

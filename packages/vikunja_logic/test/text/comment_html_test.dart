@@ -106,15 +106,15 @@ void main() {
 
     test('is found in linear time', () {
       for (final address in [
-        'https://example.com/${')' * 40000}',
-        'https://example.com/${'.' * 40000}a',
-        'https://example.com/${'(' * 20000}${')' * 40000}',
+        'https://example.com/${')' * 160000}',
+        'https://example.com/${'.' * 160000}a',
+        'https://example.com/${'(' * 80000}${')' * 160000}',
       ]) {
         final watch = Stopwatch()..start();
 
         commentHtmlFromText(address);
 
-        expect(watch.elapsedMilliseconds, lessThan(500));
+        expect(watch.elapsed, lessThan(const Duration(seconds: 3)));
       }
     });
   });

@@ -114,8 +114,14 @@ The in-app logo (`app/assets/branding/logo.png`) and the status bar icon (`ic_no
 (cd packages/vikunja_api && flutter test --exclude-tags contract)
 (cd plugins/vikunja_widgets && flutter test)
 (cd plugins/vikunja_storage_flush && flutter test)
+(cd app && TZ=Europe/Berlin flutter test $(grep -rlF --include='*_test.dart' "helpers/berlin.dart'" test))   # the dates across a DST change, skipped in a zone without one
+(cd packages/vikunja_logic && TZ=Europe/Berlin flutter test $(grep -rlF --include='*_test.dart' "helpers/berlin.dart'" test))
+(cd app && flutter build apk --config-only)   # creates app/android/gradlew if it is missing
 (cd app/android && ./gradlew :app:testDebugUnitTest -x compileFlutterBuildDebug)   # the Kotlin code, the plugins' included, on the JVM
+tool/ci/budgets.sh   # before a release, on an idle machine: the time budgets, which the lines above only print
 ```
+
+`tool/ci/test.sh` runs the Dart lines as CI's job `checks` does, and `tool/ci/android.sh` the Kotlin tests after its APK build. A test that measures time prints it and checks its budget only with `VIKUNJA_BENCHMARK=1`, which `tool/ci/budgets.sh` sets; a test that a slow path would make many times slower checks a limit of seconds on every run instead.
 
 On a Mac, the XCTests of the native iOS code (`app/ios/RunnerTests`: the photo location removal and the widgets' Done queue) run on a simulator, after an iOS build has generated `app/ios/Flutter/ephemeral` (for example `cd app && flutter build ios --no-codesign`), as the project needs the Swift package it holds; `xcrun simctl list devices available` names the simulators:
 
@@ -133,7 +139,7 @@ Security checks that CI runs besides the tests (all of them, with the manual one
 (cd app && flutter build apk --release)
 python3 -I tool/check_exported_components.py --self-test
 python3 -I tool/check_exported_components.py        # the merged release manifest: fails on a new or changed exported component
-(cd app/editor && npm audit --package-lock-only --audit-level=high)
+(cd app/editor && npm audit --package-lock-only --omit=dev --audit-level=high)   # the shipped packages; osv covers the rest
 flutter pub outdated --no-dev-dependencies          # informational
 ```
 

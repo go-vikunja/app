@@ -69,7 +69,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
       await tester.tap(finder);
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await untilPickedCopiesAreGone(picker.files);
     });
     await tester.pumpAndSettle();
   }

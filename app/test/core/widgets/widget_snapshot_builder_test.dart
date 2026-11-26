@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/widgets/widget_snapshot_builder.dart';
 import 'package:vikunja_mobile/core/widgets/widget_texts.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 
+import '../../helpers/berlin.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
 
@@ -916,24 +917,28 @@ void main() {
       );
     });
 
-    test('count calendar days across the end of daylight saving', () {
-      final saturdayNoon = DateTime(2026, 10, 24, 12);
-      final mondayNoon = DateTime(2026, 10, 26, 12);
+    test(
+      'count calendar days across the end of daylight saving',
+      skip: needsBerlin,
+      () {
+        final saturdayNoon = DateTime(2026, 10, 24, 12);
+        final mondayNoon = DateTime(2026, 10, 26, 12);
 
-      expect(calendarDaysBetween(saturdayNoon, mondayNoon), 2);
-      expect(
-        calendarDaysBetween(DateTime(2026, 10, 25, 23, 30), mondayNoon),
-        1,
-      );
-      expect(
-        nextLocalMidnight(DateTime(2026, 10, 24, 23)),
-        DateTime(2026, 10, 25),
-      );
-      expect(
-        nextLocalMidnight(DateTime(2026, 10, 25, 1)),
-        DateTime(2026, 10, 26),
-      );
-    });
+        expect(calendarDaysBetween(saturdayNoon, mondayNoon), 2);
+        expect(
+          calendarDaysBetween(DateTime(2026, 10, 25, 23, 30), mondayNoon),
+          1,
+        );
+        expect(
+          nextLocalMidnight(DateTime(2026, 10, 24, 23)),
+          DateTime(2026, 10, 25),
+        );
+        expect(
+          nextLocalMidnight(DateTime(2026, 10, 25, 1)),
+          DateTime(2026, 10, 26),
+        );
+      },
+    );
   });
 
   group('Quick add', () {

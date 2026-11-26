@@ -1,10 +1,21 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/features/upcoming/application/upcoming_sections.dart';
 
+import '../../helpers/berlin.dart';
 import '../../helpers/sample_data.dart';
 
 void main() {
+  test(
+    'a run with TZ=Europe/Berlin has its daylight-saving changes',
+    skip: Platform.environment['TZ'] == 'Europe/Berlin'
+        ? null
+        : 'only with TZ=Europe/Berlin',
+    () => expect(needsBerlin, isNull),
+  );
+
   test('overdue first, then one section per local day in the selection '
       'order, then the tasks without a due date', () {
     final overdue = sampleTask(
@@ -75,7 +86,7 @@ void main() {
   });
 
   test("the strip has every day of a range up to 31 days, across a month's "
-      'end and a clock change', () {
+      'end', () {
     final days = stripDaysOf(
       DateRange(from: DateTime(2026, 10, 13, 9), to: DateTime(2026, 11, 12, 9)),
     )!;
@@ -96,6 +107,26 @@ void main() {
       isNull,
     );
   });
+
+  test(
+    "the strip's days across the end of daylight saving are calendar days",
+    skip: needsBerlin,
+    () {
+      final days = stripDaysOf(
+        DateRange(
+          from: DateTime(2026, 10, 24, 9),
+          to: DateTime(2026, 10, 27, 9),
+        ),
+      );
+
+      expect(days, [
+        DateTime(2026, 10, 24),
+        DateTime(2026, 10, 25),
+        DateTime(2026, 10, 26),
+        DateTime(2026, 10, 27),
+      ]);
+    },
+  );
 
   test('tasks by day put the overdue ones of a day before the rest', () {
     final lateYesterday = sampleTask(

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -7,6 +9,14 @@ import '../helpers/berlin.dart';
 
 void main() {
   setUpAll(tz_data.initializeTimeZones);
+
+  test(
+    'a run with TZ=Europe/Berlin has its daylight-saving changes',
+    skip: Platform.environment['TZ'] == 'Europe/Berlin'
+        ? null
+        : 'only with TZ=Europe/Berlin',
+    () => expect(needsBerlin, isNull),
+  );
 
   group('on a local Tuesday evening', () {
     final now = DateTime(2026, 10, 13, 22, 48, 55, 681);

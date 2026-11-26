@@ -111,6 +111,11 @@ Future<bool> _signedOutInStorage(
     await registry.knownAccountIds() != null &&
     await registry.find(accountId) == null;
 
+/// The quiet a publisher waits for after a change to what its widgets
+/// read; a test shortens it.
+@Riverpod(keepAlive: true)
+Duration widgetPublishDebounce(Ref ref) => const Duration(seconds: 1);
+
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back after it was hidden or
 /// the device's 24-hour switch or time zone changed, when the account's
@@ -161,6 +166,7 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
     alwaysKinds: ref.watch(widgetAlwaysPublishedKindsProvider),
     refreshesAtValidity: !headless,
     now: now,
+    debounce: ref.watch(widgetPublishDebounceProvider),
   );
   ref.watch(widgetPublishersProvider).register(publisher);
   ref

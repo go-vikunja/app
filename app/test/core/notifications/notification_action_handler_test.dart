@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 
 import '../../helpers/activity_fakes.dart';
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/berlin.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_write_client.dart';
 import '../../helpers/notification_fakes.dart';
@@ -531,17 +532,28 @@ void main() {
       );
     });
 
-    test('tomorrowAt is the next calendar day at the time, also across a '
-        'change of daylight saving time', () {
-      expect(
-        tomorrowAt(DateTime(2026, 3, 28, 22), null),
-        DateTime(2026, 3, 29, 9),
-      );
+    test('tomorrowAt is the next calendar day at the time', () {
       expect(
         tomorrowAt(DateTime(2026, 12, 31, 0, 5), const ClockTime(7, 30)),
         DateTime(2027, 1, 1, 7, 30),
       );
     });
+
+    test(
+      'tomorrowAt is the next calendar day also across a change of daylight '
+      'saving time',
+      skip: needsBerlin,
+      () {
+        expect(
+          tomorrowAt(DateTime(2026, 3, 28, 22), null),
+          DateTime(2026, 3, 29, 9),
+        );
+        expect(
+          tomorrowAt(DateTime(2026, 10, 25, 0, 30), const ClockTime(7, 30)),
+          DateTime(2026, 10, 26, 7, 30),
+        );
+      },
+    );
 
     test('moves a fired reminder to now + 10 min, under its id, before the '
         "reconcile, and a second snooze keeps the task's own time", () async {

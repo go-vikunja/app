@@ -139,7 +139,9 @@ void main() {
     final ran = await ProcessLock(
       name,
       checkHolderAfter: const Duration(milliseconds: 20),
-      holderAnswer: const Duration(milliseconds: 20),
+      // The live holder answers at once; a short answer time would let a
+      // pause of the test machine pass for a holder that has gone.
+      holderAnswer: const Duration(seconds: 5),
       giveUpAfter: const Duration(milliseconds: 200),
     ).run(() async => true);
 

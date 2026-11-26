@@ -77,3 +77,13 @@ PickedFile pickedCopyOf(
     ..writeAsBytesSync(tlsFixture(fixture));
   return PickedFile(path: copy.path, name: name ?? fixture);
 }
+
+/// Waits, inside `tester.runAsync`, until the page has read and deleted
+/// [picked], the last file access of a pick, and its answer has arrived.
+Future<void> untilPickedCopiesAreGone(List<PickedFile> picked) async {
+  final copies = [for (final file in picked) File(file.path)];
+  for (var i = 0; i < 400 && copies.any((copy) => copy.existsSync()); i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  await Future<void>.delayed(const Duration(milliseconds: 20));
+}
