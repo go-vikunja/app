@@ -401,6 +401,7 @@ class PullRequestTest(Fixture):
         self.assertEqual(self.remote_git('show', '-s', '--format=%an <%ae>|%cn <%ce>|%s', head),
                          'Frederick [Bot] <bot@vikunja.io>|Frederick [Bot] <bot@vikunja.io>|'
                          'chore(i18n): update translations via Crowdin')
+        self.assertEqual(result.stderr, '')
         self.assertEqual(self.remote_git('diff', '--name-only', self.main, head), f'{ARB}/app_fr.arb')
         self.assertEqual(self.remote_git('show', 'refs/heads/main:app/lib/l10n/arb/app_fr.arb'),
                          dump({'appTitle': 'Vikunja'}))
