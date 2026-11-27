@@ -153,6 +153,15 @@ no_symlinks() {
   fi
 }
 
+# stdin: an ARB file; prints how many messages it has, -1 when it is no JSON
+# object (which the checks after it refuse).
+message_count() {
+  python3 -I -c '
+import json, sys
+data = json.load(sys.stdin)
+print(sum(1 for key in data if not key.startswith("@")) if isinstance(data, dict) else -1)'
+}
+
 # path: back to the checked-out version, or gone if git has none.
 restore() {
   git checkout -q HEAD -- "$1" 2>/dev/null || rm -f "$1"
@@ -222,6 +231,16 @@ if [[ "$step" == download ]]; then
       fail "the download removed ${path}"
     fi
     if [[ "$name" =~ $ARB_NAME && "$name" != app_en.arb ]]; then
+      count="$(message_count <"$path" 2>/dev/null)" || count=-1
+      if [[ "$count" == 0 ]]; then
+        had="$(git show "HEAD:${path}" 2>/dev/null | message_count 2>/dev/null)" || had=0
+        restore "$path"
+        if [[ "$had" != 0 ]]; then
+          echo "::warning title=Crowdin export without texts::${name} came without a text and is not taken, as the checkout has ${had}."
+          summary "- **Not taken:** \`${name}\`: the export has no text, the checkout has ${had}"
+        fi
+        continue
+      fi
       cp "$path" "${WORK_DIR}/arb/${name}"
       taken+=("$name")
     else

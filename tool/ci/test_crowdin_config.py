@@ -70,7 +70,10 @@ class CrowdinConfigTest(unittest.TestCase):
         self.assertEqual(self.file['update_option'], 'update_as_unapproved')
         self.assertIs(self.file['export_only_approved'], True)
         self.assertIs(self.file['skip_untranslated_strings'], True)
-        self.assertIs(self.file['skip_untranslated_files'], True)
+        # Crowdin's flag keeps only fully translated files, and the CLI refuses
+        # it beside skip_untranslated_strings; the sync leaves out the empty
+        # files instead (tool/ci/crowdin_sync.sh).
+        self.assertNotIn('skip_untranslated_files', self.file)
         # Every language may translate the app; only shippedLocales decides
         # what the app offers.
         self.assertNotIn('excluded_target_languages', self.file)

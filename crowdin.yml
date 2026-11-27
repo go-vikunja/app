@@ -14,7 +14,6 @@ files:
     update_option: update_as_unapproved
     export_only_approved: true
     skip_untranslated_strings: true
-    skip_untranslated_files: true
     # Every regional or script file needs its base language's file
     # (app_sr.arb is committed). "no" is quoted: YAML 1.1 reads it as false.
     # The CLI took only Crowdin's standard codes here when this was written,

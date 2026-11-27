@@ -295,6 +295,25 @@ class DownloadTest(Fixture):
         self.assertIn('::warning title=Crowdin file not taken::app_en.arb: ', result.stdout)
         self.assertEqual(self.outputs(), 'changed=true\n')
 
+    def test_a_new_language_without_a_text_is_not_taken(self):
+        self.configure(others={'app_nl.arb': {}, 'app_es.arb': {'done': 'Hecho'}, 'app_it.arb': {'@@locale': 'it'}},
+                       german={'app_de.arb': GERMAN})
+        result = self.download()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.taken(), {'app_es.arb': {'done': 'Hecho'}})
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ARB, 'app_nl.arb')))
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ARB, 'app_it.arb')))
+        self.assertNotIn('::warning', result.stdout)
+
+    def test_an_export_without_texts_does_not_replace_a_file_that_has_some(self):
+        self.configure(others={}, german={'app_de.arb': {}})
+        result = self.download()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.taken(), {})
+        self.assertEqual(self.read(f'{ARB}/app_de.arb'), dump(GERMAN))
+        self.assertIn('::warning title=Crowdin export without texts::app_de.arb came without a text', result.stdout)
+        self.assertIn('changed=false', self.outputs())
+
     def test_swiss_german_cannot_replace_unchanged_german(self):
         self.configure(others={'app_de.arb': SWISS}, german={'app_de.arb': GERMAN})
         result = self.download()
