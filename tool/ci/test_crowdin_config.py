@@ -63,7 +63,7 @@ class CrowdinConfigTest(unittest.TestCase):
         self.assertEqual(self.file['source'], f'{arb_dir}/{template}')
         self.assertTrue(os.path.isfile(ROOT + self.file['source']), self.file['source'])
         self.assertEqual(self.file['translation'], f'{arb_dir}/app_%two_letters_code%.arb')
-        self.assertEqual(self.file['dest'], '/app_en.arb')
+        self.assertEqual(self.file['dest'], '/app/app_en.arb')
         self.assertEqual(self.file['type'], 'arb')
 
     def test_the_options(self):

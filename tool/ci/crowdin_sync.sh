@@ -7,8 +7,8 @@
 #
 # Usage: tool/ci/crowdin_sync.sh [--dry-run] upload|download|pull-request
 #
-#   upload        CROWDIN_PERSONAL_TOKEN: app_en.arb into the version branch
-#                 main of the project crowdin.yml names
+#   upload        CROWDIN_PERSONAL_TOKEN: app_en.arb into the file crowdin.yml
+#                 names (dest) of its project
 #   download      CROWDIN_PERSONAL_TOKEN, GITHUB_OUTPUT: the approved
 #                 translations that differ from the checkout into
 #                 build/crowdin/arb, and changed=true|false
@@ -34,7 +34,6 @@ cd "$repo_root"
 
 ARB_DIR=app/lib/l10n/arb
 WORK_DIR=build/crowdin
-CROWDIN_VERSION_BRANCH=main
 PR_BRANCH=crowdin
 COMMIT_MESSAGE="chore(i18n): update translations via Crowdin"
 # Vikunja's bot identity, which the old app's nightly sync committed as.
@@ -161,22 +160,22 @@ restore() {
 
 if [[ "$step" == upload ]]; then
   if ((dry_run)); then
-    echo "Would upload ${ARB_DIR}/app_en.arb to the version branch ${CROWDIN_VERSION_BRANCH} of the Crowdin" \
-      "project in crowdin.yml: crowdin upload sources --branch ${CROWDIN_VERSION_BRANCH}"
+    echo "Would upload ${ARB_DIR}/app_en.arb to the file of the Crowdin project that crowdin.yml names:" \
+      "crowdin upload sources"
     exit 0
   fi
   require_token
   require_official_run
   find_cli
-  run_cli upload sources --branch "$CROWDIN_VERSION_BRANCH"
+  run_cli upload sources
   exit 0
 fi
 
-download_flags=(--branch "$CROWDIN_VERSION_BRANCH" --export-only-approved --skip-untranslated-strings)
+download_flags=(--export-only-approved --skip-untranslated-strings)
 
 if [[ "$step" == download ]]; then
   if ((dry_run)); then
-    echo "Would download the approved translations of the version branch ${CROWDIN_VERSION_BRANCH}:"
+    echo "Would download the approved translations of the file crowdin.yml names:"
     echo "  crowdin download translations ${download_flags[*]} --exclude-language de"
     echo "  crowdin download translations ${download_flags[*]} --language de"
     echo "German comes only from its own download: a file of the other download named app_de.arb or app_en.arb," \

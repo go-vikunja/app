@@ -209,8 +209,8 @@ class UsageTest(Fixture):
                 self.assertIn('usage: tool/ci/crowdin_sync.sh [--dry-run] upload|download|pull-request', result.stderr)
 
     def test_dry_runs_need_nothing(self):
-        expected = {'upload': 'crowdin upload sources --branch main',
-                    'download': 'crowdin download translations --branch main --export-only-approved '
+        expected = {'upload': 'crowdin upload sources',
+                    'download': 'crowdin download translations --export-only-approved '
                                 '--skip-untranslated-strings --exclude-language de'}
         for step, text in expected.items():
             with self.subTest(step):
@@ -240,11 +240,11 @@ class UploadTest(Fixture):
                     self.assertIn('only a run on main of go-vikunja/app', result.stderr)
         self.assertEqual(self.calls(), [])
 
-    def test_uploads_the_source_into_the_version_branch(self):
+    def test_uploads_the_source(self):
         result = self.sync('upload', CROWDIN_PERSONAL_TOKEN=CROWDIN_TOKEN, CROWDIN_PROJECT_ID='1', GH_TOKEN=GH_TOKEN)
         self.assertEqual(result.returncode, 0, result.stderr)
         (call,) = self.calls()
-        self.assertEqual(call['argv'], ['upload', 'sources', '--branch', 'main'])
+        self.assertEqual(call['argv'], ['upload', 'sources'])
         self.assertEqual(call['tokens'], {'CROWDIN_PERSONAL_TOKEN': sha(CROWDIN_TOKEN)})
 
 
@@ -265,9 +265,9 @@ class DownloadTest(Fixture):
         result = self.download()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([call['argv'] for call in self.calls()], [
-            ['download', 'translations', '--branch', 'main', '--export-only-approved', '--skip-untranslated-strings',
+            ['download', 'translations', '--export-only-approved', '--skip-untranslated-strings',
              '--exclude-language', 'de'],
-            ['download', 'translations', '--branch', 'main', '--export-only-approved', '--skip-untranslated-strings',
+            ['download', 'translations', '--export-only-approved', '--skip-untranslated-strings',
              '--language', 'de']])
         for call in self.calls():
             self.assertEqual(call['tokens'], {'CROWDIN_PERSONAL_TOKEN': sha(CROWDIN_TOKEN)})

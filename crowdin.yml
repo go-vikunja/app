@@ -8,7 +8,7 @@ preserve_hierarchy: true
 
 files:
   - source: /app/lib/l10n/arb/app_en.arb
-    dest: /app_en.arb
+    dest: /app/app_en.arb
     translation: /app/lib/l10n/arb/app_%two_letters_code%.arb
     type: arb
     update_option: update_as_unapproved
