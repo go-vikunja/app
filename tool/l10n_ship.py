@@ -8,7 +8,8 @@ the pull request carries the languages a maintainer then reviews.
 Usage: python3 -I tool/l10n_ship.py [--root DIR] [--min PERCENT] [--dry-run] [--changed-files FILE]
 
 Prints what it ships and, for a language at the share that it does not ship,
-why. Without a change it prints nothing and writes nothing.
+why. Without a change it writes no file but the list of --changed-files, which
+is then empty.
 """
 import argparse
 import os
@@ -256,20 +257,19 @@ def main(argv=None):
         shipped, ship, held = candidates(args.root, args.min)
         for locale, share, reason in held:
             print(f'Not shipped: {locale}, {share:.1f} %: {reason}')
-        if not ship:
-            return 0
         added = [locale for locale, _ in ship]
-        changes = apply(args.root, shipped, added)
+        changes = apply(args.root, shipped, added) if added else {}
         for locale, share in ship:
             print(f'Ships: {locale} ({NAMES[locale][0]}), {share:.1f} %')
         if not args.dry_run:
             for path, text in changes.items():
                 with open(os.path.join(args.root, path), 'w', encoding='utf-8') as f:
                     f.write(text)
-        if args.changed_files and not args.dry_run:
-            with open(args.changed_files, 'w', encoding='utf-8') as f:
-                f.write(''.join(f'{path}\n' for path in sorted(changes)))
-        print('Changed: ' + ', '.join(sorted(changes)))
+            if args.changed_files:
+                with open(args.changed_files, 'w', encoding='utf-8') as f:
+                    f.write(''.join(f'{path}\n' for path in sorted(changes)))
+        if changes:
+            print('Changed: ' + ', '.join(sorted(changes)))
     except ShipError as e:
         print(f'error: {e}', file=sys.stderr)
         return 2

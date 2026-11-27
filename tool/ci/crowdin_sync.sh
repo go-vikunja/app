@@ -386,6 +386,7 @@ done
 # First-party code of this checkout, not the CLI's: it adds the languages that
 # reached the share to the lists the tests keep equal.
 shipped_files="${WORK_DIR}/shipped.txt"
+: >"$shipped_files"
 ship_notes="$(python3 -I tool/l10n_ship.py --changed-files "$shipped_files")" || fail "tool/l10n_ship.py failed"
 if [[ -n "$ship_notes" ]]; then
   echo "$ship_notes"

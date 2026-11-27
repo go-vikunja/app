@@ -66,6 +66,15 @@ class L10nShipTest(unittest.TestCase):
         self.assertEqual(self.ship(), (0, '', ''))
         self.assertEqual(self.snapshot(), before)
 
+    def test_the_list_of_changed_files_is_written_even_when_empty(self):
+        listing = os.path.join(self.root, 'changed.txt')
+        self.arb('fr', 4)
+        self.assertEqual(self.ship('--changed-files', listing), (0, '', ''))
+        self.assertEqual(read(self.root, 'changed.txt'), '')
+        self.arb('fr', 6)
+        self.ship('--changed-files', listing)
+        self.assertIn('app/lib/app/l10n/shipped_locales.dart\n', read(self.root, 'changed.txt'))
+
     def test_ships_a_language_at_half_into_every_list(self):
         self.arb('fr', 5)
         code, out, _ = self.ship()
