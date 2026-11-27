@@ -1495,7 +1495,7 @@ final class AccountProjectRepositoryProvider
 }
 
 String _$accountProjectRepositoryHash() =>
-    r'8405043dda4523c25952655e7fc16a8ec05e5d91';
+    r'63cfd57de10c889b8146e6fd1ae014f7198e522b';
 
 /// One account's repositories over its database. Kept alive by the
 /// active-account providers below, so they go when another account takes
