@@ -35,7 +35,7 @@ void main() {
 
   testWidgets('a device language the app does not ship falls back to '
       'English', (tester) async {
-    useLocale(tester, const Locale('fr', 'FR'));
+    useLocale(tester, const Locale('eo', 'FR'));
     await pumpVikunjaApp(tester);
 
     expect(appLocale(tester), const Locale('en'));

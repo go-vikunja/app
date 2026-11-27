@@ -1189,8 +1189,8 @@ void main() {
       // MaterialApp takes the exact en over the language match of de_AT
       // below the first locale.
       for (final (locales, resolved, noted) in [
-        (const [Locale('fr'), Locale('de', 'AT')], 'de_AT', 'de-AT'),
-        (const [Locale('fr'), Locale('de', 'AT'), Locale('en')], 'en', 'en'),
+        (const [Locale('eo'), Locale('de', 'AT')], 'de_AT', 'de-AT'),
+        (const [Locale('eo'), Locale('de', 'AT'), Locale('en')], 'en', 'en'),
         (const [Locale('en', 'GB')], 'en_GB', 'en-GB'),
       ]) {
         final l10n = await loadDeviceAppLocalizations(
@@ -1238,7 +1238,7 @@ void main() {
 
       final l10n = await loadDeviceAppLocalizations(
         preferences,
-        locales: const [Locale('fr')],
+        locales: const [Locale('eo')],
       );
 
       expect(l10n.localeName, 'en');
@@ -1268,7 +1268,7 @@ void main() {
           (_, next) => changes.add(next.localeName),
         );
 
-        await notifier().follow(const [Locale('fr'), Locale('de', 'AT')]);
+        await notifier().follow(const [Locale('eo'), Locale('de', 'AT')]);
 
         expect(changes, ['de_AT']);
         expect(preferences.values[notificationLocaleKey], 'de-AT');
@@ -1324,7 +1324,7 @@ void main() {
           'de_DE',
         );
 
-        preferences.values[notificationLocaleKey] = 'fr';
+        preferences.values[notificationLocaleKey] = 'eo';
         expect(
           (await loadDeviceAppLocalizations(
             preferences,

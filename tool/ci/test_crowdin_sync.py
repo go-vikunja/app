@@ -13,11 +13,20 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCRIPTS = ('crowdin_sync.sh', 'lib.sh', 'pins.sh', 'release_lib.sh')
 ARB = 'app/lib/l10n/arb'
+SHIPPING_FILES = [
+    'app/lib/app/l10n/shipped_locales.dart', 'app/android/app/src/main/res/xml/locales_config.xml',
+    'app/ios/Runner/Info.plist', 'app/ios/VikunjaWidgets/Info.plist',
+    'app/android/app/src/main/kotlin/io/vikunja/app/PreviousApp.kt', 'app/lib/app/l10n/picker_localizations.dart',
+    'app/lib/app/l10n/l10n.dart', 'app/test/l10n/store_listing_languages_test.dart',
+    'fastlane/metadata/en-US/description.txt',
+    'fastlane/metadata/de-DE/description.txt', 'fastlane/metadata/android/en-US/full_description.txt',
+    'fastlane/metadata/android/de-DE/full_description.txt',
+]
 OFFICIAL = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'go-vikunja/app', 'GITHUB_REPOSITORY_ID': '1468952826',
             'GITHUB_REF': 'refs/heads/main'}
 CROWDIN_TOKEN = 'fake-crowdin-token-5e1f0a7c'
 GH_TOKEN = 'ghs_fakecrowdinsync42'
-ENGLISH = {'appTitle': 'Vikunja', 'done': 'Done', 'later': 'Later'}
+ENGLISH = {'appTitle': 'Vikunja', 'done': 'Done', 'later': 'Later', 'open': 'Open', 'close': 'Close'}
 GERMAN = {'appTitle': 'Vikunja', 'done': 'Erledigt'}
 SWISS = {'appTitle': 'Vikunja', 'done': 'Erlediget'}
 FRENCH = {'appTitle': 'Vikunja', 'done': 'Terminé'}
@@ -132,6 +141,12 @@ class Fixture(unittest.TestCase):
         os.makedirs(os.path.join(self.repo, 'tool', 'ci'))
         for script in SCRIPTS:
             shutil.copy2(os.path.join(ROOT, 'tool', 'ci', script), os.path.join(self.repo, 'tool', 'ci', script))
+        for script in ('l10n_ship.py', 'l10n_progress.py'):
+            shutil.copy2(os.path.join(ROOT, 'tool', script), os.path.join(self.repo, 'tool', script))
+        for path in SHIPPING_FILES:
+            if os.path.isfile(os.path.join(ROOT, path)):
+                os.makedirs(os.path.dirname(os.path.join(self.repo, path)), exist_ok=True)
+                shutil.copy2(os.path.join(ROOT, path), os.path.join(self.repo, path))
         shutil.copy2(os.path.join(ROOT, 'crowdin.yml'), self.repo)
         with open(os.path.join(self.repo, '.gitignore'), 'w', encoding='utf-8') as f:
             f.write('build/\n.cache/\n')
@@ -386,6 +401,33 @@ class PullRequestTest(Fixture):
         self.assertIn('- `app_de.arb`', create['body'])
         self.assertIn(f'Opened the pull request {PR_URL}', result.stdout)
 
+    def test_ships_a_language_that_reached_half_of_the_english_texts(self):
+        self.write_arb('app_fr.arb', dict(FRENCH, later='Plus tard'), self.artifact)
+        result = self.pull_request()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        head = self.remote_branch()
+        names = set(self.remote_git('diff', '--name-only', self.main, head).split('\n'))
+        self.assertEqual(names, {f'{ARB}/app_fr.arb', *(path for path in SHIPPING_FILES
+                                                         if os.path.isfile(os.path.join(ROOT, path))
+                                                         and path != 'app/ios/VikunjaWidgets/Info.plist')})
+        shipped = self.remote_git('show', f'{head}:app/lib/app/l10n/shipped_locales.dart')
+        self.assertIn("Locale('fr')", shipped)
+        (create,) = [call for call in self.calls('gh') if call['argv'][:2] == ['pr', 'create']]
+        self.assertIn('Ships: fr (French), 60.0 %', create['body'])
+        self.assertIn('tool/l10n_ship.py', create['body'])
+        self.assertEqual(self.read('app/lib/app/l10n/shipped_locales.dart').count("Locale('fr')"), 1)
+
+    def test_a_failing_ship_step_stops_before_anything_is_pushed(self):
+        git(self.repo, 'rm', '-q', 'app/android/app/src/main/res/xml/locales_config.xml')
+        git(self.repo, '-c', 'user.name=Someone', '-c', 'user.email=someone@example.test', '-c', 'commit.gpgsign=false',
+            'commit', '-q', '-m', 'remove')
+        git(self.repo, 'push', '-q', 'origin', 'main')
+        self.write_arb('app_fr.arb', dict(FRENCH, later='Plus tard'), self.artifact)
+        result = self.pull_request()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('locales_config.xml', result.stderr)
+        self.assertIsNone(self.remote_branch())
+
     def commit_on(self, branch, path, content):
         git(self.repo, 'switch', '-q', branch)
         os.makedirs(os.path.dirname(os.path.join(self.repo, path)), exist_ok=True)
@@ -422,7 +464,7 @@ class PullRequestTest(Fixture):
 
         os.remove(self.log)
         git(self.repo, 'switch', '-q', 'main')
-        self.write_arb('app_fr.arb', dict(FRENCH, later='Plus tard'), self.artifact)
+        self.write_arb('app_fr.arb', dict(FRENCH, done='Fini'), self.artifact)
         result = self.pull_request()
         self.assertEqual(result.returncode, 0, result.stderr)
         second = self.remote_branch()

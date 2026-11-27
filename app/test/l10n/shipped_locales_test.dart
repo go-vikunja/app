@@ -100,9 +100,9 @@ void main() {
     const cases = [
       (<Locale>[], Locale('en')),
       ([Locale('de', 'AT')], Locale('de')),
-      ([Locale('fr', 'CH'), Locale('de', 'DE')], Locale('de')),
+      ([Locale('eo', 'CH'), Locale('de', 'DE')], Locale('de')),
       // A language match below the first locale yields to a later exact one.
-      ([Locale('fr'), Locale('de', 'AT'), Locale('en')], Locale('en')),
+      ([Locale('eo'), Locale('de', 'AT'), Locale('en')], Locale('en')),
       ([Locale('pt', 'PT'), Locale('pt', 'BR')], Locale('pt', 'BR')),
       // With no language match, a shipped locale of the device's country.
       ([Locale('es', 'BR')], Locale('pt', 'BR')),
@@ -166,9 +166,9 @@ void main() {
       ([Locale('en', 'GB')], Locale('en', 'GB')),
       ([Locale('en', 'US')], Locale('en', 'US')),
       ([Locale('de', 'CH')], Locale('de', 'CH')),
-      ([Locale('fr', 'FR')], Locale('en')),
-      ([Locale('fr', 'CH'), Locale('de', 'AT')], Locale('de', 'AT')),
-      ([Locale('fr'), Locale('de', 'AT'), Locale('en')], Locale('en')),
+      ([Locale('eo', 'FR')], Locale('en')),
+      ([Locale('eo', 'CH'), Locale('de', 'AT')], Locale('de', 'AT')),
+      ([Locale('eo'), Locale('de', 'AT'), Locale('en')], Locale('en')),
       // A per-app language without a region, before the device's locales.
       ([Locale('en'), Locale('en', 'GB')], Locale('en', 'GB')),
       ([Locale('de'), Locale('en', 'GB')], Locale('de')),
@@ -227,13 +227,14 @@ void main() {
     );
   });
 
-  test('French is not shipped', () {
+  test('Esperanto is not shipped', () {
     expect(
       shippedLocales.map((locale) => locale.languageCode),
-      isNot(contains('fr')),
+      isNot(contains('eo')),
       reason:
-          'The locale and device language tests take French for a language '
-          'the app does not ship; give them another one.',
+          'The locale and device language tests take Esperanto for a language '
+          'the app does not ship, as tool/l10n_ship.py never ships it; give '
+          'them another one.',
     );
   });
 }

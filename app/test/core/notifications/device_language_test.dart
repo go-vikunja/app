@@ -281,7 +281,7 @@ void main() {
     final account = await started(de);
     calls.clear();
 
-    binding.platformDispatcher.localesTestValue = const [Locale('fr', 'FR')];
+    binding.platformDispatcher.localesTestValue = const [Locale('eo', 'FR')];
     await pumpEventQueue();
 
     expect(container.read(deviceAppLocalizationsProvider).localeName, 'en');

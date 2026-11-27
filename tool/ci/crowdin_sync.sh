@@ -316,6 +316,8 @@ if ((${#changed[@]} == 0)); then
   exit 0
 fi
 
+ship_notes=""
+
 pr_body() {
   local name
   cat <<'BODY'
@@ -330,6 +332,10 @@ BODY
     for name in "${dropped[@]}"; do
       printf '%s\n' "- \`${name}\`"
     done
+  fi
+  if [[ -n "$ship_notes" ]]; then
+    printf '\n%s\n\n' "Languages at 50 % or more of the English texts, by \`tool/l10n_ship.py\` (decision log: Languages); review the lists it changed and the new language's texts before merging:"
+    printf '%s\n' "$ship_notes" | sed 's/^/    /'
   fi
 }
 
@@ -358,15 +364,33 @@ remote_git() {
 for name in "${changed[@]}"; do
   cp "${WORK_DIR}/arb/${name}" "${ARB_DIR}/${name}"
 done
+# First-party code of this checkout, not the CLI's: it adds the languages that
+# reached the share to the lists the tests keep equal.
+shipped_files="${WORK_DIR}/shipped.txt"
+ship_notes="$(python3 -I tool/l10n_ship.py --changed-files "$shipped_files")" || fail "tool/l10n_ship.py failed"
+if [[ -n "$ship_notes" ]]; then
+  echo "$ship_notes"
+fi
+shipped=()
+while IFS= read -r path; do
+  if [[ "$path" == /* || "$path" == *..* ]] || ! git ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+    fail "tool/l10n_ship.py named ${path}, which is not a file of the checkout"
+  fi
+  shipped+=("$path")
+done <"$shipped_files"
 # The reflogs need an identity too; git would guess one from the host.
 export GIT_AUTHOR_NAME="$BOT_NAME" GIT_AUTHOR_EMAIL="$BOT_EMAIL"
 export GIT_COMMITTER_NAME="$BOT_NAME" GIT_COMMITTER_EMAIL="$BOT_EMAIL"
 git switch -q -C "$PR_BRANCH"
-git add -- "${ARB_DIR}"
+git add -- "${ARB_DIR}" ${shipped[@]+"${shipped[@]}"}
 staged="$(git diff --cached --name-only)"
-expected="$(for name in "${changed[@]}"; do echo "${ARB_DIR}/${name}"; done | LC_ALL=C sort)"
+expected="$(
+  for name in "${changed[@]}"; do echo "${ARB_DIR}/${name}"; done
+  for path in ${shipped[@]+"${shipped[@]}"}; do echo "$path"; done
+)"
+expected="$(LC_ALL=C sort <<<"$expected")"
 if [[ "$(LC_ALL=C sort <<<"$staged")" != "$expected" ]]; then
-  fail "the commit would hold other files than ${changed[*]}"
+  fail "the commit would hold other files than ${changed[*]} ${shipped[*]-}"
 fi
 git -c commit.gpgsign=false commit -q -m "$COMMIT_MESSAGE"
 

@@ -82,10 +82,11 @@ English is the source, and every other language, German included, comes only thr
 
 ### Adding a language
 
-A maintainer adds a language in one pull request once `python3 -I tool/l10n_progress.py` shows its ARB file at 50 % or more, the share at which Vikunja's web ships a language too (Crowdin exports only approved translations, so the share counts approved ones):
+A language is shipped once `python3 -I tool/l10n_progress.py` shows its ARB file at 50 % or more, the share at which Vikunja's web ships a language too (Crowdin exports only approved translations, so the share counts approved ones). The workflow "Crowdin" does it itself for a language with a plain code such as `fr`: its pull request carries the changes below, made by `tool/l10n_ship.py`, which the maintainer reviews with the translations. A regional or script variant (`pt_BR`, `zh_Hant`), a right-to-left language, Esperanto and a language `tool/l10n_ship.py` has no name for are added by a maintainer in one pull request, by hand:
 
 - its `Locale` in `shippedLocales` in `app/lib/app/l10n/shipped_locales.dart` (English stays first);
 - its BCP 47 tag in `app/android/app/src/main/res/xml/locales_config.xml`, in `CFBundleLocalizations` in `app/ios/Runner/Info.plist` and in `LANGUAGES` in `app/android/app/src/main/kotlin/io/vikunja/app/PreviousApp.kt`;
+- its generated class in `appLocalizationsFor` and its import in `app/lib/app/l10n/l10n.dart`;
 - a picker class for its language in `app/lib/app/l10n/picker_localizations.dart`, like `_GermanPickerLocalizations`, in the delegate's `_languages`;
 - its English name in the "• Languages:" line of `fastlane/metadata/en-US/description.txt` and `fastlane/metadata/android/en-US/full_description.txt`, its German name in the "• Sprachen:" line of the two de-DE descriptions, and both names in `_listings` of `app/test/l10n/store_listing_languages_test.dart`.
 
