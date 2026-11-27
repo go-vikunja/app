@@ -98,6 +98,8 @@ The About page's links are in `app/lib/app/legal.dart` (`WebsitePage`, one `addr
 
 *Step 38f: all 20 Play screenshots, phone and tablet in en-US and de-DE, were retaken on 2026-11-17 with the build of that day, because the German ones still showed „Konto“, the tablet ones lacked the project tree and the task views predated steps 37h and 37k. The session used two emulators made for it (`Vikunja_Screens`, `Vikunja_Tablet`), as every session uses emulators made for it, never a developer's own, the test server with the seeded users, and the maintainer's sign-in once per device; agents never type credentials. The App Store's sets wait for the 1.0.0 submission.*
 
+*All 20 were retaken again on 2026-11-27, with the build of `main` of that day, the demo data seeded just before in each language and the same two emulators; the app had changed since 2026-11-17 (the project tree, the sync and the sharing, among others). Before each submission they are taken once more, as the session below says.*
+
 *Step 40a ([Releases](decisions.md#releases)): the English demo data's inbox task is "Change the tires" since then; the en-US phone screenshot 06 and the tablet's 03, which showed "Change the tyres", were retaken with it on 2026-11-17.*
 
 **Motifs** (`tool/store_screenshots.sh --list`), each in English and German:
